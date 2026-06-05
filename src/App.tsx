@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { useState } from "react";
+import { useState, useCallback } from "react";
 
 // Equipment: 10kg | 6.8kg (15lbs) | 4.5kg (10lbs) | BW
 // NO exercises using two of the same KB weight simultaneously
@@ -672,7 +672,12 @@ export default function App() {
   const [wk, setWk]       = useState(initWeek());
   const [di, setDi]       = useState(0);
   const [view, setView]   = useState("week");
-  const [done, setDone]   = useState({});
+  const [done, setDone] = useState(() => {
+    try {
+      const saved = localStorage.getItem("jay-training-done");
+      return saved ? JSON.parse(saved) : {};
+    } catch { return {}; }
+  });
   const [open, setOpen]   = useState(null);
   const [showMini, setShowMini] = useState(false);
 
@@ -894,7 +899,11 @@ export default function App() {
                                   <div style={{ fontFamily:"'DM Mono',monospace", fontSize:11, color:dot, fontWeight:500 }}>{ex.sets}</div>
                                   <div style={{ fontSize:10, color:"#6b7280", marginTop:1 }}>{ex.weight}</div>
                                 </div>
-                                <div onClick={e=>{e.stopPropagation();setDone(p=>({...p,[key]:!p[key]}));}} style={{
+                                <div onClick={e=>{e.stopPropagation();setDone(p => {
+                                  const next = {...p, [key]: !p[key]};
+                                  try { localStorage.setItem("jay-training-done", JSON.stringify(next)); } catch {}
+                                  return next;
+                                });}} style={{
                                   width:20, height:20, borderRadius:"50%", flexShrink:0,
                                   background:isDone?dot:"rgba(255,255,255,0.05)",
                                   border:`1px solid ${isDone?dot:"rgba(255,255,255,0.1)"}`,
