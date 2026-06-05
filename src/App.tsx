@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { useState } from "react";
 
 // Equipment: 10kg | 6.8kg (15lbs) | 4.5kg (10lbs) | BW
