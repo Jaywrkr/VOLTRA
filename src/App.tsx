@@ -4,8 +4,8 @@ import { useState, useCallback } from "react";
 // Equipment: 10kg | 6.8kg (15lbs) | 4.5kg (10lbs) | BW
 // NO exercises using two of the same KB weight simultaneously
 // NO supersets, NO arrows
-// Week starts Thursday
-// Order: JUE VIE SAB DOM LUN MAR MIE
+// Week starts Monday
+// Order: LUN MAR MIE JUE VIE SAB DOM
 
 const EX = {
   // ESPALDA
@@ -91,7 +91,7 @@ const WEEK_META = [
   { label:"Semana 2",  tag:"Volumen",     color:"#6366f1", desc:"+1 serie en todo. Mismo peso, más trabajo total." },
   { label:"Semana 3",  tag:"Variación",   color:"#f97316", desc:"Ejercicios distintos, mismos músculos. El cuerpo no anticipa." },
   { label:"Semana 4",  tag:"Intensidad",  color:"#ef4444", desc:"Menos reps, más tempo. Tiempo bajo tensión máximo." },
-  { label:"Semana 5",  tag:"Deload",      color:"#78716c", desc:"Menos volumen, forma perfecta. El músculo se consolida." },
+  { label:"Semana 5",  tag:"Deload",      color:"#94a3b8", desc:"Menos volumen, forma perfecta. El músculo se consolida." },
   { label:"Semana 6",  tag:"Base B",      color:"#0ea5e9", desc:"Nuevo ciclo. Ejercicios diferentes, misma estructura." },
   { label:"Semana 7",  tag:"Volumen B",   color:"#8b5cf6", desc:"+1 serie. Más trabajo, base más sólida que S2." },
   { label:"Semana 8",  tag:"Variación B", color:"#f59e0b", desc:"Variantes nuevas. Rompe la adaptación de nuevo." },
@@ -305,7 +305,29 @@ function buildAllWeeks() {
 
     // SAB + DOM
     const sat = rest("sat","SAT","Sábado","El músculo crece en el descanso, no durante el entrenamiento. El sábado es parte del plan.");
-    const dom = rest("dom","DOM","Domingo","Nutrición y sueño construyen el músculo. El entrenamiento solo da la señal.");
+
+    // DOM: Domingo — circuito opcional de cardio + abdomen, para los domingos sin fútbol
+    const sundayLevel = wi - 2; // 0-7 across the displayed 8 weeks
+    const dom = mkDay("dom","DOM","Domingo","FITXR","Cardio + Abdomen (opcional)",
+      sundayLevel < 2 ? "30 min" : sundayLevel < 5 ? "35 min" : "40 min",
+      "Cardio ligero · Abdomen · Solo si no juegas fútbol",
+      [
+        { name:"FitXR", exercises:[
+          { name:"FitXR — Box", note: sundayLevel < 2 ? "2 rounds, esfuerzo moderado-alto" : sundayLevel < 5 ? "2–3 rounds, esfuerzo alto" : "3 rounds, esfuerzo alto",
+            sets: sundayLevel < 2 ? "15 min" : sundayLevel < 5 ? "18 min" : "20 min", weight:"—", info:"fitxrBox" },
+          ...(sundayLevel >= 4 ? [{ name:"FitXR — Combat", note:"1 round, footwork", sets:"8 min", weight:"—", info:"fitxrCombat" }] : []),
+        ]},
+        { name:"Abdomen", exercises:[
+          { name:"Russian Twist", note:"Rota completamente cada lado", sets:`3 × ${16 + sundayLevel}`, weight: sundayLevel < 3 ? "4.5 kg" : "6.8 kg", info: sundayLevel < 3 ? "russianTwist" : "russianHeavy" },
+          { name:"Bicycle crunches", note:"Lento — rotación de torso", sets:`3 × ${18 + sundayLevel}`, weight:"BW", info:"bicycle" },
+          { name:"Hollow Body Hold", note: sundayLevel < 4 ? "Piernas a 30°" : "Piernas a 25°", sets:`3 × ${28 + sundayLevel*2}s`, weight:"BW", info:"hollowHold" },
+          { name:"Plank hold", note:"Abs + glúteos apretados", sets:`3 × ${38 + sundayLevel*2}s`, weight:"BW", info:"plank" },
+          ...(sundayLevel >= 3 ? [{ name:"Mountain Climbers", note:"Caderas completamente quietas", sets:`3 × ${28 + sundayLevel*2}s`, weight:"BW", info:"mountainClimber" }] : []),
+          ...(sundayLevel >= 6 ? [{ name:"Hollow Body Rock", note:"Mantén la forma al rockear", sets:"3 × 15 rocks", weight:"BW", info:"hollowRock" }] : []),
+        ]},
+      ],
+      "Opcional — solo si no juegas fútbol este domingo. Si juegas, descansa: el partido ya es tu cardio. Si no, esto te mantiene activo sin comprometer las piernas para el lunes."
+    );
 
     // LUN: Piernas + Glúteos
     const lun = mkDay("lun","LUN","Lunes","STRENGTH","Piernas + Glúteos",
@@ -469,41 +491,47 @@ function buildAllWeeks() {
     : "FitXR Box + abdomen es la combinación que más ayuda a definir el core. El abdomen se define con cardio, no solo con crunches."
     );
 
-    return [jue, vie, sat, dom, lun, mar, mie];
+    return [lun, mar, mie, jue, vie, sat, dom];
   });
 }
 
-const ALL_WEEKS = buildAllWeeks();
+// Plan starts at what was originally S3 (Jay already completed S1 and S2).
+// Internal progression logic (wi 2-9) is preserved exactly — only display labels shift to S1-S8.
+const RAW_WEEKS = buildAllWeeks();
+const ALL_WEEKS = RAW_WEEKS.slice(2);
+
+const DISPLAY_META = WEEK_META.slice(2).map((w, i) => ({
+  ...w,
+  label: `Semana ${i + 1}`,
+}));
 
 // ─── UI Styles ────────────────────────────────────────────────────────────────
 const TC = {
-  STRENGTH:{ bg:"#07101f", accent:"#3b82f6", label:"#bfdbfe", glow:"rgba(59,130,246,0.09)" },
-  FITXR:   { bg:"#0d0920", accent:"#a78bfa", label:"#ddd6fe", glow:"rgba(167,139,250,0.09)" },
-  REST:    { bg:"#0e0c0a", accent:"#6b7280", label:"#d1d5db", glow:"rgba(107,114,128,0.05)" },
+  STRENGTH:{ bg:"#060a07", accent:"#39ff88", label:"#a3ffcb", glow:"rgba(57,255,136,0.10)" },
+  FITXR:   { bg:"#060a0a", accent:"#00e5b0", label:"#a3fff0", glow:"rgba(0,229,176,0.10)" },
+  REST:    { bg:"#0a0a0a", accent:"#4b5563", label:"#9ca3af", glow:"rgba(75,85,99,0.06)" },
 };
 
 const SDOT = (n) => {
   if (n.startsWith("Warm-up")) return "#6b7280";
-  if (n.includes("Espalda")) return "#38bdf8";
-  if (n.includes("Bícep")) return "#93c5fd";
-  if (n.includes("Hombro")) return "#c4b5fd";
-  if (n.includes("Brazos")) return "#f0abfc";
-  if (n.startsWith("Cuádr") || n.includes("Glúteo")) return "#6ee7b7";
-  if (n.includes("Isquio")) return "#a7f3d0";
-  if (n.includes("Pecho")) return "#fbcfe8";
-  if (n.includes("Trícep")) return "#fed7aa";
-  if (n.includes("Core") || n.includes("Abdomen")) return "#fdba74";
-  if (n.includes("FitXR")) return "#c4b5fd";
-  if (n.includes("Finisher")) return "#fde68a";
+  if (n.includes("Espalda")) return "#22d3ee";
+  if (n.includes("Bícep")) return "#39ff88";
+  if (n.includes("Hombro")) return "#a3ffcb";
+  if (n.includes("Brazos")) return "#5eead4";
+  if (n.startsWith("Cuádr") || n.includes("Glúteo")) return "#39ff88";
+  if (n.includes("Isquio")) return "#86efac";
+  if (n.includes("Pecho")) return "#fb7185";
+  if (n.includes("Trícep")) return "#fbbf24";
+  if (n.includes("Core") || n.includes("Abdomen")) return "#fb923c";
+  if (n.includes("FitXR")) return "#00e5b0";
+  if (n.includes("Finisher")) return "#fde047";
   return "#9ca3af";
 };
 
 const DAY_LABELS = { jue:"JUE", vie:"VIE", sat:"SAT", dom:"DOM", lun:"LUN", mar:"MAR", mie:"MIÉ" };
 
-const START = new Date(2025, 4, 1);
 function initWeek() {
-  const d = new Date() - START;
-  return d < 0 ? 0 : Math.min(Math.floor(d / (7*24*60*60*1000)), 9);
+  return 0;
 }
 
 // ─── Exercise Panel ───────────────────────────────────────────────────────────
@@ -681,7 +709,7 @@ export default function App() {
   const [open, setOpen]   = useState(null);
   const [showMini, setShowMini] = useState(false);
 
-  const W_META = WEEK_META[wk];
+  const W_META = DISPLAY_META[wk];
   const DAYS   = ALL_WEEKS[wk];
   const day    = DAYS[di];
   const tc     = TC[day.type] || TC.REST;
@@ -695,34 +723,46 @@ export default function App() {
   const gw = (i) => { setWk(i); setDi(0); setView("week"); setOpen(null); setShowMini(false); };
 
   const SPLIT = [
-    ["JUE","Espalda + Bíceps","#38bdf8"],
-    ["VIE","Hombros + Brazos","#f0abfc"],
+    ["LUN","Piernas + Glúteos","#39ff88"],
+    ["MAR","Pecho + Tríceps","#fb7185"],
+    ["MIÉ","FitXR + Abdomen","#00e5b0"],
+    ["JUE","Espalda + Bíceps","#22d3ee"],
+    ["VIE","Hombros + Brazos","#a3ffcb"],
     ["SAT","Descanso","#6b7280"],
-    ["DOM","Descanso","#6b7280"],
-    ["LUN","Piernas + Glúteos","#6ee7b7"],
-    ["MAR","Pecho + Tríceps","#fbcfe8"],
-    ["MIÉ","FitXR + Abdomen","#c4b5fd"],
+    ["DOM","Cardio + Abs (opcional)","#00e5b0"],
   ];
 
   return (
-    <div style={{ minHeight:"100vh", background:"#04060f", fontFamily:"'DM Sans',system-ui,sans-serif", color:"#e5e7eb" }}>
-      <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+    <div style={{ minHeight:"100vh", background:"#000000", fontFamily:"'DM Sans',system-ui,sans-serif", color:"#e5e7eb" }}>
+      <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+      <style>{`
+        * { box-sizing: border-box; }
+        ::-webkit-scrollbar { display: none; }
+        .jay-shell { display: block; }
+        .jay-week-grid { display: block; }
+        @media (min-width: 900px) {
+          .jay-shell { display: grid; grid-template-columns: 320px 1fr; gap: 24px; align-items: start; }
+          .jay-sidebar { position: sticky; top: 84px; }
+          .jay-week-grid.is-week-view { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+        }
+      `}</style>
 
       {/* Header */}
-      <div style={{ background:"#04060f", borderBottom:"1px solid rgba(255,255,255,0.06)", padding:"12px 0 10px", position:"sticky", top:0, zIndex:20 }}>
-        <div style={{ width:"100%", maxWidth:560, margin:"0 auto", padding:"0 16px", boxSizing:"border-box", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+      <div style={{ background:"#000000", borderBottom:"1px solid rgba(57,255,136,0.12)", padding:"14px 0 12px", position:"sticky", top:0, zIndex:20 }}>
+        <div style={{ width:"100%", maxWidth:1100, margin:"0 auto", padding:"0 16px", boxSizing:"border-box", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
           <div>
-            <div style={{ fontFamily:"'DM Mono',monospace", fontSize:9, color:"#4b5563", letterSpacing:"0.2em" }}>JAY · HIPERTROFIA · 10 SEMANAS</div>
-            <div style={{ fontSize:14, fontWeight:600, marginTop:2, color:"#f3f4f6" }}>Masa muscular + Abdomen definido</div>
+            <div style={{ fontFamily:"'DM Mono',monospace", fontSize:9, color:"#39ff88", letterSpacing:"0.22em", fontWeight:600 }}>JAY · HIPERTROFIA · 8 SEMANAS</div>
+            <div style={{ fontSize:14, fontWeight:700, marginTop:3, color:"#f3f4f6", letterSpacing:"0.01em" }}>Masa muscular + Abdomen definido</div>
           </div>
           <div style={{ display:"flex", gap:4 }}>
             {["week","day"].map(v=>(
               <button key={v} onClick={()=>setView(v)} style={{
-                background:view===v?"rgba(255,255,255,0.08)":"transparent",
-                border:`1px solid ${view===v?"rgba(255,255,255,0.14)":"rgba(255,255,255,0.06)"}`,
-                color:view===v?"#f3f4f6":"#6b7280",
-                borderRadius:6, padding:"5px 10px", fontSize:11, cursor:"pointer",
-                fontFamily:"'DM Sans',sans-serif", fontWeight:500,
+                background:view===v?"rgba(57,255,136,0.1)":"transparent",
+                border:`1px solid ${view===v?"rgba(57,255,136,0.4)":"rgba(255,255,255,0.08)"}`,
+                color:view===v?"#39ff88":"#6b7280",
+                borderRadius:6, padding:"5px 12px", fontSize:11, cursor:"pointer",
+                fontFamily:"'DM Sans',sans-serif", fontWeight:600,
+                transition:"all 0.15s",
               }}>{v==="week"?"Semana":"Sesión"}</button>
             ))}
           </div>
@@ -730,96 +770,107 @@ export default function App() {
       </div>
 
       {/* Content */}
-      <div style={{ width:"100%", maxWidth:560, margin:"0 auto", padding:"12px 16px 56px", boxSizing:"border-box" }}>
+      <div style={{ width:"100%", maxWidth:1100, margin:"0 auto", padding:"14px 16px 56px", boxSizing:"border-box" }}>
+        <div className="jay-shell">
+
+        {/* ── SIDEBAR (nav) ── */}
+        <div className="jay-sidebar" style={{ marginBottom:14 }}>
 
         {/* Week tabs — full width */}
-        <div style={{ display:"grid", gridTemplateColumns:"repeat(10, 1fr)", gap:4, marginBottom:10, width:"100%" }}>
-          {WEEK_META.map((w,i)=>(
+        <div style={{ display:"grid", gridTemplateColumns:"repeat(8, 1fr)", gap:4, marginBottom:10, width:"100%" }}>
+          {DISPLAY_META.map((w,i)=>(
             <button key={i} onClick={()=>gw(i)} style={{
-              background:wk===i?`${w.color}12`:"rgba(255,255,255,0.02)",
-              border:`1px solid ${wk===i?w.color+"45":"rgba(255,255,255,0.06)"}`,
+              background:wk===i?`${w.color}14`:"rgba(255,255,255,0.02)",
+              border:`1px solid ${wk===i?w.color+"55":"rgba(255,255,255,0.07)"}`,
               borderRadius:7, padding:"6px 2px", cursor:"pointer", textAlign:"center",
               transition:"all 0.15s", width:"100%",
             }}>
-              <div style={{ fontFamily:"'DM Mono',monospace", fontSize:8, color:wk===i?w.color:"#4b5563", fontWeight:600 }}>S{i+1}</div>
-              <div style={{ fontSize:8, color:wk===i?w.color:"#374151", marginTop:2, fontWeight:wk===i?600:400, lineHeight:1.2 }}>{w.tag}</div>
+              <div style={{ fontFamily:"'DM Mono',monospace", fontSize:8, color:wk===i?w.color:"#52525b", fontWeight:700 }}>S{i+1}</div>
+              <div style={{ fontSize:8, color:wk===i?w.color:"#3f3f46", marginTop:2, fontWeight:wk===i?600:400, lineHeight:1.2 }}>{w.tag}</div>
             </button>
           ))}
         </div>
 
         {/* Banner */}
-        <div style={{ background:`${W_META.color}07`, border:`1px solid ${W_META.color}20`, borderRadius:9, padding:"9px 12px", marginBottom:11 }}>
-          <span style={{ fontFamily:"'DM Mono',monospace", fontSize:10, color:W_META.color, fontWeight:600 }}>{W_META.label} — {W_META.tag}  </span>
-          <span style={{ fontSize:11, color:"#9ca3af" }}>{W_META.desc}</span>
+        <div style={{ background:`${W_META.color}0c`, border:`1px solid ${W_META.color}30`, borderRadius:9, padding:"9px 12px", marginBottom:11 }}>
+          <span style={{ fontFamily:"'DM Mono',monospace", fontSize:10, color:W_META.color, fontWeight:700 }}>{W_META.label} — {W_META.tag}  </span>
+          <span style={{ fontSize:11, color:"#a1a1aa" }}>{W_META.desc}</span>
         </div>
 
         {/* Equipment */}
         <div style={{ display:"flex", gap:4, marginBottom:11, flexWrap:"wrap" }}>
-          {[["10 kg","#60a5fa","principal"],["6.8 kg","#c4b5fd","press · curl"],["4.5 kg","#6ee7b7","iso · warmup"],["BW","#9ca3af","corporal"]].map(([w,c,r])=>(
-            <div key={w} style={{ display:"flex", alignItems:"center", gap:4, background:"rgba(255,255,255,0.03)", border:"1px solid rgba(255,255,255,0.06)", borderRadius:5, padding:"3px 8px" }}>
+          {[["10 kg","#39ff88","principal"],["6.8 kg","#5eead4","press · curl"],["4.5 kg","#a3ffcb","iso · warmup"],["BW","#a1a1aa","corporal"]].map(([w,c,r])=>(
+            <div key={w} style={{ display:"flex", alignItems:"center", gap:4, background:"rgba(255,255,255,0.03)", border:"1px solid rgba(255,255,255,0.07)", borderRadius:5, padding:"3px 8px" }}>
               <div style={{ width:5, height:5, borderRadius:"50%", background:c }}/>
               <span style={{ fontFamily:"'DM Mono',monospace", fontSize:9, color:c, fontWeight:600 }}>{w}</span>
-              <span style={{ fontSize:9, color:"#6b7280" }}>{r}</span>
+              <span style={{ fontSize:9, color:"#71717a" }}>{r}</span>
             </div>
           ))}
         </div>
 
         {/* Day pills — full width grid */}
-        <div style={{ display:"grid", gridTemplateColumns:"repeat(7, 1fr)", gap:4, marginBottom:14, width:"100%" }}>
+        <div style={{ display:"grid", gridTemplateColumns:"repeat(7, 1fr)", gap:4, width:"100%" }}>
           {DAYS.map((d,i)=>{
             const tc2=TC[d.type]||TC.REST; const isA=i===di;
             return (
               <button key={d.id} onClick={()=>gd(i)} style={{
                 background:isA?tc2.bg:"rgba(255,255,255,0.02)",
-                border:`1px solid ${isA?tc2.accent:"rgba(255,255,255,0.06)"}`,
+                border:`1px solid ${isA?tc2.accent:"rgba(255,255,255,0.07)"}`,
                 borderRadius:7, padding:"7px 3px", cursor:"pointer", textAlign:"center",
                 boxShadow:isA?`0 0 12px ${tc2.glow}`:"none", transition:"all 0.15s", width:"100%",
               }}>
-                <div style={{ fontFamily:"'DM Mono',monospace", fontSize:9, color:isA?tc2.label:"#6b7280", fontWeight:500 }}>{DAY_LABELS[d.id]}</div>
-                <div style={{ width:4, height:4, borderRadius:"50%", margin:"4px auto 0", background:isA?tc2.accent:"rgba(255,255,255,0.08)" }}/>
+                <div style={{ fontFamily:"'DM Mono',monospace", fontSize:9, color:isA?tc2.label:"#71717a", fontWeight:600 }}>{DAY_LABELS[d.id]}</div>
+                <div style={{ width:4, height:4, borderRadius:"50%", margin:"4px auto 0", background:isA?tc2.accent:"rgba(255,255,255,0.1)" }}/>
               </button>
             );
           })}
         </div>
 
+        {/* Split overview — desktop sidebar only shows here too */}
+        <div style={{ background:"rgba(255,255,255,0.02)", border:"1px solid rgba(255,255,255,0.07)", borderRadius:9, padding:"10px 13px", marginTop:11 }}>
+          <div style={{ fontSize:9, fontWeight:700, color:"#39ff88", letterSpacing:"0.14em", marginBottom:8 }}>SPLIT · EMPIEZA LUNES</div>
+          <div style={{ display:"flex", flexDirection:"column", gap:5 }}>
+            {SPLIT.map(([d,g,c])=>(
+              <div key={d} style={{ display:"flex", alignItems:"center", gap:8 }}>
+                <div style={{ width:3, height:3, borderRadius:"50%", background:c, flexShrink:0 }}/>
+                <span style={{ fontFamily:"'DM Mono',monospace", fontSize:10, color:"#71717a", width:32, flexShrink:0 }}>{d}</span>
+                <span style={{ fontSize:11, fontWeight:600, color:c }}>{g}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        </div>
+        {/* ── END SIDEBAR ── */}
+
+        {/* ── MAIN CONTENT ── */}
+        <div>
+
         {/* ── WEEK VIEW ── */}
         {view==="week" && (
-          <div style={{ display:"flex", flexDirection:"column", gap:7 }}>
-            {/* Split overview */}
-            <div style={{ background:"rgba(255,255,255,0.02)", border:"1px solid rgba(255,255,255,0.06)", borderRadius:9, padding:"10px 13px", marginBottom:4 }}>
-              <div style={{ fontSize:9, fontWeight:600, color:"#4b5563", letterSpacing:"0.12em", marginBottom:8 }}>SPLIT · EMPIEZA JUEVES</div>
-              <div style={{ display:"flex", flexDirection:"column", gap:5 }}>
-                {SPLIT.map(([d,g,c])=>(
-                  <div key={d} style={{ display:"flex", alignItems:"center", gap:8 }}>
-                    <div style={{ width:3, height:3, borderRadius:"50%", background:c, flexShrink:0 }}/>
-                    <span style={{ fontFamily:"'DM Mono',monospace", fontSize:10, color:"#6b7280", width:32, flexShrink:0 }}>{d}</span>
-                    <span style={{ fontSize:11, fontWeight:600, color:c }}>{g}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
+          <div className="jay-week-grid is-week-view" style={{ display:"flex", flexDirection:"column", gap:7 }}>
             {DAYS.map((d,i)=>{
               const tc2=TC[d.type]||TC.REST; const isA=i===di;
               return (
                 <button key={d.id} onClick={()=>gd(i)} style={{
                   background:isA?tc2.bg:"rgba(255,255,255,0.02)",
-                  border:`1px solid ${isA?tc2.accent:"rgba(255,255,255,0.06)"}`,
+                  border:`1px solid ${isA?tc2.accent:"rgba(255,255,255,0.07)"}`,
                   borderRadius:9, padding:"11px 13px", cursor:"pointer", textAlign:"left",
                   display:"flex", alignItems:"center", justifyContent:"space-between",
                   boxShadow:isA?`0 0 14px ${tc2.glow}`:"none", transition:"all 0.15s", width:"100%", boxSizing:"border-box",
                 }}>
                   <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-                    <div style={{ width:34, height:34, borderRadius:6, background:`${tc2.accent}12`, border:`1px solid ${tc2.accent}20`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
-                      <span style={{ fontFamily:"'DM Mono',monospace", fontSize:8, color:tc2.label, fontWeight:600 }}>{DAY_LABELS[d.id]}</span>
+                    <div style={{ width:34, height:34, borderRadius:6, background:`${tc2.accent}12`, border:`1px solid ${tc2.accent}25`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+                      <span style={{ fontFamily:"'DM Mono',monospace", fontSize:8, color:tc2.label, fontWeight:700 }}>{DAY_LABELS[d.id]}</span>
                     </div>
                     <div>
                       <div style={{ fontSize:13, fontWeight:600, color:"#f3f4f6" }}>{d.focus}</div>
-                      <div style={{ fontSize:10, color:"#9ca3af", marginTop:2 }}>{d.muscles}</div>
+                      <div style={{ fontSize:10, color:"#a1a1aa", marginTop:2 }}>{d.muscles}</div>
                     </div>
                   </div>
                   <div style={{ textAlign:"right", flexShrink:0 }}>
                     <div style={{ fontSize:9, fontWeight:600, padding:"2px 7px", borderRadius:5, background:`${tc2.accent}12`, color:tc2.label }}>{d.type}</div>
-                    <div style={{ fontSize:9, color:"#6b7280", marginTop:3 }}>{d.duration}</div>
+                    <div style={{ fontSize:9, color:"#71717a", marginTop:3 }}>{d.duration}</div>
                   </div>
                 </button>
               );
@@ -910,7 +961,7 @@ export default function App() {
                                   display:"flex", alignItems:"center", justifyContent:"center",
                                   cursor:"pointer", transition:"all 0.14s",
                                 }}>
-                                  {isDone&&<span style={{ fontSize:9, color:"#04060f", fontWeight:700 }}>✓</span>}
+                                  {isDone&&<span style={{ fontSize:9, color:"#000000", fontWeight:700 }}>✓</span>}
                                 </div>
                               </div>
                               {isOpen && <ExPanel infoKey={ex.info} dot={dot}/>}
@@ -948,11 +999,17 @@ export default function App() {
 
             {/* Nav */}
             <div style={{ display:"flex", gap:5, marginTop:14 }}>
-              {di>0&&<button onClick={()=>gd(di-1)} style={{ flex:1, background:"rgba(255,255,255,0.02)", border:"1px solid rgba(255,255,255,0.06)", borderRadius:8, padding:"10px", color:"#9ca3af", cursor:"pointer", fontSize:12, fontFamily:"'DM Sans',sans-serif" }}>← {DAY_LABELS[DAYS[di-1].id]}</button>}
-              {di<DAYS.length-1&&<button onClick={()=>gd(di+1)} style={{ flex:1, background:"rgba(255,255,255,0.02)", border:"1px solid rgba(255,255,255,0.06)", borderRadius:8, padding:"10px", color:"#9ca3af", cursor:"pointer", fontSize:12, fontFamily:"'DM Sans',sans-serif" }}>{DAY_LABELS[DAYS[di+1].id]} →</button>}
+              {di>0&&<button onClick={()=>gd(di-1)} style={{ flex:1, background:"rgba(255,255,255,0.02)", border:"1px solid rgba(255,255,255,0.07)", borderRadius:8, padding:"10px", color:"#a1a1aa", cursor:"pointer", fontSize:12, fontFamily:"'DM Sans',sans-serif" }}>← {DAY_LABELS[DAYS[di-1].id]}</button>}
+              {di<DAYS.length-1&&<button onClick={()=>gd(di+1)} style={{ flex:1, background:"rgba(255,255,255,0.02)", border:"1px solid rgba(255,255,255,0.07)", borderRadius:8, padding:"10px", color:"#a1a1aa", cursor:"pointer", fontSize:12, fontFamily:"'DM Sans',sans-serif" }}>{DAY_LABELS[DAYS[di+1].id]} →</button>}
             </div>
           </div>
         )}
+
+        </div>
+        {/* ── END MAIN CONTENT ── */}
+
+        </div>
+        {/* ── END SHELL ── */}
       </div>
     </div>
   );
