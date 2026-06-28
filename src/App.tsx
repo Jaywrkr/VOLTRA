@@ -196,7 +196,10 @@ function buildAllWeeks() {
         ]},
         { name:"Core", exercises:[
           { name:"Dead Bug", note:"Exhala completamente cada rep", sets:`${Math.max(3+ds,2)} × ${10+dr}`, weight:"BW", info:"deadbug" },
-          { name:"Russian Twist", note:"Rota completamente cada lado", sets:`${Math.max(3+ds,2)} × ${16+dr}`, weight:"4.5 kg", info:"russianTwist" },
+          { name:"Russian Twist", note:"Rota completamente cada lado", sets:`${Math.max(3+ds,2)} × ${16+dr}`, weight:wi < 7 ? "4.5 kg" : "6.8 kg", info:wi < 7 ? "russianTwist" : "russianHeavy" },
+          { name:"Leg Raise", note:"4s bajando siempre", sets:`${Math.max(3+ds,2)} × ${10+wi}`, weight:"BW", info:"legRaise" },
+          { name:"Hollow Body Hold", note:wi < 7 ? "Piernas a 30°" : "Piernas a 25°", sets:`${Math.max(3+ds,2)} × ${22+wi*2}s`, weight:"BW", info:"hollowHold" },
+          { name:"Bicycle crunches", note:"Lento — rotación de torso", sets:`${Math.max(3+ds,2)} × ${16+wi}`, weight:"BW", info:"bicycle" },
         ]},
       ],
       wi === 4 ? "Deload: el músculo crece y se consolida durante el descanso. Forma perfecta en cada rep — sin esfuerzo máximo."
@@ -296,6 +299,9 @@ function buildAllWeeks() {
         { name:"Finisher + Core", exercises:[
           { name:"KB Farmer Carry", note:"Grip + postura + core", sets:wi===4?"2 × 40m":`${Math.max(s(3,wi > 5 ? wi-5 : wi), 2)} × 40m`, weight:"10 kg + 6.8 kg", info:"farmerCarry" },
           { name:"Hollow Body Hold", note:wi < 4 ? "Piernas a 30°" : wi === 4 ? "Piernas a 35° — deload" : wi < 8 ? "Piernas a 28°" : "Piernas a 22°", sets:wi===4?"2 × 25s":`3 × ${25+wi*3}s`, weight:"BW", info:"hollowHold" },
+          { name:"Russian Twist", note:"Rota completamente cada lado", sets:wi===4?"2 × 14":`3 × ${14+wi}`, weight:wi < 7 ? "4.5 kg" : "6.8 kg", info:wi < 7 ? "russianTwist" : "russianHeavy" },
+          { name:"Leg Raise", note:"4s bajando siempre", sets:wi===4?"2 × 10":`3 × ${10+wi}`, weight:"BW", info:"legRaise" },
+          { name:"Mountain Climbers", note:"Caderas completamente quietas", sets:wi===4?"2 × 25s":`3 × ${25+wi*3}s`, weight:"BW", info:"mountainClimber" },
         ]},
       ],
       wi === 4 ? "Deload de hombros y brazos. Forma perfecta en cada repetición. El músculo se consolida esta semana."
@@ -324,6 +330,9 @@ function buildAllWeeks() {
           { name:"Plank hold", note:"Abs + glúteos apretados", sets:`3 × ${38 + sundayLevel*2}s`, weight:"BW", info:"plank" },
           ...(sundayLevel >= 3 ? [{ name:"Mountain Climbers", note:"Caderas completamente quietas", sets:`3 × ${28 + sundayLevel*2}s`, weight:"BW", info:"mountainClimber" }] : []),
           ...(sundayLevel >= 6 ? [{ name:"Hollow Body Rock", note:"Mantén la forma al rockear", sets:"3 × 15 rocks", weight:"BW", info:"hollowRock" }] : []),
+          { name:"Dead Bug", note:"Exhala completamente cada rep", sets:`3 × ${10+sundayLevel}`, weight:"BW", info:"deadbug" },
+          { name:"Toe Touches", note:"Piernas al techo — sin impulso", sets:`3 × ${16+sundayLevel}`, weight:"BW", info:"toeTouches" },
+          { name:"Plank hold", note:"Abs + glúteos apretados", sets:`3 × ${35+sundayLevel*3}s`, weight:"BW", info:"plank" },
         ]},
       ],
       "Opcional — solo si no juegas fútbol este domingo. Si juegas, descansa: el partido ya es tu cardio. Si no, esto te mantiene activo sin comprometer las piernas para el lunes."
@@ -389,6 +398,9 @@ function buildAllWeeks() {
         { name:"Core", exercises:[
           { name:"Plank Shoulder Tap", note:"Caderas sin rotar", sets:`${wi===4?"2":"3"} × ${18+wi*2} taps`, weight:"BW", info:"plankShoulder" },
           { name:"Leg Raise", note:"4s bajando siempre", sets:`${wi===4?"2":"3"} × ${10+wi}`, weight:"BW", info:"legRaise" },
+          { name:"Dead Bug", note:"Exhala completamente cada rep", sets:`${wi===4?"2":"3"} × ${10+Math.floor(wi/2)}`, weight:"BW", info:"deadbug" },
+          { name:"Hollow Body Hold", note:wi < 7 ? "Piernas a 30°" : "Piernas a 25°", sets:`${wi===4?"2":"3"} × ${22+wi*2}s`, weight:"BW", info:"hollowHold" },
+          { name:"Russian Twist", note:"Rota completamente cada lado", sets:`${wi===4?"2":"3"} × ${14+wi}`, weight:wi < 7 ? "4.5 kg" : "6.8 kg", info:wi < 7 ? "russianTwist" : "russianHeavy" },
         ]},
       ],
       wi === 4 ? "Deload de piernas. Menos volumen, misma forma perfecta. Los isquios y glúteos se consolidan esta semana."
@@ -451,6 +463,9 @@ function buildAllWeeks() {
         { name:"Core", exercises:[
           { name:"Hollow Body Hold", note:wi < 4 ? "Piernas a 30°" : wi === 4 ? "Piernas a 35° — deload" : wi < 8 ? "Piernas a 28°" : "Piernas a 22°", sets:`${wi===4?"2":"3"} × ${25+wi*3}s`, weight:"BW", info:"hollowHold" },
           { name:"Mountain Climbers", note:"Caderas completamente quietas", sets:`${wi===4?"2":"3"} × ${25+wi*4}s`, weight:"BW", info:"mountainClimber" },
+          { name:"Leg Raise", note:"4s bajando siempre", sets:`${wi===4?"2":"3"} × ${10+wi}`, weight:"BW", info:"legRaise" },
+          { name:"Dead Bug", note:"Exhala completamente cada rep", sets:`${wi===4?"2":"3"} × ${10+Math.floor(wi/2)}`, weight:"BW", info:"deadbug" },
+          { name:"Russian Twist", note:"Rota completamente cada lado", sets:`${wi===4?"2":"3"} × ${14+wi}`, weight:wi < 7 ? "4.5 kg" : "6.8 kg", info:wi < 7 ? "russianTwist" : "russianHeavy" },
         ]},
       ],
       wi === 4 ? "Deload de pecho y tríceps. Menos volumen, forma impecable. La semana que viene empiezas el segundo ciclo."
@@ -484,6 +499,8 @@ function buildAllWeeks() {
           ...(wi >= 2 && wi !== 4 ? [{ name:"KB Plank Drag", note:"Core lateral — caderas quietas", sets:"3 × 10/lado", weight:"4.5 kg", info:"plankDrag" }] : []),
           ...(wi >= 6 ? [{ name:"Hollow Body Rock", note:"Mantén la forma al rockear", sets:"3 × 15 rocks", weight:"BW", info:"hollowRock" }] : []),
           ...(wi >= 8 ? [{ name:"Mountain Climbers", note:"45s — full effort", sets:"3 × 45s", weight:"BW", info:"mountainClimber" }] : []),
+          { name:"Toe Touches", note:"Piernas al techo — sin impulso", sets:`${wi===4?"2":"3"} × ${16+wi}`, weight:"BW", info:"toeTouches" },
+          { name:"Crunches", note:"Pequeño y controlado — sin jalar cuello", sets:`${wi===4?"2":"3"} × ${20+wi}`, weight:"BW", info:"crunches" },
         ]},
       ],
       wi === 4 ? "Deload: solo Flow y abdomen suave. El cuerpo procesa el trabajo de las 4 semanas anteriores."
@@ -498,9 +515,9 @@ function buildAllWeeks() {
 // Plan starts at what was originally S3 (Jay already completed S1 and S2).
 // Internal progression logic (wi 2-9) is preserved exactly — only display labels shift to S1-S8.
 const RAW_WEEKS = buildAllWeeks();
-const ALL_WEEKS = RAW_WEEKS.slice(2);
+const ALL_WEEKS = RAW_WEEKS.slice(4);
 
-const DISPLAY_META = WEEK_META.slice(2).map((w, i) => ({
+const DISPLAY_META = WEEK_META.slice(4).map((w, i) => ({
   ...w,
   label: `Semana ${i + 1}`,
 }));
@@ -751,7 +768,7 @@ export default function App() {
       <div style={{ background:"#000000", borderBottom:"1px solid rgba(57,255,136,0.12)", padding:"14px 0 12px", position:"sticky", top:0, zIndex:20 }}>
         <div style={{ width:"100%", maxWidth:1100, margin:"0 auto", padding:"0 16px", boxSizing:"border-box", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
           <div>
-            <div style={{ fontFamily:"'DM Mono',monospace", fontSize:9, color:"#39ff88", letterSpacing:"0.22em", fontWeight:600 }}>JAY · HIPERTROFIA · 8 SEMANAS</div>
+            <div style={{ fontFamily:"'DM Mono',monospace", fontSize:9, color:"#39ff88", letterSpacing:"0.22em", fontWeight:600 }}>JAY · HIPERTROFIA · 6 SEMANAS</div>
             <div style={{ fontSize:14, fontWeight:700, marginTop:3, color:"#f3f4f6", letterSpacing:"0.01em" }}>Masa muscular + Abdomen definido</div>
           </div>
           <div style={{ display:"flex", gap:4 }}>
@@ -777,7 +794,7 @@ export default function App() {
         <div className="jay-sidebar" style={{ marginBottom:14 }}>
 
         {/* Week tabs — full width */}
-        <div style={{ display:"grid", gridTemplateColumns:"repeat(8, 1fr)", gap:4, marginBottom:10, width:"100%" }}>
+        <div style={{ display:"grid", gridTemplateColumns:"repeat(6, 1fr)", gap:4, marginBottom:10, width:"100%" }}>
           {DISPLAY_META.map((w,i)=>(
             <button key={i} onClick={()=>gw(i)} style={{
               background:wk===i?`${w.color}14`:"rgba(255,255,255,0.02)",
