@@ -755,18 +755,49 @@ export default function App() {
       <style>{`
         * { box-sizing: border-box; }
         ::-webkit-scrollbar { display: none; }
-        .jay-shell { display: block; }
-        .jay-week-grid { display: block; }
-        @media (min-width: 900px) {
-          .jay-shell { display: grid; grid-template-columns: 320px 1fr; gap: 24px; align-items: start; }
-          .jay-sidebar { position: sticky; top: 84px; }
+        html, body { overflow-x: hidden; }
+
+        /* ── Mobile first ── */
+        .jay-shell { display: flex; flex-direction: column; gap: 14px; }
+        .jay-sidebar { width: 100%; }
+        .jay-main { width: 100%; min-width: 0; }
+        .jay-week-grid { display: flex; flex-direction: column; gap: 7px; }
+        .jay-ex-grid { display: flex; flex-direction: column; gap: 4px; }
+
+        /* ── Tablet ≥ 768px ── */
+        @media (min-width: 768px) {
           .jay-week-grid.is-week-view { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+        }
+
+        /* ── Desktop ≥ 1024px ── */
+        @media (min-width: 1024px) {
+          .jay-shell { flex-direction: row; align-items: start; gap: 28px; }
+          .jay-sidebar { width: 300px; flex-shrink: 0; position: sticky; top: 80px; max-height: calc(100vh - 96px); overflow-y: auto; }
+          .jay-main { flex: 1; min-width: 0; }
+          .jay-week-grid.is-week-view { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+          .jay-ex-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+          .jay-ex-grid-full { grid-column: 1 / -1; }
+        }
+
+        /* ── Wide ≥ 1280px ── */
+        @media (min-width: 1280px) {
+          .jay-sidebar { width: 340px; }
+        }
+
+        /* ── Ultra wide ≥ 1600px ── */
+        @media (min-width: 1600px) {
+          .jay-sidebar { width: 380px; }
+        }
+
+        /* ── Expanded exercise spans full width in the 2-col grid ── */
+        @media (min-width: 1024px) {
+          .jay-ex-open { grid-column: 1 / -1; }
         }
       `}</style>
 
       {/* Header */}
       <div style={{ background:"#000000", borderBottom:"1px solid rgba(57,255,136,0.12)", padding:"14px 0 12px", position:"sticky", top:0, zIndex:20 }}>
-        <div style={{ width:"100%", maxWidth:1100, margin:"0 auto", padding:"0 16px", boxSizing:"border-box", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+        <div style={{ width:"100%", maxWidth:1440, margin:"0 auto", padding:"0 20px", boxSizing:"border-box", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
           <div>
             <div style={{ fontFamily:"'DM Mono',monospace", fontSize:9, color:"#39ff88", letterSpacing:"0.22em", fontWeight:600 }}>JAY · HIPERTROFIA · 6 SEMANAS</div>
             <div style={{ fontSize:14, fontWeight:700, marginTop:3, color:"#f3f4f6", letterSpacing:"0.01em" }}>Masa muscular + Abdomen definido</div>
@@ -787,7 +818,7 @@ export default function App() {
       </div>
 
       {/* Content */}
-      <div style={{ width:"100%", maxWidth:1100, margin:"0 auto", padding:"14px 16px 56px", boxSizing:"border-box" }}>
+      <div style={{ width:"100%", maxWidth:1440, margin:"0 auto", padding:"14px 20px 56px", boxSizing:"border-box" }}>
         <div className="jay-shell">
 
         {/* ── SIDEBAR (nav) ── */}
@@ -861,7 +892,7 @@ export default function App() {
         {/* ── END SIDEBAR ── */}
 
         {/* ── MAIN CONTENT ── */}
-        <div>
+        <div className="jay-main">
 
         {/* ── WEEK VIEW ── */}
         {view==="week" && (
@@ -944,12 +975,12 @@ export default function App() {
                         <div style={{ width:4, height:4, borderRadius:"50%", background:dot, flexShrink:0 }}/>
                         <div style={{ fontSize:9, fontWeight:600, letterSpacing:"0.12em", color:"#6b7280" }}>{section.name.toUpperCase()}</div>
                       </div>
-                      <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
+                      <div className="jay-ex-grid">
                         {section.exercises.map(ex=>{
                           const idx=ct++; const key=`w${wk}-${day.id}-${idx}`;
                           const isDone=done[key]; const isOpen=open===key;
                           return (
-                            <div key={idx}>
+                            <div key={idx} className={isOpen ? "jay-ex-open" : ""}>
                               <div onClick={()=>setOpen(isOpen?null:key)} style={{
                                 background:isOpen?"rgba(255,255,255,0.05)":isDone?"rgba(255,255,255,0.01)":"rgba(255,255,255,0.025)",
                                 border:`1px solid ${isOpen?dot+"38":isDone?"rgba(255,255,255,0.05)":"rgba(255,255,255,0.06)"}`,
