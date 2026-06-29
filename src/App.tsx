@@ -551,6 +551,101 @@ function initWeek() {
   return 0;
 }
 
+// ─── Timeline helpers ─────────────────────────────────────────────────────────
+function parseSetCount(str) {
+  const m = str.match(/^(\d+)\s*[×x]/i);
+  return m ? parseInt(m[1]) : 1;
+}
+function parseRepsLabel(str) {
+  const m = str.match(/[×x]\s*(.+)/i);
+  return m ? m[1].trim() : str;
+}
+
+// ─── Timeline View ────────────────────────────────────────────────────────────
+function TimelineView({ day, wk, done, setDone }) {
+  const sections = day.sections.filter(s => s.exercises.length > 0);
+
+  const toggle = useCallback((key) => {
+    setDone(p => {
+      const next = { ...p, [key]: !p[key] };
+      try { localStorage.setItem("jay-training-done", JSON.stringify(next)); } catch {}
+      return next;
+    });
+  }, [setDone]);
+
+  return (
+    <div style={{ display:"flex", flexDirection:"column", gap:20 }}>
+      {sections.map((section, si) => {
+        const dot = SDOT(section.name);
+        const maxRounds = Math.max(...section.exercises.map(ex => parseSetCount(ex.sets)));
+
+        return (
+          <div key={section.name}>
+            {/* Section header */}
+            <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:10, paddingLeft:2 }}>
+              <div style={{ width:4, height:4, borderRadius:"50%", background:dot, flexShrink:0 }}/>
+              <div style={{ fontSize:9, fontWeight:600, letterSpacing:"0.12em", color:"#6b7280" }}>{section.name.toUpperCase()}</div>
+            </div>
+
+            {/* Rounds */}
+            <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
+              {Array.from({ length: maxRounds }, (_, ri) => (
+                <div key={ri}>
+                  <div style={{
+                    fontSize:9, fontWeight:700, letterSpacing:"0.14em",
+                    color:dot, marginBottom:6, paddingLeft:4,
+                    fontFamily:"'DM Mono',monospace",
+                  }}>SERIE {ri + 1}</div>
+                  <div style={{ display:"flex", flexDirection:"column", gap:3 }}>
+                    {section.exercises.map((ex, ei) => {
+                      const numSets = parseSetCount(ex.sets);
+                      if (ri >= numSets) return null;
+                      const key = `tl-w${wk}-${day.id}-${si}-${ei}-${ri}`;
+                      const isDone = done[key];
+                      return (
+                        <div key={ei} onClick={() => toggle(key)} style={{
+                          display:"grid", gridTemplateColumns:"1fr auto auto",
+                          alignItems:"center", gap:10,
+                          padding:"10px 13px",
+                          background: isDone ? "rgba(255,255,255,0.01)" : "rgba(255,255,255,0.03)",
+                          border:`1px solid ${isDone ? "rgba(255,255,255,0.04)" : dot+"20"}`,
+                          borderLeft:`3px solid ${isDone ? "rgba(255,255,255,0.06)" : dot}`,
+                          borderRadius:8, cursor:"pointer",
+                          opacity: isDone ? 0.38 : 1,
+                          transition:"all 0.15s",
+                        }}>
+                          <div style={{
+                            fontSize:13, fontWeight:500,
+                            color: isDone ? "#4b5563" : "#f3f4f6",
+                            textDecoration: isDone ? "line-through" : "none",
+                          }}>{ex.name}</div>
+                          <div style={{
+                            fontFamily:"'DM Mono',monospace", fontSize:12,
+                            color: isDone ? "#4b5563" : dot, fontWeight:600,
+                          }}>{parseRepsLabel(ex.sets)}</div>
+                          <div style={{
+                            width:20, height:20, borderRadius:"50%", flexShrink:0,
+                            background: isDone ? dot : "rgba(255,255,255,0.05)",
+                            border:`1px solid ${isDone ? dot : "rgba(255,255,255,0.12)"}`,
+                            display:"flex", alignItems:"center", justifyContent:"center",
+                            transition:"all 0.15s",
+                          }}>
+                            {isDone && <span style={{ fontSize:9, color:"#000", fontWeight:700 }}>✓</span>}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 // ─── Exercise Panel ───────────────────────────────────────────────────────────
 function ExPanel({ infoKey, dot }) {
   const [step, setStep] = useState(0);
@@ -725,6 +820,7 @@ export default function App() {
   });
   const [open, setOpen]   = useState(null);
   const [showMini, setShowMini] = useState(false);
+  const [tlView, setTlView] = useState(false);
 
   const W_META = DISPLAY_META[wk];
   const DAYS   = ALL_WEEKS[wk];
@@ -736,8 +832,8 @@ export default function App() {
   const pct    = total > 0 ? Math.round(doneN / total * 100) : 0;
   let ct = 0;
 
-  const gd = (i) => { setDi(i); setView("day"); setOpen(null); setShowMini(false); };
-  const gw = (i) => { setWk(i); setDi(0); setView("week"); setOpen(null); setShowMini(false); };
+  const gd = (i) => { setDi(i); setView("day"); setOpen(null); setShowMini(false); setTlView(false); };
+  const gw = (i) => { setWk(i); setDi(0); setView("week"); setOpen(null); setShowMini(false); setTlView(false); };
 
   const SPLIT = [
     ["LUN","Piernas + Glúteos","#39ff88"],
@@ -966,8 +1062,30 @@ export default function App() {
               </div>
             ):(
               <>
-                <div style={{ fontSize:10, color:"#6b7280", marginBottom:8, paddingLeft:2 }}>Toca un ejercicio para ver cómo hacerlo</div>
-                {day.sections.map(section=>{
+                {/* View toggle */}
+                <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:10 }}>
+                  <div style={{ fontSize:10, color:"#6b7280" }}>{tlView ? "Toca cada set para marcarlo completado" : "Toca un ejercicio para ver cómo hacerlo"}</div>
+                  <div style={{ display:"flex", gap:3, background:"rgba(255,255,255,0.04)", borderRadius:7, padding:3 }}>
+                    {[["Lista","list"],["Timeline","tl"]].map(([label,val])=>{
+                      const active = (val==="tl") === tlView;
+                      return (
+                        <button key={val} onClick={()=>{ setTlView(val==="tl"); setOpen(null); }} style={{
+                          padding:"4px 10px", borderRadius:5, fontSize:10, fontWeight:600, cursor:"pointer",
+                          background: active ? "rgba(57,255,136,0.12)" : "transparent",
+                          color: active ? "#39ff88" : "#6b7280",
+                          border: active ? "1px solid rgba(57,255,136,0.3)" : "1px solid transparent",
+                          fontFamily:"'DM Sans',sans-serif", transition:"all 0.15s",
+                        }}>{label}</button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {tlView ? (
+                  <TimelineView day={day} wk={wk} done={done} setDone={setDone}/>
+                ) : null}
+
+                {!tlView && day.sections.map(section=>{
                   const dot=SDOT(section.name);
                   return (
                     <div key={section.name} style={{ marginBottom:12 }}>
