@@ -328,22 +328,22 @@ function buildAllWeeks() {
           { name:"KB Single-arm Press", note:"3s — deload", sets:"2 × 10/arm", weight:"6.8 kg", info:"kbPress" },
           { name:"KB Lateral Raise", note:"4s — deload", sets:"2 × 12/arm", weight:"4.5 kg", info:"lateralRaise" },
           { name:"KB Front Raise", note:"3s — deload", sets:"2 × 12/arm", weight:"4.5 kg", info:"frontRaise" },
-        ] : wi < 3 ? [
-          { name:"KB Single-arm Press", note:e, sets:`${s(4,wi)} × ${s(10,wi)}/arm`, weight:"6.8 kg", info:"kbPress" },
-          { name:"KB Lateral Raise", note:"4s bajando — deltoides lateral", sets:`${s(3,wi)} × 12/arm`, weight:"4.5 kg", info:"lateralRaise" },
-          { name:"KB Front Raise", note:"3s bajando — deltoides anterior", sets:`${s(3,wi)} × 12/arm`, weight:"4.5 kg", info:"frontRaise" },
-          { name:"KB Upright Row", note:e, sets:`${s(3,wi)} × 12`, weight:"6.8 kg", info:"uprightRow" },
+        ] : (wi < 3 || isVarA) ? [
+          { name:"KB Single-arm Press", note:e, sets:`${ms} × ${mr}/arm`, weight:"6.8 kg", info:"kbPress" },
+          { name:"KB Lateral Raise", note:"4s bajando — deltoides lateral", sets:`${is_} × 12/arm`, weight:"4.5 kg", info:"lateralRaise" },
+          { name:"KB Front Raise", note:"3s bajando — deltoides anterior", sets:`${is_} × 12/arm`, weight:"4.5 kg", info:"frontRaise" },
+          { name:"KB Upright Row", note:e, sets:`${is_} × 12`, weight:"6.8 kg", info:"uprightRow" },
         ] : wi === 3 ? [
           { name:"KB Single-arm Press", note:"4s — fuerza excéntrica", sets:"5 × 6/arm", weight:"6.8 kg", info:"kbPress" },
           { name:"KB Windmill", note:"4s — core lateral + hombro", sets:"4 × 8/lado", weight:"6.8 kg", info:"kbWindmill" },
           { name:"KB Lateral Raise", note:"5s bajando — deltoides peak", sets:"4 × 8/arm", weight:"4.5 kg", info:"lateralRaise" },
           { name:"KB Upright Row", note:"4s bajando", sets:"4 × 8", weight:"6.8 kg", info:"uprightRow" },
-        ] : wi < 7 ? [
-          { name:"KB Clean + Press", note:e+" — potencia + empuje", sets:`${s(4,wi-5)} × ${s(8,wi-5)}/arm`, weight:"6.8 kg", info:"cleanPress" },
-          { name:"KB Windmill", note:e+" — core lateral + hombro", sets:`${s(3,wi-5)} × 8/lado`, weight:"6.8 kg", info:"kbWindmill" },
-          { name:"KB Lateral Raise", note:"4s bajando", sets:`${s(3,wi-5)} × 10/arm`, weight:"4.5 kg", info:"lateralRaise" },
-          { name:"KB Upright Row", note:e, sets:`${s(3,wi-5)} × 12`, weight:"6.8 kg", info:"uprightRow" },
-          { name:"KB Front Raise", note:"3s bajando", sets:`${s(3,wi-5)} × 10/arm`, weight:"4.5 kg", info:"frontRaise" },
+        ] : isBaseB || isVolB ? [
+          { name:"KB Clean + Press", note:e+" — potencia + empuje", sets:`${ms} × ${mr}/arm`, weight:"6.8 kg", info:"cleanPress" },
+          { name:"KB Windmill", note:e+" — core lateral + hombro", sets:`${is_} × 8/lado`, weight:"6.8 kg", info:"kbWindmill" },
+          { name:"KB Lateral Raise", note:"4s bajando", sets:`${is_} × ${ir}/arm`, weight:"4.5 kg", info:"lateralRaise" },
+          { name:"KB Upright Row", note:e, sets:`${is_} × ${ir}`, weight:"6.8 kg", info:"uprightRow" },
+          { name:"KB Front Raise", note:"3s bajando", sets:`${is_} × ${ir}/arm`, weight:"4.5 kg", info:"frontRaise" },
         ] : wi === 7 ? [
           { name:"KB Clean + Press", note:"4s exc.", sets:"5 × 8/arm", weight:"6.8 kg", info:"cleanPress" },
           { name:"KB Windmill", note:"4s — control total", sets:"4 × 10/lado", weight:"6.8 kg", info:"kbWindmill" },
@@ -365,24 +365,24 @@ function buildAllWeeks() {
         { name:"Brazos", exercises: wi === 4 ? [
           { name:"KB Bicep Curl", note:"3s — deload", sets:"2 × 10/arm", weight:"6.8 kg", info:"bicepCurl" },
           { name:"KB Tricep Extension", note:"3s — deload", sets:"2 × 12", weight:"6.8 kg", info:"tricepExt" },
-        ] : wi < 3 ? [
-          { name:"KB Bicep Curl", note:e, sets:`${s(3,wi)} × 12/arm`, weight:"6.8 kg", info:"bicepCurl" },
-          { name:"KB Tricep Extension", note:e, sets:`${s(3,wi)} × 12`, weight:"6.8 kg", info:"tricepExt" },
-          { name:"KB Hammer Curl", note:e, sets:`${s(2,wi)} × 12/arm`, weight:"6.8 kg", info:"hammerCurl" },
-          { name:"KB Tricep Kickback", note:e+" — pausa 1s arriba", sets:`${s(2,wi)} × 12/arm`, weight:"4.5 kg", info:"tricepKickback" },
-          { name:"Diamond Push-up", note:"Al fallo controlado", sets:`${s(2,wi)} × max`, weight:"BW", info:"diamondPushup" },
+        ] : (wi < 3 || isVarA) ? [
+          { name:"KB Bicep Curl", note:e, sets:`${is_} × ${ir}/arm`, weight:"6.8 kg", info:"bicepCurl" },
+          { name:"KB Tricep Extension", note:e, sets:`${is_} × ${ir}`, weight:"6.8 kg", info:"tricepExt" },
+          { name:"KB Hammer Curl", note:e, sets:`${is_} × ${ir}/arm`, weight:"6.8 kg", info:"hammerCurl" },
+          { name:"KB Tricep Kickback", note:e+" — pausa 1s arriba", sets:`${is_} × ${ir}/arm`, weight:"4.5 kg", info:"tricepKickback" },
+          { name:"Diamond Push-up", note:"Al fallo controlado", sets:`${is_} × max`, weight:"BW", info:"diamondPushup" },
         ] : wi === 3 ? [
           { name:"KB Bicep Curl", note:"4s + pausa 1s arriba", sets:"4 × 8/arm", weight:"6.8 kg", info:"bicepCurl" },
           { name:"KB Tricep Extension", note:"4s — codos fijos", sets:"4 × 10", weight:"6.8 kg", info:"tricepExt" },
           { name:"Concentration Curl", note:"4s — aislamiento total", sets:"3 × 8/arm", weight:"6.8 kg", info:"concentrationCurl" },
           { name:"KB Tricep Kickback", note:"4s — pausa 2s arriba", sets:"3 × 10/arm", weight:"4.5 kg", info:"tricepKickback" },
           { name:"Diamond Push-up", note:"Al fallo", sets:"4 × max", weight:"BW", info:"diamondPushup" },
-        ] : wi < 7 ? [
-          { name:"Concentration Curl", note:e+" — aislamiento bíceps", sets:`${s(3,wi-5)} × 10/arm`, weight:"6.8 kg", info:"concentrationCurl" },
-          { name:"KB Tricep Extension", note:e, sets:`${s(3,wi-5)} × 12`, weight:"6.8 kg", info:"tricepExt" },
-          { name:"KB Bicep Curl", note:e, sets:`${s(3,wi-5)} × 12/arm`, weight:"6.8 kg", info:"bicepCurl" },
-          { name:"KB Tricep Kickback", note:e+" — pausa 1s arriba", sets:`${s(2,wi-5)} × 12/arm`, weight:"4.5 kg", info:"tricepKickback" },
-          { name:"Diamond Push-up", note:"Al fallo", sets:`${s(2,wi-5)} × max`, weight:"BW", info:"diamondPushup" },
+        ] : isBaseB || isVolB ? [
+          { name:"Concentration Curl", note:e+" — aislamiento bíceps", sets:`${is_} × ${ir}/arm`, weight:"6.8 kg", info:"concentrationCurl" },
+          { name:"KB Tricep Extension", note:e, sets:`${is_} × ${ir}`, weight:"6.8 kg", info:"tricepExt" },
+          { name:"KB Bicep Curl", note:e, sets:`${is_} × ${ir}/arm`, weight:"6.8 kg", info:"bicepCurl" },
+          { name:"KB Tricep Kickback", note:e+" — pausa 1s arriba", sets:`${is_} × ${ir}/arm`, weight:"4.5 kg", info:"tricepKickback" },
+          { name:"Diamond Push-up", note:"Al fallo", sets:`${is_} × max`, weight:"BW", info:"diamondPushup" },
         ] : wi === 7 ? [
           { name:"Concentration Curl", note:"4s — pausa 1s arriba", sets:"4 × 10/arm", weight:"6.8 kg", info:"concentrationCurl" },
           { name:"KB Tricep Extension", note:"4s — codos fijos", sets:"4 × 10", weight:"6.8 kg", info:"tricepExt" },
@@ -403,7 +403,7 @@ function buildAllWeeks() {
           { name:"Diamond Push-up", note:"Al fallo — cierra el ciclo", sets:"5 × max", weight:"BW", info:"diamondPushup" },
         ]},
         { name:"Finisher + Core", exercises:[
-          { name:"KB Farmer Carry", note:"Grip + postura + core", sets:wi===4?"2 × 40m":`${Math.max(s(3,wi > 5 ? wi-5 : wi), 2)} × 40m`, weight:"10 kg + 6.8 kg", info:"farmerCarry" },
+          { name:"KB Farmer Carry", note:"Grip + postura + core", sets:wi===4?"2 × 40m":`${cs} × 40m`, weight:"10 kg + 6.8 kg", info:"farmerCarry" },
           { name:"Hollow Body Hold", note:wi < 4 ? "Piernas a 30°" : wi === 4 ? "Piernas a 35° — deload" : wi < 8 ? "Piernas a 28°" : "Piernas a 22°", sets:wi===4?"2 × 25s":`3 × ${25+wi*3}s`, weight:"BW", info:"hollowHold" },
           { name:"Russian Twist", note:"Rota completamente cada lado", sets:wi===4?"2 × 14":`3 × ${14+wi}`, weight:wi < 7 ? "4.5 kg" : "6.8 kg", info:wi < 7 ? "russianTwist" : "russianHeavy" },
           { name:"Leg Raise", note:"4s bajando siempre", sets:wi===4?"2 × 10":`3 × ${10+wi}`, weight:"BW", info:"legRaise" },
