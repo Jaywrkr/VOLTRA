@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 
 // Equipment: 10kg | 6.8kg (15lbs) | 4.5kg (10lbs) | BW
 // NO exercises using two of the same KB weight simultaneously
@@ -642,6 +642,76 @@ function WeightInput({ storeKey, defaultWeight, value, onChange, isDone }) {
   );
 }
 
+// Bigger tap target (44px) around the visual checkmark circle — sweaty hands
+// and gym gloves miss small hit areas.
+function CompleteCheckbox({ isDone, dot, onToggle }) {
+  return (
+    <button
+      onClick={e => { e.stopPropagation(); onToggle(); }}
+      style={{
+        width:44, height:44, borderRadius:"50%", flexShrink:0, cursor:"pointer",
+        background:"transparent", border:"none", padding:0,
+        display:"flex", alignItems:"center", justifyContent:"center",
+      }}
+    >
+      <span style={{
+        width:26, height:26, borderRadius:"50%",
+        background: isDone ? dot : "rgba(255,255,255,0.05)",
+        border:`1px solid ${isDone ? dot : "rgba(255,255,255,0.12)"}`,
+        display:"flex", alignItems:"center", justifyContent:"center",
+        transition:"all 0.15s",
+      }}>
+        {isDone && <span style={{ fontSize:11, color:"#000", fontWeight:700 }}>✓</span>}
+      </span>
+    </button>
+  );
+}
+
+// Swipe right to complete a set — faster than aiming for a small circle
+// mid-set. Falls through to a normal tap/click when there's no drag.
+function SwipeRow({ dot, onToggle, children }) {
+  const [dx, setDx] = useState(0);
+  const draggingRef = useRef(false);
+  const startXRef = useRef(0);
+  const THRESHOLD = 72;
+
+  const onTouchStart = (e) => {
+    startXRef.current = e.touches[0].clientX;
+    draggingRef.current = true;
+  };
+  const onTouchMove = (e) => {
+    if (!draggingRef.current) return;
+    const delta = e.touches[0].clientX - startXRef.current;
+    setDx(Math.max(0, Math.min(delta, 100)));
+  };
+  const onTouchEnd = () => {
+    draggingRef.current = false;
+    if (dx > THRESHOLD) onToggle();
+    setDx(0);
+  };
+
+  return (
+    <div style={{ position:"relative", borderRadius:8, overflow:"hidden" }}>
+      {dx > 4 && (
+        <div style={{
+          position:"absolute", inset:0, display:"flex", alignItems:"center", paddingLeft:16,
+          background:`${dot}25`,
+        }}>
+          <span style={{ fontSize:14, color:dot, fontWeight:700, opacity:Math.min(dx / THRESHOLD, 1) }}>✓ Completar</span>
+        </div>
+      )}
+      <div
+        onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
+        onTouchEnd={onTouchEnd}
+        style={{ transform:`translateX(${dx}px)`, transition: dx === 0 ? "transform 0.2s" : "none" }}
+      >
+        {children}
+      </div>
+    </div>
+  );
+}
+
 function FloatingStopwatch({ info, onClose }) {
   const [seconds, setSeconds] = useState(0);
   const [running, setRunning] = useState(true);
@@ -709,41 +779,36 @@ function TimelineView({ day, wk, done, setDone, onStartTimer, weights, setWeight
   const renderRow = (section, si, ex, ei, ri, dot) => {
     const key = `tl-w${wk}-${day.id}-${si}-${ei}-${ri}`;
     const isDone = done[key];
+    const doToggle = () => toggle(key, section.name);
     return (
-      <div key={ei} onClick={() => toggle(key, section.name)} style={{
-        display:"grid", gridTemplateColumns:"1fr auto auto auto",
-        alignItems:"center", gap:10,
-        padding:"10px 13px",
-        background: isDone ? "rgba(255,255,255,0.01)" : "rgba(255,255,255,0.03)",
-        border:`1px solid ${isDone ? "rgba(255,255,255,0.04)" : dot+"20"}`,
-        borderLeft:`3px solid ${isDone ? "rgba(255,255,255,0.06)" : dot}`,
-        borderRadius:8, cursor:"pointer",
-        opacity: isDone ? 0.38 : 1,
-        transition:"all 0.15s",
-      }}>
-        <div style={{
-          fontSize:13, fontWeight:500,
-          color: isDone ? "#4b5563" : "#f3f4f6",
-          textDecoration: isDone ? "line-through" : "none",
-        }}>{ex.name}</div>
-        <WeightInput storeKey={key} defaultWeight={ex.weight} value={weights[key]} onChange={setWeight} isDone={isDone}/>
-        <div style={{
-          fontFamily:"'DM Mono',monospace", fontSize:12,
-          color: isDone ? "#4b5563" : dot, fontWeight:600,
-        }}>{parseRepsLabel(ex.sets)}</div>
-        <div style={{ display:"flex", alignItems:"center", gap:6 }}>
-          {onStartTimer && <TimerButton ex={ex} dot={dot} onStart={onStartTimer}/>}
+      <SwipeRow key={ei} dot={dot} onToggle={doToggle}>
+        <div onClick={doToggle} style={{
+          display:"grid", gridTemplateColumns:"1fr auto auto auto",
+          alignItems:"center", gap:10,
+          padding:"10px 13px",
+          background: isDone ? "rgba(255,255,255,0.01)" : "rgba(255,255,255,0.03)",
+          border:`1px solid ${isDone ? "rgba(255,255,255,0.04)" : dot+"20"}`,
+          borderLeft:`3px solid ${isDone ? "rgba(255,255,255,0.06)" : dot}`,
+          borderRadius:8, cursor:"pointer",
+          opacity: isDone ? 0.38 : 1,
+          transition:"all 0.15s",
+        }}>
           <div style={{
-            width:20, height:20, borderRadius:"50%", flexShrink:0,
-            background: isDone ? dot : "rgba(255,255,255,0.05)",
-            border:`1px solid ${isDone ? dot : "rgba(255,255,255,0.12)"}`,
-            display:"flex", alignItems:"center", justifyContent:"center",
-            transition:"all 0.15s",
-          }}>
-            {isDone && <span style={{ fontSize:9, color:"#000", fontWeight:700 }}>✓</span>}
+            fontSize:13, fontWeight:500,
+            color: isDone ? "#4b5563" : "#f3f4f6",
+            textDecoration: isDone ? "line-through" : "none",
+          }}>{ex.name}</div>
+          <WeightInput storeKey={key} defaultWeight={ex.weight} value={weights[key]} onChange={setWeight} isDone={isDone}/>
+          <div style={{
+            fontFamily:"'DM Mono',monospace", fontSize:12,
+            color: isDone ? "#4b5563" : dot, fontWeight:600,
+          }}>{parseRepsLabel(ex.sets)}</div>
+          <div style={{ display:"flex", alignItems:"center", gap:2 }}>
+            {onStartTimer && <TimerButton ex={ex} dot={dot} onStart={onStartTimer}/>}
+            <CompleteCheckbox isDone={isDone} dot={dot} onToggle={doToggle}/>
           </div>
         </div>
-      </div>
+      </SwipeRow>
     );
   };
 
@@ -1110,7 +1175,7 @@ export default function App() {
       <style>{`
         * { box-sizing: border-box; }
         ::-webkit-scrollbar { display: none; }
-        html, body { overflow-x: hidden; }
+        html { overflow-x: hidden; }
 
         /* ── Mobile first ── */
         .jay-shell { display: flex; flex-direction: column; gap: 14px; }
@@ -1150,7 +1215,8 @@ export default function App() {
         }
       `}</style>
 
-      {/* Header */}
+      {/* Header — includes a compact progress row in day view so it stays
+          visible while scrolling a long session, regardless of header height */}
       <div style={{ background:"#000000", borderBottom:"1px solid rgba(57,255,136,0.12)", padding:"14px 0 12px", position:"sticky", top:0, zIndex:20 }}>
         <div style={{ width:"100%", maxWidth:1440, margin:"0 auto", padding:"0 20px", boxSizing:"border-box", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
           <div>
@@ -1178,6 +1244,15 @@ export default function App() {
             ))}
           </div>
         </div>
+        {view==="day" && day.type!=="REST" && total>0 && (
+          <div style={{ width:"100%", maxWidth:1440, margin:"0 auto", padding:"8px 20px 0", boxSizing:"border-box", display:"flex", alignItems:"center", gap:10 }}>
+            <span style={{ fontSize:10, color:tc.label, fontWeight:600, whiteSpace:"nowrap", flexShrink:0 }}>{day.focus}</span>
+            <div style={{ flex:1, height:3, background:"rgba(255,255,255,0.06)", borderRadius:99, overflow:"hidden" }}>
+              <div style={{ height:"100%", width:`${pct}%`, background:tc.accent, borderRadius:99, transition:"width 0.3s" }}/>
+            </div>
+            <span style={{ fontFamily:"'DM Mono',monospace", fontSize:10, color:tc.label, whiteSpace:"nowrap", flexShrink:0 }}>{doneN}/{total}</span>
+          </div>
+        )}
       </div>
 
       {/* Content */}
@@ -1365,43 +1440,38 @@ export default function App() {
                         {section.exercises.map(ex=>{
                           const idx=ct++; const key=`w${wk}-${day.id}-${idx}`;
                           const isDone=done[key]; const isOpen=open===key;
+                          const doToggleDone = () => setDone(p => {
+                            const next = {...p, [key]: !p[key]};
+                            try { localStorage.setItem("jay-training-done", JSON.stringify(next)); } catch {}
+                            if (next[key]) startRest(section.name);
+                            return next;
+                          });
                           return (
                             <div key={idx} className={isOpen ? "jay-ex-open" : ""}>
-                              <div onClick={()=>setOpen(isOpen?null:key)} style={{
-                                background:isOpen?"rgba(255,255,255,0.05)":isDone?"rgba(255,255,255,0.01)":"rgba(255,255,255,0.025)",
-                                border:`1px solid ${isOpen?dot+"38":isDone?"rgba(255,255,255,0.05)":"rgba(255,255,255,0.06)"}`,
-                                borderRadius:isOpen?"10px 10px 0 0":10,
-                                padding:"10px 12px", cursor:"pointer",
-                                display:"grid", gridTemplateColumns:"1fr auto auto",
-                                alignItems:"center", gap:10,
-                                opacity:isDone&&!isOpen?0.45:1, transition:"all 0.14s",
-                              }}>
-                                <div>
-                                  <div style={{ fontSize:13, fontWeight:500, color:isDone?"#6b7280":"#f3f4f6", textDecoration:isDone?"line-through":"none" }}>{ex.name}</div>
-                                  <div style={{ fontSize:11, color:"#6b7280", marginTop:2 }}>{ex.note}</div>
-                                </div>
-                                <div style={{ textAlign:"right" }}>
-                                  <div style={{ fontFamily:"'DM Mono',monospace", fontSize:11, color:dot, fontWeight:500 }}>{ex.sets}</div>
-                                  <div style={{ marginTop:2 }}><WeightInput storeKey={key} defaultWeight={ex.weight} value={weights[key]} onChange={setWeight} isDone={isDone}/></div>
-                                </div>
-                                <div style={{ display:"flex", alignItems:"center", gap:6 }}>
-                                  <TimerButton ex={ex} dot={dot} onStart={startTimer}/>
-                                  <div onClick={e=>{e.stopPropagation();setDone(p => {
-                                    const next = {...p, [key]: !p[key]};
-                                    try { localStorage.setItem("jay-training-done", JSON.stringify(next)); } catch {}
-                                    if (next[key]) startRest(section.name);
-                                    return next;
-                                  });}} style={{
-                                    width:20, height:20, borderRadius:"50%", flexShrink:0,
-                                    background:isDone?dot:"rgba(255,255,255,0.05)",
-                                    border:`1px solid ${isDone?dot:"rgba(255,255,255,0.1)"}`,
-                                    display:"flex", alignItems:"center", justifyContent:"center",
-                                    cursor:"pointer", transition:"all 0.14s",
-                                  }}>
-                                    {isDone&&<span style={{ fontSize:9, color:"#000000", fontWeight:700 }}>✓</span>}
+                              <SwipeRow dot={dot} onToggle={doToggleDone}>
+                                <div onClick={()=>setOpen(isOpen?null:key)} style={{
+                                  background:isOpen?"rgba(255,255,255,0.05)":isDone?"rgba(255,255,255,0.01)":"rgba(255,255,255,0.025)",
+                                  border:`1px solid ${isOpen?dot+"38":isDone?"rgba(255,255,255,0.05)":"rgba(255,255,255,0.06)"}`,
+                                  borderRadius:isOpen?"10px 10px 0 0":10,
+                                  padding:"10px 12px", cursor:"pointer",
+                                  display:"grid", gridTemplateColumns:"1fr auto auto",
+                                  alignItems:"center", gap:10,
+                                  opacity:isDone&&!isOpen?0.45:1, transition:"all 0.14s",
+                                }}>
+                                  <div>
+                                    <div style={{ fontSize:13, fontWeight:500, color:isDone?"#6b7280":"#f3f4f6", textDecoration:isDone?"line-through":"none" }}>{ex.name}</div>
+                                    <div style={{ fontSize:11, color:"#6b7280", marginTop:2 }}>{ex.note}</div>
+                                  </div>
+                                  <div style={{ textAlign:"right" }}>
+                                    <div style={{ fontFamily:"'DM Mono',monospace", fontSize:11, color:dot, fontWeight:500 }}>{ex.sets}</div>
+                                    <div style={{ marginTop:2 }}><WeightInput storeKey={key} defaultWeight={ex.weight} value={weights[key]} onChange={setWeight} isDone={isDone}/></div>
+                                  </div>
+                                  <div style={{ display:"flex", alignItems:"center", gap:2 }}>
+                                    <TimerButton ex={ex} dot={dot} onStart={startTimer}/>
+                                    <CompleteCheckbox isDone={isDone} dot={dot} onToggle={doToggleDone}/>
                                   </div>
                                 </div>
-                              </div>
+                              </SwipeRow>
                               {isOpen && <ExPanel infoKey={ex.info} dot={dot}/>}
                             </div>
                           );
