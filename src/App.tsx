@@ -571,6 +571,20 @@ function initWeek() {
   return 0;
 }
 
+// JS getDay(): 0=Sun..6=Sat → index into WEEKDAY_ORDER / DAYS (lun..dom)
+function todayDayIndex() {
+  const jsDay = new Date().getDay();
+  return jsDay === 0 ? 6 : jsDay - 1;
+}
+
+// Rest suggested between sets, by muscle-group section.
+function restSecondsFor(sectionName) {
+  if (sectionName.startsWith("Warm-up")) return null;
+  if (sectionName.includes("Core") || sectionName.includes("Abdomen") || sectionName.includes("Finisher")) return 45;
+  if (sectionName.includes("FitXR")) return null;
+  return 90;
+}
+
 // ─── Timeline helpers ─────────────────────────────────────────────────────────
 function parseSetCount(str) {
   const m = str.match(/^(\d+)\s*[×x]/i);
@@ -605,6 +619,26 @@ function TimerButton({ ex, dot, onStart }) {
         fontSize:11, color:dot, padding:0,
       }}
     >⏱</button>
+  );
+}
+
+// Editable "actual weight used" field — defaults to the programmed weight
+// until the lifter overrides it, then that override is remembered.
+function WeightInput({ storeKey, defaultWeight, value, onChange, isDone }) {
+  return (
+    <input
+      type="text"
+      value={value ?? defaultWeight}
+      onClick={e => e.stopPropagation()}
+      onChange={e => onChange(storeKey, e.target.value)}
+      style={{
+        width:52, fontFamily:"'DM Mono',monospace", fontSize:10, fontWeight:600,
+        color: isDone ? "#4b5563" : "#9ca3af",
+        background: isDone ? "transparent" : "rgba(255,255,255,0.05)",
+        border:"1px solid rgba(255,255,255,0.08)", borderRadius:5,
+        padding:"2px 4px", textAlign:"center",
+      }}
+    />
   );
 }
 
@@ -657,25 +691,26 @@ function FloatingStopwatch({ info, onClose }) {
 // ─── Timeline View ────────────────────────────────────────────────────────────
 // Rounds are interleaved across muscle-group sections: SERIE 1 shows round 1
 // of every working section (e.g. Espalda + Bíceps) before moving to SERIE 2.
-function TimelineView({ day, wk, done, setDone, onStartTimer }) {
+function TimelineView({ day, wk, done, setDone, onStartTimer, weights, setWeight, onSetToggled }) {
   const sections = day.sections.filter(s => s.exercises.length > 0);
   const warmupIdx = [];
   const mainIdx = [];
   sections.forEach((s, si) => (s.name.startsWith("Warm-up") ? warmupIdx : mainIdx).push(si));
 
-  const toggle = useCallback((key) => {
+  const toggle = useCallback((key, sectionName) => {
     setDone(p => {
       const next = { ...p, [key]: !p[key] };
       try { localStorage.setItem("jay-training-done", JSON.stringify(next)); } catch {}
+      if (next[key] && onSetToggled) onSetToggled(sectionName);
       return next;
     });
-  }, [setDone]);
+  }, [setDone, onSetToggled]);
 
   const renderRow = (section, si, ex, ei, ri, dot) => {
     const key = `tl-w${wk}-${day.id}-${si}-${ei}-${ri}`;
     const isDone = done[key];
     return (
-      <div key={ei} onClick={() => toggle(key)} style={{
+      <div key={ei} onClick={() => toggle(key, section.name)} style={{
         display:"grid", gridTemplateColumns:"1fr auto auto auto",
         alignItems:"center", gap:10,
         padding:"10px 13px",
@@ -691,12 +726,7 @@ function TimelineView({ day, wk, done, setDone, onStartTimer }) {
           color: isDone ? "#4b5563" : "#f3f4f6",
           textDecoration: isDone ? "line-through" : "none",
         }}>{ex.name}</div>
-        <div style={{
-          fontFamily:"'DM Mono',monospace", fontSize:10,
-          color: isDone ? "#4b5563" : "#9ca3af", fontWeight:600,
-          background: isDone ? "transparent" : "rgba(255,255,255,0.05)",
-          padding:"2px 6px", borderRadius:5,
-        }}>{ex.weight}</div>
+        <WeightInput storeKey={key} defaultWeight={ex.weight} value={weights[key]} onChange={setWeight} isDone={isDone}/>
         <div style={{
           fontFamily:"'DM Mono',monospace", fontSize:12,
           color: isDone ? "#4b5563" : dot, fontWeight:600,
@@ -1006,11 +1036,17 @@ function MuscleBalancePanel({ days }) {
 // ─── App ──────────────────────────────────────────────────────────────────────
 export default function App() {
   const [wk, setWk]       = useState(initWeek());
-  const [di, setDi]       = useState(0);
-  const [view, setView]   = useState("week");
+  const [di, setDi]       = useState(() => todayDayIndex());
+  const [view, setView]   = useState("day");
   const [done, setDone] = useState(() => {
     try {
       const saved = localStorage.getItem("jay-training-done");
+      return saved ? JSON.parse(saved) : {};
+    } catch { return {}; }
+  });
+  const [weights, setWeights] = useState(() => {
+    try {
+      const saved = localStorage.getItem("jay-training-weights");
       return saved ? JSON.parse(saved) : {};
     } catch { return {}; }
   });
@@ -1021,6 +1057,28 @@ export default function App() {
 
   const startTimer = useCallback((ex) => {
     setTimer({ key: `${ex.info}-${ex.sets}`, label: ex.name, targetSeconds: parseTimeSeconds(ex.sets) });
+  }, []);
+
+  const startRest = useCallback((sectionName) => {
+    const secs = restSecondsFor(sectionName);
+    if (secs == null) return;
+    setTimer({ key: `rest-${Date.now()}`, label: `Descanso · ${sectionName}`, targetSeconds: secs });
+  }, []);
+
+  const setWeight = useCallback((key, value) => {
+    setWeights(p => {
+      const next = { ...p, [key]: value };
+      try { localStorage.setItem("jay-training-weights", JSON.stringify(next)); } catch {}
+      return next;
+    });
+  }, []);
+
+  const goToday = useCallback(() => {
+    setDi(todayDayIndex());
+    setView("day");
+    setOpen(null);
+    setShowMini(false);
+    setTlView(false);
   }, []);
 
   const W_META = DISPLAY_META[wk];
@@ -1100,6 +1158,14 @@ export default function App() {
             <div style={{ fontSize:14, fontWeight:700, marginTop:3, color:"#f3f4f6", letterSpacing:"0.01em" }}>Masa muscular + Abdomen definido</div>
           </div>
           <div style={{ display:"flex", gap:4 }}>
+            <button onClick={goToday} title="Ir al día de hoy" style={{
+              background:"rgba(251,191,36,0.08)",
+              border:"1px solid rgba(251,191,36,0.3)",
+              color:"#fbbf24",
+              borderRadius:6, padding:"5px 12px", fontSize:11, cursor:"pointer",
+              fontFamily:"'DM Sans',sans-serif", fontWeight:600,
+              transition:"all 0.15s",
+            }}>Hoy</button>
             {["week","day"].map(v=>(
               <button key={v} onClick={()=>setView(v)} style={{
                 background:view===v?"rgba(57,255,136,0.1)":"transparent",
@@ -1284,7 +1350,7 @@ export default function App() {
                 </div>
 
                 {tlView ? (
-                  <TimelineView day={day} wk={wk} done={done} setDone={setDone} onStartTimer={startTimer}/>
+                  <TimelineView day={day} wk={wk} done={done} setDone={setDone} onStartTimer={startTimer} weights={weights} setWeight={setWeight} onSetToggled={startRest}/>
                 ) : null}
 
                 {!tlView && day.sections.map(section=>{
@@ -1316,13 +1382,14 @@ export default function App() {
                                 </div>
                                 <div style={{ textAlign:"right" }}>
                                   <div style={{ fontFamily:"'DM Mono',monospace", fontSize:11, color:dot, fontWeight:500 }}>{ex.sets}</div>
-                                  <div style={{ fontSize:10, color:"#6b7280", marginTop:1 }}>{ex.weight}</div>
+                                  <div style={{ marginTop:2 }}><WeightInput storeKey={key} defaultWeight={ex.weight} value={weights[key]} onChange={setWeight} isDone={isDone}/></div>
                                 </div>
                                 <div style={{ display:"flex", alignItems:"center", gap:6 }}>
                                   <TimerButton ex={ex} dot={dot} onStart={startTimer}/>
                                   <div onClick={e=>{e.stopPropagation();setDone(p => {
                                     const next = {...p, [key]: !p[key]};
                                     try { localStorage.setItem("jay-training-done", JSON.stringify(next)); } catch {}
+                                    if (next[key]) startRest(section.name);
                                     return next;
                                   });}} style={{
                                     width:20, height:20, borderRadius:"50%", flexShrink:0,
