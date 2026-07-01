@@ -11,6 +11,12 @@ html, body, #root {
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* overflow-x must live on <html> only — setting it on <body> too disqualifies
+   body from viewport scroll propagation in Chrome, which silently turns it
+   into a nested scroll container and breaks position:sticky in descendants. */
+html {
   overflow-x: hidden;
 }
 
