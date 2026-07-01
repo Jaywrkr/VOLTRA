@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 
 // Equipment: 10kg | 6.8kg (15lbs) | 4.5kg (10lbs) | BW
 // NO exercises using two of the same KB weight simultaneously
@@ -458,6 +458,90 @@ const DISPLAY_META = WEEK_META.slice(0).map((w, i) => ({
   label: `Semana ${i + 1}`,
 }));
 
+// ─── Muscle balance analysis ───────────────────────────────────────────────────
+// Maps each EX[] entry to the muscle group it primarily trains, so we can total
+// weekly working sets per muscle and spot which ones are under-trained.
+const MUSCLE_OF = {
+  gobletSquat:"Piernas", splitSquat:"Piernas", sumoSquat:"Piernas", rdl:"Piernas",
+  singleLegDL:"Piernas", gluteBridge:"Piernas", lateralLunge:"Piernas", gobletHold:"Piernas",
+  bentOverRow:"Espalda", bentOverRowPause:"Espalda", renegadeRow:"Espalda", kbSwing:"Espalda",
+  kbSwingSingle:"Espalda", deadlift:"Espalda", pulloverKb:"Espalda", kbRowLight:"Espalda",
+  farmerCarry:"Espalda", suitcaseCarry:"Espalda",
+  bicepCurl:"Bíceps", hammerCurl:"Bíceps", concentrationCurl:"Bíceps",
+  kbPress:"Hombros", lateralRaise:"Hombros", frontRaise:"Hombros", uprightRow:"Hombros",
+  kbHalo:"Hombros", cleanPress:"Hombros", kbWindmill:"Hombros",
+  tricepExt:"Tríceps", tricepKickback:"Tríceps", diamondPushup:"Tríceps", pushupLight:"Tríceps",
+  floorPress:"Pecho", floorFly:"Pecho", pushup:"Pecho", pushupArcher:"Pecho", pushupClose:"Pecho",
+  plank:"Core", plankShoulder:"Core", plankDrag:"Core", deadbug:"Core", legRaise:"Core",
+  hollowHold:"Core", hollowRock:"Core", russianTwist:"Core", russianHeavy:"Core",
+  bicycle:"Core", toeTouches:"Core", crunches:"Core", mountainClimber:"Core",
+  fitxrBox:"Cardio", fitxrCombat:"Cardio", fitxrHiit:"Cardio", fitxrFlow:"Cardio",
+};
+const MUSCLE_COLOR = {
+  Piernas:"#39ff88", Espalda:"#22d3ee", Bíceps:"#5eead4", Hombros:"#a3ffcb",
+  Tríceps:"#fbbf24", Pecho:"#fb7185", Core:"#fb923c", Cardio:"#00e5b0",
+};
+const MUSCLE_DAY = {
+  Piernas:"LUN", Espalda:"JUE", Bíceps:"JUE", Pecho:"MAR", Tríceps:"MAR",
+  Hombros:"VIE", Core:"MIÉ", Cardio:"MIÉ",
+};
+
+// Typical weight used for each exercise, taken from wherever it first appears
+// in the program — reused for suggestions so they use tools already in rotation.
+const INFO_WEIGHT = {};
+for (const wkDays of ALL_WEEKS) {
+  for (const d of wkDays) {
+    for (const sec of d.sections) {
+      for (const ex of sec.exercises) {
+        if (!(ex.info in INFO_WEIGHT)) INFO_WEIGHT[ex.info] = ex.weight;
+      }
+    }
+  }
+}
+
+function computeMuscleVolume(days) {
+  const vol = {};
+  for (const d of days) {
+    if (d.type === "REST") continue;
+    for (const sec of d.sections) {
+      if (sec.name.startsWith("Warm-up")) continue;
+      for (const ex of sec.exercises) {
+        const m = MUSCLE_OF[ex.info];
+        if (!m) continue;
+        vol[m] = (vol[m] || 0) + parseSetCount(ex.sets);
+      }
+    }
+  }
+  return vol;
+}
+
+function suggestForMuscle(muscle, excludeInfo) {
+  return Object.keys(MUSCLE_OF)
+    .filter(k => MUSCLE_OF[k] === muscle && k in INFO_WEIGHT && !excludeInfo.has(k))
+    .slice(0, 2)
+    .map(k => ({ info: k, weight: INFO_WEIGHT[k] }));
+}
+
+function EX_NAME(infoKey) {
+  const names = {
+    gobletSquat:"KB Goblet Squat", splitSquat:"KB Split Squat", sumoSquat:"KB Sumo Squat", rdl:"KB Romanian Deadlift",
+    singleLegDL:"KB Single-leg Deadlift", gluteBridge:"KB Glute Bridge", lateralLunge:"KB Lateral Lunge", gobletHold:"Goblet Squat Hold",
+    bentOverRow:"KB Bent-over Row", bentOverRowPause:"KB Row con pausa", renegadeRow:"KB Renegade Row", kbSwing:"KB Swing",
+    kbSwingSingle:"KB Single-arm Swing", deadlift:"KB Deadlift", pulloverKb:"KB Pullover", kbRowLight:"KB Row liviano",
+    farmerCarry:"KB Farmer Carry", suitcaseCarry:"KB Suitcase Carry",
+    bicepCurl:"KB Bicep Curl", hammerCurl:"KB Hammer Curl", concentrationCurl:"Concentration Curl",
+    kbPress:"KB Single-arm Press", lateralRaise:"KB Lateral Raise", frontRaise:"KB Front Raise", uprightRow:"KB Upright Row",
+    kbHalo:"KB Halos", cleanPress:"KB Clean + Press", kbWindmill:"KB Windmill",
+    tricepExt:"KB Tricep Extension", tricepKickback:"KB Tricep Kickback", diamondPushup:"Diamond Push-up", pushupLight:"Push-up de activación",
+    floorPress:"KB Floor Press", floorFly:"KB Floor Fly", pushup:"Push-up", pushupArcher:"Push-up Archer", pushupClose:"Push-up Close Grip",
+    plank:"Plank hold", plankShoulder:"Plank Shoulder Tap", plankDrag:"KB Plank Drag", deadbug:"Dead Bug", legRaise:"Leg Raise",
+    hollowHold:"Hollow Body Hold", hollowRock:"Hollow Body Rock", russianTwist:"Russian Twist", russianHeavy:"Russian Twist Heavy",
+    bicycle:"Bicycle crunches", toeTouches:"Toe Touches", crunches:"Crunches", mountainClimber:"Mountain Climbers",
+    fitxrBox:"FitXR — Box", fitxrCombat:"FitXR — Combat", fitxrHiit:"FitXR — HIIT", fitxrFlow:"FitXR — Flow",
+  };
+  return names[infoKey] || infoKey;
+}
+
 // ─── UI Styles ────────────────────────────────────────────────────────────────
 const TC = {
   STRENGTH:{ bg:"#060a07", accent:"#39ff88", label:"#a3ffcb", glow:"rgba(57,255,136,0.10)" },
@@ -496,10 +580,88 @@ function parseRepsLabel(str) {
   const m = str.match(/[×x]\s*(.+)/i);
   return m ? m[1].trim() : str;
 }
+function parseTimeSeconds(str) {
+  let m = str.match(/(\d+)\s*s\b/i);
+  if (m) return parseInt(m[1]);
+  m = str.match(/(\d+)\s*min\b/i);
+  if (m) return parseInt(m[1]) * 60;
+  return null;
+}
+function isTimed(ex) {
+  return parseTimeSeconds(ex.sets) != null;
+}
+
+// ─── Stopwatch button + floating widget ────────────────────────────────────
+function TimerButton({ ex, dot, onStart }) {
+  if (!isTimed(ex)) return null;
+  return (
+    <button
+      onClick={(e) => { e.stopPropagation(); onStart(ex); }}
+      title="Abrir cronómetro"
+      style={{
+        width:22, height:22, borderRadius:"50%", flexShrink:0, cursor:"pointer",
+        background:"rgba(255,255,255,0.05)", border:`1px solid ${dot}40`,
+        display:"flex", alignItems:"center", justifyContent:"center",
+        fontSize:11, color:dot, padding:0,
+      }}
+    >⏱</button>
+  );
+}
+
+function FloatingStopwatch({ info, onClose }) {
+  const [seconds, setSeconds] = useState(0);
+  const [running, setRunning] = useState(true);
+  const infoKey = info && info.key;
+
+  useEffect(() => {
+    setSeconds(0);
+    setRunning(true);
+  }, [infoKey]);
+
+  useEffect(() => {
+    if (!running || !info) return;
+    const id = setInterval(() => setSeconds(s => s + 1), 1000);
+    return () => clearInterval(id);
+  }, [running, info]);
+
+  if (!info) return null;
+
+  const target = info.targetSeconds;
+  const isCountdown = target != null;
+  const display = isCountdown ? Math.max(target - seconds, 0) : seconds;
+  const finished = isCountdown && display === 0;
+  const mm = String(Math.floor(display / 60)).padStart(2, "0");
+  const ss = String(display % 60).padStart(2, "0");
+
+  return (
+    <div style={{
+      position:"fixed", bottom:16, right:16, zIndex:200,
+      background:"#0a0a0a", border:`1px solid ${finished ? "#39ff88" : "rgba(255,255,255,0.15)"}`,
+      borderRadius:12, padding:"10px 12px", minWidth:140,
+      boxShadow:"0 6px 28px rgba(0,0,0,0.55)",
+      fontFamily:"'DM Sans',sans-serif",
+    }}>
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", gap:8, marginBottom:4 }}>
+        <span style={{ fontSize:9, color:"#6b7280", fontWeight:600, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{info.label}</span>
+        <span onClick={onClose} style={{ cursor:"pointer", color:"#6b7280", fontSize:12, lineHeight:1 }}>✕</span>
+      </div>
+      <div style={{ fontFamily:"'DM Mono',monospace", fontSize:24, fontWeight:700, color: finished ? "#39ff88" : "#f3f4f6", textAlign:"center", marginBottom:7 }}>{mm}:{ss}</div>
+      <div style={{ display:"flex", gap:6 }}>
+        <button onClick={() => setRunning(r => !r)} style={{ flex:1, padding:"5px 0", borderRadius:6, border:"1px solid rgba(255,255,255,0.12)", background:"rgba(255,255,255,0.04)", color:"#e5e7eb", fontSize:11, cursor:"pointer", fontFamily:"'DM Sans',sans-serif" }}>{running ? "Pausar" : "Iniciar"}</button>
+        <button onClick={() => setSeconds(0)} style={{ flex:1, padding:"5px 0", borderRadius:6, border:"1px solid rgba(255,255,255,0.12)", background:"rgba(255,255,255,0.04)", color:"#e5e7eb", fontSize:11, cursor:"pointer", fontFamily:"'DM Sans',sans-serif" }}>Reset</button>
+      </div>
+    </div>
+  );
+}
 
 // ─── Timeline View ────────────────────────────────────────────────────────────
-function TimelineView({ day, wk, done, setDone }) {
+// Rounds are interleaved across muscle-group sections: SERIE 1 shows round 1
+// of every working section (e.g. Espalda + Bíceps) before moving to SERIE 2.
+function TimelineView({ day, wk, done, setDone, onStartTimer }) {
   const sections = day.sections.filter(s => s.exercises.length > 0);
+  const warmupIdx = [];
+  const mainIdx = [];
+  sections.forEach((s, si) => (s.name.startsWith("Warm-up") ? warmupIdx : mainIdx).push(si));
 
   const toggle = useCallback((key) => {
     setDone(p => {
@@ -509,68 +671,92 @@ function TimelineView({ day, wk, done, setDone }) {
     });
   }, [setDone]);
 
+  const renderRow = (section, si, ex, ei, ri, dot) => {
+    const key = `tl-w${wk}-${day.id}-${si}-${ei}-${ri}`;
+    const isDone = done[key];
+    return (
+      <div key={ei} onClick={() => toggle(key)} style={{
+        display:"grid", gridTemplateColumns:"1fr auto auto auto",
+        alignItems:"center", gap:10,
+        padding:"10px 13px",
+        background: isDone ? "rgba(255,255,255,0.01)" : "rgba(255,255,255,0.03)",
+        border:`1px solid ${isDone ? "rgba(255,255,255,0.04)" : dot+"20"}`,
+        borderLeft:`3px solid ${isDone ? "rgba(255,255,255,0.06)" : dot}`,
+        borderRadius:8, cursor:"pointer",
+        opacity: isDone ? 0.38 : 1,
+        transition:"all 0.15s",
+      }}>
+        <div style={{
+          fontSize:13, fontWeight:500,
+          color: isDone ? "#4b5563" : "#f3f4f6",
+          textDecoration: isDone ? "line-through" : "none",
+        }}>{ex.name}</div>
+        <div style={{
+          fontFamily:"'DM Mono',monospace", fontSize:10,
+          color: isDone ? "#4b5563" : "#9ca3af", fontWeight:600,
+          background: isDone ? "transparent" : "rgba(255,255,255,0.05)",
+          padding:"2px 6px", borderRadius:5,
+        }}>{ex.weight}</div>
+        <div style={{
+          fontFamily:"'DM Mono',monospace", fontSize:12,
+          color: isDone ? "#4b5563" : dot, fontWeight:600,
+        }}>{parseRepsLabel(ex.sets)}</div>
+        <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+          {onStartTimer && <TimerButton ex={ex} dot={dot} onStart={onStartTimer}/>}
+          <div style={{
+            width:20, height:20, borderRadius:"50%", flexShrink:0,
+            background: isDone ? dot : "rgba(255,255,255,0.05)",
+            border:`1px solid ${isDone ? dot : "rgba(255,255,255,0.12)"}`,
+            display:"flex", alignItems:"center", justifyContent:"center",
+            transition:"all 0.15s",
+          }}>
+            {isDone && <span style={{ fontSize:9, color:"#000", fontWeight:700 }}>✓</span>}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const sectionRoundBlock = (si, ri) => {
+    const section = sections[si];
+    const dot = SDOT(section.name);
+    const rows = section.exercises
+      .map((ex, ei) => (ri < parseSetCount(ex.sets) ? renderRow(section, si, ex, ei, ri, dot) : null))
+      .filter(Boolean);
+    if (rows.length === 0) return null;
+    return (
+      <div key={si} style={{ marginBottom:8 }}>
+        <div style={{ display:"flex", alignItems:"center", gap:5, marginBottom:5, paddingLeft:4 }}>
+          <div style={{ width:3, height:3, borderRadius:"50%", background:dot, flexShrink:0 }}/>
+          <div style={{ fontSize:8, fontWeight:600, letterSpacing:"0.1em", color:"#6b7280" }}>{section.name.toUpperCase()}</div>
+        </div>
+        <div style={{ display:"flex", flexDirection:"column", gap:3 }}>{rows}</div>
+      </div>
+    );
+  };
+
+  const maxRounds = mainIdx.length
+    ? Math.max(...mainIdx.map(si => Math.max(...sections[si].exercises.map(ex => parseSetCount(ex.sets)))))
+    : 0;
+
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:20 }}>
-      {sections.map((section, si) => {
+      {warmupIdx.map(si => {
+        const section = sections[si];
         const dot = SDOT(section.name);
-        const maxRounds = Math.max(...section.exercises.map(ex => parseSetCount(ex.sets)));
-
+        const rounds = Math.max(...section.exercises.map(ex => parseSetCount(ex.sets)));
         return (
           <div key={section.name}>
-            {/* Section header */}
             <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:10, paddingLeft:2 }}>
               <div style={{ width:4, height:4, borderRadius:"50%", background:dot, flexShrink:0 }}/>
               <div style={{ fontSize:9, fontWeight:600, letterSpacing:"0.12em", color:"#6b7280" }}>{section.name.toUpperCase()}</div>
             </div>
-
-            {/* Rounds */}
             <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
-              {Array.from({ length: maxRounds }, (_, ri) => (
+              {Array.from({ length: rounds }, (_, ri) => (
                 <div key={ri}>
-                  <div style={{
-                    fontSize:9, fontWeight:700, letterSpacing:"0.14em",
-                    color:dot, marginBottom:6, paddingLeft:4,
-                    fontFamily:"'DM Mono',monospace",
-                  }}>SERIE {ri + 1}</div>
+                  <div style={{ fontSize:9, fontWeight:700, letterSpacing:"0.14em", color:dot, marginBottom:6, paddingLeft:4, fontFamily:"'DM Mono',monospace" }}>SERIE {ri + 1}</div>
                   <div style={{ display:"flex", flexDirection:"column", gap:3 }}>
-                    {section.exercises.map((ex, ei) => {
-                      const numSets = parseSetCount(ex.sets);
-                      if (ri >= numSets) return null;
-                      const key = `tl-w${wk}-${day.id}-${si}-${ei}-${ri}`;
-                      const isDone = done[key];
-                      return (
-                        <div key={ei} onClick={() => toggle(key)} style={{
-                          display:"grid", gridTemplateColumns:"1fr auto auto",
-                          alignItems:"center", gap:10,
-                          padding:"10px 13px",
-                          background: isDone ? "rgba(255,255,255,0.01)" : "rgba(255,255,255,0.03)",
-                          border:`1px solid ${isDone ? "rgba(255,255,255,0.04)" : dot+"20"}`,
-                          borderLeft:`3px solid ${isDone ? "rgba(255,255,255,0.06)" : dot}`,
-                          borderRadius:8, cursor:"pointer",
-                          opacity: isDone ? 0.38 : 1,
-                          transition:"all 0.15s",
-                        }}>
-                          <div style={{
-                            fontSize:13, fontWeight:500,
-                            color: isDone ? "#4b5563" : "#f3f4f6",
-                            textDecoration: isDone ? "line-through" : "none",
-                          }}>{ex.name}</div>
-                          <div style={{
-                            fontFamily:"'DM Mono',monospace", fontSize:12,
-                            color: isDone ? "#4b5563" : dot, fontWeight:600,
-                          }}>{parseRepsLabel(ex.sets)}</div>
-                          <div style={{
-                            width:20, height:20, borderRadius:"50%", flexShrink:0,
-                            background: isDone ? dot : "rgba(255,255,255,0.05)",
-                            border:`1px solid ${isDone ? dot : "rgba(255,255,255,0.12)"}`,
-                            display:"flex", alignItems:"center", justifyContent:"center",
-                            transition:"all 0.15s",
-                          }}>
-                            {isDone && <span style={{ fontSize:9, color:"#000", fontWeight:700 }}>✓</span>}
-                          </div>
-                        </div>
-                      );
-                    })}
+                    {section.exercises.map((ex, ei) => (ri < parseSetCount(ex.sets) ? renderRow(section, si, ex, ei, ri, dot) : null))}
                   </div>
                 </div>
               ))}
@@ -578,6 +764,22 @@ function TimelineView({ day, wk, done, setDone }) {
           </div>
         );
       })}
+
+      {maxRounds > 0 && (
+        <div>
+          {mainIdx.length > 1 && (
+            <div style={{ fontSize:9, color:"#6b7280", marginBottom:10, paddingLeft:2 }}>Series intercaladas entre {mainIdx.map(si => sections[si].name).join(" · ")}</div>
+          )}
+          <div style={{ display:"flex", flexDirection:"column", gap:16 }}>
+            {Array.from({ length: maxRounds }, (_, ri) => (
+              <div key={ri}>
+                <div style={{ fontSize:9, fontWeight:700, letterSpacing:"0.14em", color:"#e5e7eb", marginBottom:8, paddingLeft:4, fontFamily:"'DM Mono',monospace" }}>SERIE {ri + 1}</div>
+                {mainIdx.map(si => sectionRoundBlock(si, ri))}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -743,6 +945,64 @@ function MiniPanel({ dayId, wi }) {
   );
 }
 
+// ─── Muscle Balance Panel ──────────────────────────────────────────────────────
+function MuscleBalancePanel({ days }) {
+  const vol = computeMuscleVolume(days);
+  const muscles = Object.keys(MUSCLE_DAY);
+  const rows = muscles.map(m => ({ muscle: m, sets: vol[m] || 0 })).sort((a, b) => a.sets - b.sets);
+  const max = Math.max(1, ...rows.map(r => r.sets));
+  const weakest = rows.slice(0, 2);
+
+  const usedInfo = new Set();
+  for (const d of days) for (const sec of d.sections) for (const ex of sec.exercises) usedInfo.add(ex.info);
+
+  return (
+    <div style={{ background:"rgba(255,255,255,0.02)", border:"1px solid rgba(255,255,255,0.07)", borderRadius:9, padding:"12px 13px", marginTop:12 }}>
+      <div style={{ fontSize:9, fontWeight:700, color:"#39ff88", letterSpacing:"0.14em", marginBottom:10 }}>BALANCE MUSCULAR · ESTA SEMANA</div>
+      <div style={{ display:"flex", flexDirection:"column", gap:6, marginBottom:12 }}>
+        {rows.map(({ muscle, sets }) => {
+          const c = MUSCLE_COLOR[muscle] || "#9ca3af";
+          return (
+            <div key={muscle} style={{ display:"grid", gridTemplateColumns:"70px 1fr 34px", alignItems:"center", gap:8 }}>
+              <span style={{ fontSize:10, color:"#a1a1aa" }}>{muscle}</span>
+              <div style={{ height:5, background:"rgba(255,255,255,0.05)", borderRadius:99, overflow:"hidden" }}>
+                <div style={{ height:"100%", width:`${(sets / max) * 100}%`, background:c, borderRadius:99 }}/>
+              </div>
+              <span style={{ fontFamily:"'DM Mono',monospace", fontSize:10, color:c, textAlign:"right" }}>{sets}</span>
+            </div>
+          );
+        })}
+      </div>
+
+      {weakest.length > 0 && (
+        <div style={{ borderTop:"1px solid rgba(255,255,255,0.06)", paddingTop:10 }}>
+          <div style={{ fontSize:9, fontWeight:700, color:"#fbbf24", letterSpacing:"0.1em", marginBottom:7 }}>SUGERENCIAS · MENOS TRABAJADOS</div>
+          <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
+            {weakest.map(({ muscle }) => {
+              const suggestions = suggestForMuscle(muscle, usedInfo);
+              if (suggestions.length === 0) return null;
+              return (
+                <div key={muscle} style={{ fontSize:11, color:"#d1d5db", lineHeight:1.6 }}>
+                  <span style={{ color:MUSCLE_COLOR[muscle], fontWeight:600 }}>{muscle}</span>
+                  {" — agrega "}
+                  {suggestions.map((s, i) => (
+                    <span key={s.info}>
+                      {i > 0 ? " o " : ""}
+                      <span style={{ color:"#e5e7eb" }}>{EX_NAME(s.info)}</span>
+                      {" ("}{s.weight}{")"}
+                    </span>
+                  ))}
+                  {MUSCLE_DAY[muscle] ? ` el ${MUSCLE_DAY[muscle]}, con el mismo equipo que ya usas ese día.` : "."}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── App ──────────────────────────────────────────────────────────────────────
 export default function App() {
   const [wk, setWk]       = useState(initWeek());
@@ -757,6 +1017,11 @@ export default function App() {
   const [open, setOpen]   = useState(null);
   const [showMini, setShowMini] = useState(false);
   const [tlView, setTlView] = useState(false);
+  const [timer, setTimer] = useState(null);
+
+  const startTimer = useCallback((ex) => {
+    setTimer({ key: `${ex.info}-${ex.sets}`, label: ex.name, targetSeconds: parseTimeSeconds(ex.sets) });
+  }, []);
 
   const W_META = DISPLAY_META[wk];
   const DAYS   = ALL_WEEKS[wk];
@@ -955,6 +1220,7 @@ export default function App() {
                 </button>
               );
             })}
+            <MuscleBalancePanel days={DAYS}/>
           </div>
         )}
 
@@ -1018,7 +1284,7 @@ export default function App() {
                 </div>
 
                 {tlView ? (
-                  <TimelineView day={day} wk={wk} done={done} setDone={setDone}/>
+                  <TimelineView day={day} wk={wk} done={done} setDone={setDone} onStartTimer={startTimer}/>
                 ) : null}
 
                 {!tlView && day.sections.map(section=>{
@@ -1052,18 +1318,21 @@ export default function App() {
                                   <div style={{ fontFamily:"'DM Mono',monospace", fontSize:11, color:dot, fontWeight:500 }}>{ex.sets}</div>
                                   <div style={{ fontSize:10, color:"#6b7280", marginTop:1 }}>{ex.weight}</div>
                                 </div>
-                                <div onClick={e=>{e.stopPropagation();setDone(p => {
-                                  const next = {...p, [key]: !p[key]};
-                                  try { localStorage.setItem("jay-training-done", JSON.stringify(next)); } catch {}
-                                  return next;
-                                });}} style={{
-                                  width:20, height:20, borderRadius:"50%", flexShrink:0,
-                                  background:isDone?dot:"rgba(255,255,255,0.05)",
-                                  border:`1px solid ${isDone?dot:"rgba(255,255,255,0.1)"}`,
-                                  display:"flex", alignItems:"center", justifyContent:"center",
-                                  cursor:"pointer", transition:"all 0.14s",
-                                }}>
-                                  {isDone&&<span style={{ fontSize:9, color:"#000000", fontWeight:700 }}>✓</span>}
+                                <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+                                  <TimerButton ex={ex} dot={dot} onStart={startTimer}/>
+                                  <div onClick={e=>{e.stopPropagation();setDone(p => {
+                                    const next = {...p, [key]: !p[key]};
+                                    try { localStorage.setItem("jay-training-done", JSON.stringify(next)); } catch {}
+                                    return next;
+                                  });}} style={{
+                                    width:20, height:20, borderRadius:"50%", flexShrink:0,
+                                    background:isDone?dot:"rgba(255,255,255,0.05)",
+                                    border:`1px solid ${isDone?dot:"rgba(255,255,255,0.1)"}`,
+                                    display:"flex", alignItems:"center", justifyContent:"center",
+                                    cursor:"pointer", transition:"all 0.14s",
+                                  }}>
+                                    {isDone&&<span style={{ fontSize:9, color:"#000000", fontWeight:700 }}>✓</span>}
+                                  </div>
                                 </div>
                               </div>
                               {isOpen && <ExPanel infoKey={ex.info} dot={dot}/>}
@@ -1113,6 +1382,7 @@ export default function App() {
         </div>
         {/* ── END SHELL ── */}
       </div>
+      <FloatingStopwatch info={timer} onClose={()=>setTimer(null)}/>
     </div>
   );
 }
