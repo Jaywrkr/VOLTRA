@@ -754,6 +754,19 @@ function SwipeRow({ dot, onToggle, children }) {
   );
 }
 
+function VersionBadge() {
+  return (
+    <div style={{
+      position:"fixed", bottom:16, left:16, zIndex:190,
+      background:"rgba(0,0,0,0.55)", border:"1px solid rgba(255,255,255,0.1)",
+      borderRadius:6, padding:"3px 8px", pointerEvents:"none",
+      backdropFilter:"blur(4px)",
+    }}>
+      <span style={{ fontFamily:"'DM Mono',monospace", fontSize:9, color:"rgba(255,255,255,0.4)", letterSpacing:"0.05em" }}>v{__APP_VERSION__}</span>
+    </div>
+  );
+}
+
 function FloatingStopwatch({ info, onClose }) {
   const [seconds, setSeconds] = useState(0);
   const [running, setRunning] = useState(true);
@@ -1600,6 +1613,7 @@ export default function App() {
         {/* ── END SHELL ── */}
       </div>
       <FloatingStopwatch info={timer} onClose={()=>setTimer(null)}/>
+      <VersionBadge/>
     </div>
   );
 }
