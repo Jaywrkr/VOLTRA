@@ -577,12 +577,36 @@ function todayDayIndex() {
   return jsDay === 0 ? 6 : jsDay - 1;
 }
 
-// Rest suggested between sets, by muscle-group section.
-function restSecondsFor(sectionName) {
-  if (sectionName.startsWith("Warm-up")) return null;
-  if (sectionName.includes("Core") || sectionName.includes("Abdomen") || sectionName.includes("Finisher")) return 45;
-  if (sectionName.includes("FitXR")) return null;
-  return 90;
+function isoDate(d) {
+  const off = d.getTimezoneOffset();
+  return new Date(d.getTime() - off * 60000).toISOString().slice(0, 10);
+}
+
+// Real calendar date for a given weekday-pill index (0=Lun..6=Dom), relative to today.
+function isoDateForWeekdayIndex(i) {
+  const d = new Date();
+  d.setDate(d.getDate() + (i - todayDayIndex()));
+  return isoDate(d);
+}
+
+// Saturday is always a REST day regardless of program week, so it never breaks a streak.
+function isRestWeekday(d) {
+  return d.getDay() === 6;
+}
+
+// Consecutive real-calendar days (ending today or yesterday) that were fully
+// completed, skipping Saturdays since they're always rest.
+function computeStreak(completedSet) {
+  let streak = 0;
+  const cursor = new Date();
+  if (!completedSet.has(isoDate(cursor)) && !isRestWeekday(cursor)) cursor.setDate(cursor.getDate() - 1);
+  while (true) {
+    if (completedSet.has(isoDate(cursor)) || isRestWeekday(cursor)) {
+      streak++;
+      cursor.setDate(cursor.getDate() - 1);
+    } else break;
+  }
+  return streak;
 }
 
 // ─── Timeline helpers ─────────────────────────────────────────────────────────
@@ -603,6 +627,24 @@ function parseTimeSeconds(str) {
 }
 function isTimed(ex) {
   return parseTimeSeconds(ex.sets) != null;
+}
+
+// Timeline tracks completion per individual set (round), under different
+// localStorage keys than the list view's per-exercise tracking — so its
+// progress needs its own tally instead of reusing the list view's count.
+function timelineTotals(day, wk, done) {
+  const sections = day.sections.filter(s => s.exercises.length > 0);
+  let total = 0, doneN = 0;
+  sections.forEach((section, si) => {
+    section.exercises.forEach((ex, ei) => {
+      const n = parseSetCount(ex.sets);
+      for (let ri = 0; ri < n; ri++) {
+        total++;
+        if (done[`tl-w${wk}-${day.id}-${si}-${ei}-${ri}`]) doneN++;
+      }
+    });
+  });
+  return { total, doneN };
 }
 
 // ─── Stopwatch button + floating widget ────────────────────────────────────
@@ -761,25 +803,24 @@ function FloatingStopwatch({ info, onClose }) {
 // ─── Timeline View ────────────────────────────────────────────────────────────
 // Rounds are interleaved across muscle-group sections: SERIE 1 shows round 1
 // of every working section (e.g. Espalda + Bíceps) before moving to SERIE 2.
-function TimelineView({ day, wk, done, setDone, onStartTimer, weights, setWeight, onSetToggled }) {
+function TimelineView({ day, wk, done, setDone, onStartTimer, weights, setWeight }) {
   const sections = day.sections.filter(s => s.exercises.length > 0);
   const warmupIdx = [];
   const mainIdx = [];
   sections.forEach((s, si) => (s.name.startsWith("Warm-up") ? warmupIdx : mainIdx).push(si));
 
-  const toggle = useCallback((key, sectionName) => {
+  const toggle = useCallback((key) => {
     setDone(p => {
       const next = { ...p, [key]: !p[key] };
       try { localStorage.setItem("jay-training-done", JSON.stringify(next)); } catch {}
-      if (next[key] && onSetToggled) onSetToggled(sectionName);
       return next;
     });
-  }, [setDone, onSetToggled]);
+  }, [setDone]);
 
   const renderRow = (section, si, ex, ei, ri, dot) => {
     const key = `tl-w${wk}-${day.id}-${si}-${ei}-${ri}`;
     const isDone = done[key];
-    const doToggle = () => toggle(key, section.name);
+    const doToggle = () => toggle(key);
     return (
       <SwipeRow key={ei} dot={dot} onToggle={doToggle}>
         <div onClick={doToggle} style={{
@@ -1119,15 +1160,15 @@ export default function App() {
   const [showMini, setShowMini] = useState(false);
   const [tlView, setTlView] = useState(false);
   const [timer, setTimer] = useState(null);
+  const [completedDates, setCompletedDates] = useState(() => {
+    try {
+      const saved = localStorage.getItem("jay-training-completed-dates");
+      return saved ? JSON.parse(saved) : [];
+    } catch { return []; }
+  });
 
   const startTimer = useCallback((ex) => {
     setTimer({ key: `${ex.info}-${ex.sets}`, label: ex.name, targetSeconds: parseTimeSeconds(ex.sets) });
-  }, []);
-
-  const startRest = useCallback((sectionName) => {
-    const secs = restSecondsFor(sectionName);
-    if (secs == null) return;
-    setTimer({ key: `rest-${Date.now()}`, label: `Descanso · ${sectionName}`, targetSeconds: secs });
   }, []);
 
   const setWeight = useCallback((key, value) => {
@@ -1151,10 +1192,27 @@ export default function App() {
   const day    = DAYS[di];
   const tc     = TC[day.type] || TC.REST;
   const allEx  = day.sections.flatMap(s => s.exercises);
-  const total  = allEx.length;
-  const doneN  = allEx.filter((_,i) => done[`w${wk}-${day.id}-${i}`]).length;
+  const listTotal = allEx.length;
+  const listDoneN = allEx.filter((_,i) => done[`w${wk}-${day.id}-${i}`]).length;
+  const { total: tlTotal, doneN: tlDoneN } = timelineTotals(day, wk, done);
+  const total  = tlView ? tlTotal : listTotal;
+  const doneN  = tlView ? tlDoneN : listDoneN;
   const pct    = total > 0 ? Math.round(doneN / total * 100) : 0;
   let ct = 0;
+
+  // Mark today's calendar date complete for the streak once today's session hits 100%.
+  useEffect(() => {
+    if (di !== todayDayIndex() || day.type === "REST" || total === 0 || pct < 100) return;
+    const todayIso = isoDate(new Date());
+    setCompletedDates(prev => {
+      if (prev.includes(todayIso)) return prev;
+      const next = [...prev, todayIso];
+      try { localStorage.setItem("jay-training-completed-dates", JSON.stringify(next)); } catch {}
+      return next;
+    });
+  }, [di, day.type, total, pct]);
+
+  const streak = computeStreak(new Set(completedDates));
 
   const gd = (i) => { setDi(i); setView("day"); setOpen(null); setShowMini(false); setTlView(false); };
   const gw = (i) => { setWk(i); setDi(0); setView("week"); setOpen(null); setShowMini(false); setTlView(false); };
@@ -1223,7 +1281,17 @@ export default function App() {
             <div style={{ fontFamily:"'DM Mono',monospace", fontSize:9, color:"#39ff88", letterSpacing:"0.22em", fontWeight:600 }}>JAY · HIPERTROFIA · 8 SEMANAS</div>
             <div style={{ fontSize:14, fontWeight:700, marginTop:3, color:"#f3f4f6", letterSpacing:"0.01em" }}>Masa muscular + Abdomen definido</div>
           </div>
-          <div style={{ display:"flex", gap:4 }}>
+          <div style={{ display:"flex", gap:4, alignItems:"center" }}>
+            {streak > 0 && (
+              <div title="Racha de días completados" style={{
+                display:"flex", alignItems:"center", gap:4,
+                background:"rgba(251,146,60,0.08)", border:"1px solid rgba(251,146,60,0.3)",
+                borderRadius:6, padding:"5px 10px",
+              }}>
+                <span style={{ fontSize:12 }}>🔥</span>
+                <span style={{ fontFamily:"'DM Mono',monospace", fontSize:11, color:"#fb923c", fontWeight:700 }}>{streak}</span>
+              </div>
+            )}
             <button onClick={goToday} title="Ir al día de hoy" style={{
               background:"rgba(251,191,36,0.08)",
               border:"1px solid rgba(251,191,36,0.3)",
@@ -1294,19 +1362,32 @@ export default function App() {
           ))}
         </div>
 
-        {/* Day pills — full width grid */}
+        {/* Day pills — full width grid. Marks today, already-passed days, and
+            which of those were completed (green ✓) or missed (dim dot). */}
         <div style={{ display:"grid", gridTemplateColumns:"repeat(7, 1fr)", gap:4, width:"100%" }}>
           {DAYS.map((d,i)=>{
             const tc2=TC[d.type]||TC.REST; const isA=i===di;
+            const todayIdx=todayDayIndex();
+            const isToday=i===todayIdx;
+            const isPast=i<todayIdx;
+            const isRest=d.type==="REST";
+            const isCompleted=completedDates.includes(isoDateForWeekdayIndex(i));
             return (
               <button key={d.id} onClick={()=>gd(i)} style={{
                 background:isA?tc2.bg:"rgba(255,255,255,0.02)",
-                border:`1px solid ${isA?tc2.accent:"rgba(255,255,255,0.07)"}`,
+                border:`1px solid ${isToday&&!isA?"rgba(251,191,36,0.45)":isA?tc2.accent:"rgba(255,255,255,0.07)"}`,
                 borderRadius:7, padding:"7px 3px", cursor:"pointer", textAlign:"center",
                 boxShadow:isA?`0 0 12px ${tc2.glow}`:"none", transition:"all 0.15s", width:"100%",
+                opacity:isPast&&!isRest&&!isCompleted&&!isA?0.55:1,
               }}>
-                <div style={{ fontFamily:"'DM Mono',monospace", fontSize:9, color:isA?tc2.label:"#71717a", fontWeight:600 }}>{DAY_LABELS[d.id]}</div>
-                <div style={{ width:4, height:4, borderRadius:"50%", margin:"4px auto 0", background:isA?tc2.accent:"rgba(255,255,255,0.1)" }}/>
+                <div style={{ fontFamily:"'DM Mono',monospace", fontSize:9, color:isToday&&!isA?"#fbbf24":isA?tc2.label:"#71717a", fontWeight:600 }}>{DAY_LABELS[d.id]}</div>
+                {isToday ? (
+                  <div style={{ fontSize:7, color:isA?tc2.label:"#fbbf24", fontWeight:700, marginTop:3, letterSpacing:"0.05em" }}>HOY</div>
+                ) : isPast && !isRest && isCompleted ? (
+                  <div style={{ fontSize:8, color:"#39ff88", marginTop:3, lineHeight:1 }}>✓</div>
+                ) : (
+                  <div style={{ width:4, height:4, borderRadius:"50%", margin:"4px auto 0", background:isPast&&!isRest?"rgba(239,68,68,0.45)":isA?tc2.accent:"rgba(255,255,255,0.1)" }}/>
+                )}
               </button>
             );
           })}
@@ -1375,7 +1456,7 @@ export default function App() {
                   <div style={{ fontFamily:"'DM Mono',monospace", fontSize:9, color:tc.label, letterSpacing:"0.14em", marginBottom:3, opacity:.7 }}>{day.label.toUpperCase()} · {W_META.label.toUpperCase()}</div>
                   <div style={{ fontSize:17, fontWeight:600, lineHeight:1.25, color:"#f3f4f6" }}>{day.focus}</div>
                   <div style={{ fontSize:11, color:"#9ca3af", marginTop:3 }}>{day.muscles}</div>
-                  <div style={{ fontSize:10, color:"#6b7280", marginTop:1 }}>{day.duration}{total>0?` · ${total} ejercicios`:""}</div>
+                  <div style={{ fontSize:10, color:"#6b7280", marginTop:1 }}>{day.duration}{total>0?` · ${total} ${tlView?"series":"ejercicios"}`:""}</div>
                 </div>
                 <div style={{ display:"flex", flexDirection:"column", gap:3, alignItems:"flex-end", flexShrink:0 }}>
                   <div style={{ fontSize:9, fontWeight:600, padding:"2px 7px", borderRadius:5, background:`${tc.accent}12`, color:tc.label }}>{day.type}</div>
@@ -1425,7 +1506,7 @@ export default function App() {
                 </div>
 
                 {tlView ? (
-                  <TimelineView day={day} wk={wk} done={done} setDone={setDone} onStartTimer={startTimer} weights={weights} setWeight={setWeight} onSetToggled={startRest}/>
+                  <TimelineView day={day} wk={wk} done={done} setDone={setDone} onStartTimer={startTimer} weights={weights} setWeight={setWeight}/>
                 ) : null}
 
                 {!tlView && day.sections.map(section=>{
@@ -1443,7 +1524,6 @@ export default function App() {
                           const doToggleDone = () => setDone(p => {
                             const next = {...p, [key]: !p[key]};
                             try { localStorage.setItem("jay-training-done", JSON.stringify(next)); } catch {}
-                            if (next[key]) startRest(section.name);
                             return next;
                           });
                           return (
