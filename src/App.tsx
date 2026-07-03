@@ -609,6 +609,18 @@ function computeStreak(completedSet) {
   return streak;
 }
 
+// Same idea as computeStreak but for daily habits with no rest days (nutrition).
+function computeSimpleStreak(completedSet) {
+  let streak = 0;
+  const cursor = new Date();
+  if (!completedSet.has(isoDate(cursor))) cursor.setDate(cursor.getDate() - 1);
+  while (completedSet.has(isoDate(cursor))) {
+    streak++;
+    cursor.setDate(cursor.getDate() - 1);
+  }
+  return streak;
+}
+
 // ─── Timeline helpers ─────────────────────────────────────────────────────────
 function parseSetCount(str) {
   const m = str.match(/^(\d+)\s*[×x]/i);
@@ -1300,6 +1312,559 @@ function LucaView({ done, setDone }) {
   );
 }
 
+// ─── Nutrición (ported from JAYNUTRI) ──────────────────────────────────────────
+// Fase 1: mismo modelo de datos y lógica que JAYNUTRI, pero con logs keyed por
+// fecha ISO (no por nombre de día) para que el enganche con calorías quemadas
+// del entrenamiento tenga sentido día a día real, y reestilizado al tema
+// inline oscuro de Voltra en vez de Tailwind/glassmorphism.
+
+const desayunoBatido = {
+  id:"des-batido-avena", name:"Batido proteico de avena y plátano", mealType:"desayuno", prepMinutes:5, batchCook:false, servings:1,
+  macros:{ kcal:470, protein:41, carbs:54, fat:11 },
+  ingredients:[
+    { name:"Proteína en polvo (whey)", qty:"1 scoop (30 g)", section:"Otros", estCost:0.9 },
+    { name:"Avena en hojuelas", qty:"40 g", section:"Granos y legumbres", estCost:0.2 },
+    { name:"Plátano (guineo)", qty:"1 unidad", section:"Verduras y frutas", estCost:0.15 },
+    { name:"Leche deslactosada o bebida vegetal", qty:"250 ml", section:"Lácteos y huevos", estCost:0.35 },
+    { name:"Maní natural", qty:"10 g", section:"Grasas y condimentos", estCost:0.1 },
+    { name:"Creatina monohidratada (sin sabor)", qty:"5 g (1 cdta)", section:"Otros", estCost:0.27 },
+  ],
+  steps:["Licuar la avena, el plátano, la leche y la proteína hasta homogeneizar.","Agregar la creatina al final y batir unos segundos más — no aporta sabor ni calorías extra.","Servir y espolvorear el maní picado."],
+};
+const desayunoTortilla = {
+  id:"des-tortilla-claras", name:"Tortilla de claras con espinaca + proteína en polvo", mealType:"desayuno", prepMinutes:10, batchCook:false, servings:1,
+  macros:{ kcal:460, protein:43, carbs:42, fat:14 },
+  ingredients:[
+    { name:"Claras de huevo", qty:"4 unidades", section:"Lácteos y huevos", estCost:0.6 },
+    { name:"Huevo entero", qty:"1 unidad", section:"Lácteos y huevos", estCost:0.15 },
+    { name:"Espinaca fresca", qty:"1 puñado", section:"Verduras y frutas", estCost:0.3 },
+    { name:"Pan integral o tostadas de arroz", qty:"2 unidades", section:"Granos y legumbres", estCost:0.4 },
+    { name:"Proteína en polvo (whey)", qty:"1/2 scoop (15 g) en agua aparte", section:"Otros", estCost:0.45 },
+    { name:"Creatina monohidratada (sin sabor)", qty:"5 g (1 cdta) en el vaso de proteína", section:"Otros", estCost:0.27 },
+  ],
+  steps:["Batir las claras con el huevo entero, saltear con la espinaca en sartén antiadherente.","Acompañar con el pan integral y un vaso pequeño de proteína + creatina disueltas en agua."],
+};
+const desayunoYogur = {
+  id:"des-yogur-proteico", name:"Yogur griego con proteína, maní y avena", mealType:"desayuno", prepMinutes:3, batchCook:false, servings:1,
+  macros:{ kcal:480, protein:44, carbs:46, fat:13 },
+  ingredients:[
+    { name:"Yogur griego natural sin azúcar", qty:"200 g", section:"Lácteos y huevos", estCost:1.1 },
+    { name:"Proteína en polvo (whey)", qty:"1/2 scoop (15 g)", section:"Otros", estCost:0.45 },
+    { name:"Avena en hojuelas", qty:"30 g", section:"Granos y legumbres", estCost:0.15 },
+    { name:"Maní natural", qty:"15 g", section:"Grasas y condimentos", estCost:0.15 },
+    { name:"Creatina monohidratada (sin sabor)", qty:"5 g (1 cdta)", section:"Otros", estCost:0.27 },
+  ],
+  steps:["Mezclar el yogur con la proteína en polvo y la creatina hasta integrar.","Agregar la avena y el maní encima. Servir frío."],
+};
+const almuerzoQuinoaPollo = {
+  id:"alm-bowl-quinoa-pollo", name:"Bowl de quinoa, pollo y vegetales asados", mealType:"almuerzo", prepMinutes:30, batchCook:true, servings:2,
+  macros:{ kcal:700, protein:48, carbs:70, fat:20 },
+  ingredients:[
+    { name:"Pechuga de pollo", qty:"1 lb", section:"Proteínas", estCost:3.2 },
+    { name:"Quinoa", qty:"1 taza (uncooked)", section:"Granos y legumbres", estCost:1.3 },
+    { name:"Brócoli", qty:"1 lb", section:"Verduras y frutas", estCost:0.9 },
+    { name:"Zanahoria", qty:"0.5 lb", section:"Verduras y frutas", estCost:0.3 },
+    { name:"Aceite de oliva", qty:"2 cda", section:"Grasas y condimentos", estCost:0.5 },
+    { name:"Ajo, comino, sal, pimienta", qty:"al gusto", section:"Grasas y condimentos", estCost:0.3 },
+  ],
+  steps:["Cocinar la quinoa en agua con sal (1:2) por 15 min.","Sazonar y hornear/saltear el pollo en cubos.","Asar el brócoli y la zanahoria con aceite de oliva.","Armar el bowl y dividir en 2 porciones."],
+};
+const almuerzoAtunHuevo = {
+  id:"alm-ensalada-atun-huevo", name:"Ensalada completa de atún, huevo y camote", mealType:"almuerzo", prepMinutes:20, batchCook:false, servings:1,
+  macros:{ kcal:620, protein:42, carbs:55, fat:22 },
+  ingredients:[
+    { name:"Atún en agua (lata)", qty:"1 lata (170 g)", section:"Proteínas", estCost:1.8 },
+    { name:"Huevo entero", qty:"2 unidades", section:"Lácteos y huevos", estCost:0.3 },
+    { name:"Camote", qty:"0.5 lb", section:"Verduras y frutas", estCost:0.3 },
+    { name:"Tomate riñón", qty:"1 unidad", section:"Verduras y frutas", estCost:0.35 },
+    { name:"Pepino", qty:"1 unidad", section:"Verduras y frutas", estCost:0.4 },
+    { name:"Aguacate", qty:"1/2 unidad", section:"Verduras y frutas", estCost:0.25 },
+    { name:"Aceite de oliva y limón", qty:"1 cda + 1 unidad", section:"Grasas y condimentos", estCost:0.35 },
+  ],
+  steps:["Hervir el camote en cubos y los huevos.","Mezclar todos los ingredientes en un bowl grande.","Aliñar con aceite de oliva y limón."],
+};
+const cenaPolloHorno = {
+  id:"cena-pollo-horno-quinoa", name:"Pollo al horno con quinoa y brócoli (batch)", mealType:"cena", prepMinutes:40, batchCook:true, servings:3,
+  macros:{ kcal:980, protein:66, carbs:120, fat:24 },
+  ingredients:[
+    { name:"Pechuga de pollo", qty:"2 lb", section:"Proteínas", estCost:6.4 },
+    { name:"Quinoa", qty:"1.5 tazas (uncooked)", section:"Granos y legumbres", estCost:2.0 },
+    { name:"Brócoli", qty:"1.5 lb", section:"Verduras y frutas", estCost:1.35 },
+    { name:"Cebolla y ajo", qty:"1 unidad + 4 dientes", section:"Verduras y frutas", estCost:0.5 },
+    { name:"Aceite de oliva", qty:"3 cda", section:"Grasas y condimentos", estCost:0.7 },
+    { name:"Especias (comino, orégano, pimentón)", qty:"al gusto", section:"Grasas y condimentos", estCost:0.4 },
+  ],
+  steps:["Marinar el pollo con especias, ajo y aceite de oliva.","Hornear a 200°C por 30-35 min.","Cocinar la quinoa y asar el brócoli al vapor.","Porcionar en 3 tarrinas para batch cooking."],
+};
+const cenaLentejas = {
+  id:"cena-lentejas-arroz", name:"Lentejas guisadas con arroz integral y ensalada", mealType:"cena", prepMinutes:35, batchCook:true, servings:3,
+  macros:{ kcal:950, protein:58, carbs:140, fat:18 },
+  ingredients:[
+    { name:"Lentejas", qty:"1.5 tazas (uncooked)", section:"Granos y legumbres", estCost:1.7 },
+    { name:"Arroz integral", qty:"1.5 tazas (uncooked)", section:"Granos y legumbres", estCost:1.8 },
+    { name:"Pechuga de pollo (para reforzar proteína)", qty:"0.75 lb", section:"Proteínas", estCost:2.4 },
+    { name:"Tomate riñón y cebolla", qty:"2 unidades + 1 unidad", section:"Verduras y frutas", estCost:0.7 },
+    { name:"Zanahoria", qty:"0.5 lb", section:"Verduras y frutas", estCost:0.3 },
+    { name:"Lechuga y pepino (ensalada)", qty:"1 unidad + 1 unidad", section:"Verduras y frutas", estCost:0.7 },
+    { name:"Aceite de oliva, comino, ajo", qty:"al gusto", section:"Grasas y condimentos", estCost:0.5 },
+  ],
+  steps:["Guisar las lentejas con cebolla, tomate, ajo y comino.","Cocinar el arroz integral y el pollo en cubos aparte.","Armar ensalada fresca de lechuga y pepino.","Porcionar en 3 tarrinas."],
+};
+const cenaAtunCamote = {
+  id:"cena-atun-camote", name:"Atún sellado con camote asado y ensalada verde", mealType:"cena", prepMinutes:25, batchCook:true, servings:2,
+  macros:{ kcal:900, protein:62, carbs:95, fat:24 },
+  ingredients:[
+    { name:"Atún fresco o en agua", qty:"2 latas (170 g c/u)", section:"Proteínas", estCost:3.6 },
+    { name:"Camote", qty:"1.5 lb", section:"Verduras y frutas", estCost:0.9 },
+    { name:"Espinaca fresca", qty:"1 funda", section:"Verduras y frutas", estCost:0.75 },
+    { name:"Aguacate", qty:"1 unidad", section:"Verduras y frutas", estCost:0.5 },
+    { name:"Aceite de oliva y limón", qty:"2 cda + 1 unidad", section:"Grasas y condimentos", estCost:0.5 },
+  ],
+  steps:["Hornear el camote en cubos con aceite de oliva.","Sellar el atún en sartén caliente 2 min por lado (o escurrir si es enlatado).","Servir con espinaca fresca y aguacate en láminas."],
+};
+const cenaFrejolPollo = {
+  id:"cena-frejol-pollo", name:"Fréjol con pollo desmechado y aguacate", mealType:"cena", prepMinutes:35, batchCook:true, servings:3,
+  macros:{ kcal:970, protein:64, carbs:115, fat:26 },
+  ingredients:[
+    { name:"Fréjol (canario o rojo)", qty:"1.5 tazas (uncooked)", section:"Granos y legumbres", estCost:2.0 },
+    { name:"Pechuga de pollo", qty:"1.25 lb", section:"Proteínas", estCost:4.0 },
+    { name:"Arroz integral", qty:"1 taza (uncooked)", section:"Granos y legumbres", estCost:1.2 },
+    { name:"Cebolla, ajo, tomate", qty:"1 unidad c/u", section:"Verduras y frutas", estCost:0.6 },
+    { name:"Aguacate", qty:"1 unidad", section:"Verduras y frutas", estCost:0.5 },
+    { name:"Comino, achiote, sal", qty:"al gusto", section:"Grasas y condimentos", estCost:0.3 },
+  ],
+  steps:["Cocinar el fréjol con cebolla, ajo y comino hasta ablandar.","Cocer y desmechar el pollo, integrarlo al guiso.","Servir con arroz integral y aguacate.","Porcionar en 3 tarrinas."],
+};
+const cenaResVerduras = {
+  id:"cena-res-saltado", name:"Salteado de res magra con verduras y arroz integral", mealType:"cena", prepMinutes:25, batchCook:true, servings:2,
+  macros:{ kcal:960, protein:63, carbs:105, fat:26 },
+  ingredients:[
+    { name:"Carne de res magra (lomo fino o posta)", qty:"1 lb", section:"Proteínas", estCost:4.0 },
+    { name:"Arroz integral", qty:"1 taza (uncooked)", section:"Granos y legumbres", estCost:1.2 },
+    { name:"Pimiento, cebolla, zanahoria", qty:"1 unidad c/u", section:"Verduras y frutas", estCost:0.8 },
+    { name:"Brócoli", qty:"0.5 lb", section:"Verduras y frutas", estCost:0.45 },
+    { name:"Aceite de coco o oliva", qty:"2 cda", section:"Grasas y condimentos", estCost:0.5 },
+    { name:"Salsa de soya (sin azúcar añadida) y ajo", qty:"al gusto", section:"Grasas y condimentos", estCost:0.4 },
+  ],
+  steps:["Cortar la carne en tiras y sellar a fuego alto.","Saltear las verduras al wok manteniéndolas crocantes.","Combinar con el arroz integral cocido."],
+};
+
+const WEEK_PLAN = [
+  { day:"lunes", label:"Lunes", breakfast:desayunoBatido, lunch:{ type:"mama" }, dinner:cenaPolloHorno, lucaJoins:false },
+  { day:"martes", label:"Martes", breakfast:desayunoTortilla, lunch:{ type:"mama" }, dinner:cenaPolloHorno, lucaJoins:true },
+  { day:"miercoles", label:"Miércoles", breakfast:desayunoYogur, lunch:{ type:"mama" }, dinner:cenaLentejas, lucaJoins:false },
+  { day:"jueves", label:"Jueves", breakfast:desayunoBatido, lunch:{ type:"mama" }, dinner:cenaAtunCamote, lucaJoins:false },
+  { day:"viernes", label:"Viernes", breakfast:desayunoTortilla, lunch:{ type:"mama" }, dinner:cenaFrejolPollo, lucaJoins:true },
+  { day:"sabado", label:"Sábado", breakfast:desayunoBatido, lunch:{ type:"recipe", recipe:almuerzoQuinoaPollo }, dinner:cenaResVerduras, lucaJoins:false },
+  { day:"domingo", label:"Domingo (día de compra y prep)", breakfast:desayunoYogur, lunch:{ type:"recipe", recipe:almuerzoAtunHuevo }, dinner:cenaLentejas, lucaJoins:false },
+];
+
+const SUNDAY_PREP_CHECKLIST = [
+  "Hacer la compra con la lista del carrito inteligente",
+  "Cocinar todas las cenas de batch cooking de la semana de una vez (pollo al horno, lentejas, fréjol) y porcionar en tarrinas: 3-4 días en refrigerador, el resto al congelador",
+  "Cocinar las bases de granos (quinoa, arroz integral) para toda la semana y refrigerar en un solo recipiente grande",
+  "Congelar fruta para los batidos: pelar y cortar en rodajas los plátanos (guineo) de todo el batch de desayunos y congelar en fundas individuales — batido más rápido en las mañanas y la fruta no se madura de más",
+  "Lavar y cortar verduras de hoja (espinaca, brócoli) y guardarlas listas para saltear o asar",
+  "Dejar porciones extra de cena etiquetadas para Luca (martes y viernes)",
+];
+const LUCA_PORTION_FACTOR = 0.55;
+
+const FOOD_DB = [
+  { id:"manzana", name:"Manzana", aliases:["apple"], unit:"1 unidad mediana", macros:{ kcal:95, protein:1, carbs:25, fat:0 } },
+  { id:"platano", name:"Plátano (guineo)", aliases:["banana","guineo"], unit:"1 unidad mediana", macros:{ kcal:105, protein:1, carbs:27, fat:0 } },
+  { id:"naranja", name:"Naranja", aliases:[], unit:"1 unidad", macros:{ kcal:62, protein:1, carbs:15, fat:0 } },
+  { id:"mandarina", name:"Mandarina", aliases:[], unit:"1 unidad", macros:{ kcal:47, protein:1, carbs:12, fat:0 } },
+  { id:"papaya", name:"Papaya", aliases:[], unit:"1 taza picada", macros:{ kcal:62, protein:1, carbs:16, fat:0 } },
+  { id:"pina", name:"Piña", aliases:["pina"], unit:"1 taza picada", macros:{ kcal:82, protein:1, carbs:22, fat:0 } },
+  { id:"fresas", name:"Fresas", aliases:["frutilla","frutillas"], unit:"1 taza", macros:{ kcal:49, protein:1, carbs:12, fat:1 } },
+  { id:"uvas", name:"Uvas", aliases:[], unit:"1 taza", macros:{ kcal:104, protein:1, carbs:27, fat:0 } },
+  { id:"pera", name:"Pera", aliases:[], unit:"1 unidad mediana", macros:{ kcal:101, protein:1, carbs:27, fat:0 } },
+  { id:"mango", name:"Mango", aliases:[], unit:"1 taza picado", macros:{ kcal:99, protein:1, carbs:25, fat:1 } },
+  { id:"sandia", name:"Sandía", aliases:[], unit:"1 taza picada", macros:{ kcal:46, protein:1, carbs:11, fat:0 } },
+  { id:"aguacate", name:"Aguacate", aliases:["palta"], unit:"1/2 unidad", macros:{ kcal:120, protein:1, carbs:6, fat:11 } },
+  { id:"huevo", name:"Huevo cocido", aliases:["huevo duro"], unit:"1 unidad", macros:{ kcal:78, protein:6, carbs:1, fat:5 } },
+  { id:"claras", name:"Claras de huevo", aliases:[], unit:"2 unidades", macros:{ kcal:34, protein:7, carbs:1, fat:0 } },
+  { id:"pollo", name:"Pechuga de pollo cocida", aliases:[], unit:"100 g", macros:{ kcal:165, protein:31, carbs:0, fat:4 } },
+  { id:"atun", name:"Atún en agua", aliases:[], unit:"1 lata escurrida", macros:{ kcal:128, protein:28, carbs:0, fat:1 } },
+  { id:"yogur", name:"Yogur griego natural", aliases:[], unit:"200 g", macros:{ kcal:130, protein:20, carbs:8, fat:2 } },
+  { id:"queso", name:"Queso fresco", aliases:[], unit:"1 rebanada (30 g)", macros:{ kcal:75, protein:6, carbs:1, fat:5 } },
+  { id:"mani", name:"Maní natural", aliases:["mani"], unit:"1 puñado (30 g)", macros:{ kcal:170, protein:7, carbs:6, fat:14 } },
+  { id:"almendras", name:"Almendras", aliases:[], unit:"1 puñado (28 g)", macros:{ kcal:164, protein:6, carbs:6, fat:14 } },
+  { id:"pan-integral", name:"Pan integral", aliases:[], unit:"1 rebanada", macros:{ kcal:80, protein:4, carbs:14, fat:1 } },
+  { id:"tostadas-arroz", name:"Tostadas de arroz", aliases:[], unit:"2 unidades", macros:{ kcal:70, protein:2, carbs:15, fat:1 } },
+  { id:"avena", name:"Avena cocida", aliases:[], unit:"1 taza", macros:{ kcal:166, protein:6, carbs:28, fat:4 } },
+  { id:"arroz-integral", name:"Arroz integral cocido", aliases:[], unit:"1 taza", macros:{ kcal:216, protein:5, carbs:45, fat:2 } },
+  { id:"quinoa", name:"Quinoa cocida", aliases:[], unit:"1 taza", macros:{ kcal:222, protein:8, carbs:39, fat:4 } },
+  { id:"camote", name:"Camote cocido", aliases:[], unit:"1 unidad mediana", macros:{ kcal:103, protein:2, carbs:24, fat:0 } },
+  { id:"papa", name:"Papa cocida", aliases:[], unit:"1 unidad mediana", macros:{ kcal:161, protein:4, carbs:37, fat:0 } },
+  { id:"proteina-polvo", name:"Proteína en polvo (whey)", aliases:["scoop de proteina"], unit:"1 scoop (30 g)", macros:{ kcal:120, protein:24, carbs:3, fat:2 } },
+  { id:"leche", name:"Leche deslactosada", aliases:[], unit:"1 vaso (250 ml)", macros:{ kcal:122, protein:8, carbs:12, fat:5 } },
+  { id:"cafe", name:"Café negro (sin azúcar)", aliases:[], unit:"1 taza", macros:{ kcal:2, protein:0, carbs:0, fat:0 } },
+  { id:"brocoli", name:"Brócoli cocido", aliases:[], unit:"1 taza", macros:{ kcal:55, protein:4, carbs:11, fat:1 } },
+  { id:"espinaca", name:"Espinaca cocida", aliases:[], unit:"1 taza", macros:{ kcal:41, protein:5, carbs:7, fat:1 } },
+  { id:"zanahoria", name:"Zanahoria", aliases:[], unit:"1 unidad", macros:{ kcal:25, protein:1, carbs:6, fat:0 } },
+  { id:"tomate", name:"Tomate riñón", aliases:["jitomate"], unit:"1 unidad", macros:{ kcal:22, protein:1, carbs:5, fat:0 } },
+  { id:"pepino", name:"Pepino", aliases:[], unit:"1 unidad", macros:{ kcal:45, protein:2, carbs:11, fat:0 } },
+  { id:"lechuga", name:"Lechuga", aliases:[], unit:"1 taza", macros:{ kcal:5, protein:1, carbs:1, fat:0 } },
+  { id:"pimiento", name:"Pimiento", aliases:["pimenton"], unit:"1 unidad", macros:{ kcal:24, protein:1, carbs:6, fat:0 } },
+  { id:"cebolla", name:"Cebolla", aliases:[], unit:"1/2 unidad", macros:{ kcal:22, protein:1, carbs:5, fat:0 } },
+  { id:"coliflor", name:"Coliflor cocida", aliases:[], unit:"1 taza", macros:{ kcal:29, protein:2, carbs:5, fat:0 } },
+  { id:"champinones", name:"Champiñones", aliases:["hongos"], unit:"1 taza", macros:{ kcal:15, protein:2, carbs:2, fat:0 } },
+  { id:"lentejas", name:"Lentejas cocidas", aliases:[], unit:"1 taza", macros:{ kcal:230, protein:18, carbs:40, fat:1 } },
+  { id:"frejol", name:"Fréjol cocido", aliases:["frijol","poroto"], unit:"1 taza", macros:{ kcal:245, protein:15, carbs:45, fat:1 } },
+  { id:"garbanzos", name:"Garbanzos cocidos", aliases:[], unit:"1 taza", macros:{ kcal:269, protein:15, carbs:45, fat:4 } },
+  { id:"habas", name:"Habas cocidas", aliases:[], unit:"1 taza", macros:{ kcal:187, protein:13, carbs:33, fat:1 } },
+  { id:"res", name:"Carne de res magra cocida", aliases:["carne de res"], unit:"100 g", macros:{ kcal:205, protein:27, carbs:0, fat:10 } },
+  { id:"cerdo", name:"Lomo de cerdo cocido", aliases:["chancho"], unit:"100 g", macros:{ kcal:180, protein:26, carbs:0, fat:7 } },
+  { id:"pescado", name:"Pescado blanco (tilapia/corvina)", aliases:["tilapia","corvina"], unit:"100 g", macros:{ kcal:128, protein:26, carbs:0, fat:3 } },
+  { id:"camaron", name:"Camarón cocido", aliases:[], unit:"100 g", macros:{ kcal:99, protein:24, carbs:0, fat:0 } },
+  { id:"pavo", name:"Pavo cocido", aliases:[], unit:"100 g", macros:{ kcal:135, protein:25, carbs:0, fat:3 } },
+  { id:"tofu", name:"Tofu", aliases:[], unit:"100 g", macros:{ kcal:76, protein:8, carbs:2, fat:5 } },
+  { id:"leche-entera", name:"Leche entera", aliases:[], unit:"1 vaso (250 ml)", macros:{ kcal:149, protein:8, carbs:12, fat:8 } },
+  { id:"requeson", name:"Requesón (cottage cheese)", aliases:[], unit:"1 taza", macros:{ kcal:206, protein:28, carbs:6, fat:9 } },
+  { id:"nueces", name:"Nueces", aliases:[], unit:"1 puñado (28 g)", macros:{ kcal:185, protein:4, carbs:4, fat:18 } },
+  { id:"chia", name:"Semillas de chía", aliases:[], unit:"1 cda (15 g)", macros:{ kcal:69, protein:2, carbs:6, fat:4 } },
+  { id:"girasol", name:"Semillas de girasol", aliases:[], unit:"1 puñado (28 g)", macros:{ kcal:165, protein:6, carbs:6, fat:14 } },
+  { id:"coco", name:"Coco rallado", aliases:[], unit:"30 g", macros:{ kcal:100, protein:1, carbs:4, fat:9 } },
+  { id:"yuca", name:"Yuca cocida", aliases:["mandioca"], unit:"1 taza", macros:{ kcal:191, protein:2, carbs:45, fat:0 } },
+  { id:"choclo", name:"Choclo (maíz) cocido", aliases:["maiz","elote"], unit:"1 unidad", macros:{ kcal:123, protein:5, carbs:27, fat:2 } },
+  { id:"melloco", name:"Melloco cocido", aliases:[], unit:"1 taza", macros:{ kcal:90, protein:2, carbs:20, fat:0 } },
+  { id:"aceite-oliva", name:"Aceite de oliva", aliases:[], unit:"1 cda", macros:{ kcal:119, protein:0, carbs:0, fat:14 } },
+  { id:"kiwi", name:"Kiwi", aliases:[], unit:"1 unidad", macros:{ kcal:42, protein:1, carbs:10, fat:0 } },
+  { id:"durazno", name:"Durazno", aliases:[], unit:"1 unidad", macros:{ kcal:59, protein:1, carbs:14, fat:0 } },
+  { id:"maracuya", name:"Maracuyá", aliases:[], unit:"1 unidad", macros:{ kcal:17, protein:0, carbs:4, fat:0 } },
+  { id:"taxo", name:"Taxo", aliases:[], unit:"1 unidad", macros:{ kcal:12, protein:0, carbs:3, fat:0 } },
+  { id:"mora", name:"Mora", aliases:[], unit:"1 taza", macros:{ kcal:62, protein:2, carbs:14, fat:1 } },
+  { id:"guanabana", name:"Guanábana", aliases:[], unit:"1 taza picada", macros:{ kcal:148, protein:2, carbs:38, fat:1 } },
+  { id:"granadilla", name:"Granadilla", aliases:[], unit:"1 unidad", macros:{ kcal:20, protein:1, carbs:5, fat:0 } },
+];
+
+function normalizeFoodQuery(s) {
+  return s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+}
+function searchFoods(query, limit = 6) {
+  const q = normalizeFoodQuery(query);
+  if (!q) return [];
+  const scored = FOOD_DB.map(food => {
+    const haystacks = [normalizeFoodQuery(food.name), ...food.aliases.map(normalizeFoodQuery)];
+    let score = -1;
+    for (const h of haystacks) {
+      if (h === q) score = Math.max(score, 100);
+      else if (h.startsWith(q)) score = Math.max(score, 80);
+      else if (h.includes(q)) score = Math.max(score, 50);
+    }
+    return { food, score };
+  }).filter(s => s.score > 0);
+  scored.sort((a, b) => b.score - a.score);
+  return scored.slice(0, limit).map(s => s.food);
+}
+
+const MOM_LUNCH_DEFAULTS = {
+  liviano:   { kcal:400, protein:25, carbs:35, fat:15 },
+  normal:    { kcal:650, protein:38, carbs:55, fat:22 },
+  abundante: { kcal:900, protein:50, carbs:80, fat:30 },
+};
+
+const NUTRI_WEEKDAY = ["domingo","lunes","martes","miercoles","jueves","viernes","sabado"];
+function nutriPlanForDate(date) {
+  return WEEK_PLAN.find(p => p.day === NUTRI_WEEKDAY[date.getDay()]);
+}
+
+function sumMacros(list) {
+  return list.reduce((acc, m) => ({
+    kcal: acc.kcal + (m?.kcal || 0), protein: acc.protein + (m?.protein || 0),
+    carbs: acc.carbs + (m?.carbs || 0), fat: acc.fat + (m?.fat || 0),
+  }), { kcal:0, protein:0, carbs:0, fat:0 });
+}
+
+// Mifflin-St Jeor, igual que JAYNUTRI.
+function calcNutriTargets(profile) {
+  const { weightKg, heightCm, age, trainingDaysPerWeek, deficitPct } = profile;
+  const bmr = 10 * weightKg + 6.25 * heightCm - 5 * age + 5;
+  const activityFactor = trainingDaysPerWeek >= 6 ? 1.725 : trainingDaysPerWeek >= 3 ? 1.55 : 1.375;
+  const tdee = bmr * activityFactor;
+  const kcal = tdee * (1 - deficitPct / 100);
+  const protein = 2.0 * weightKg;
+  const fat = (kcal * 0.25) / 9;
+  const carbs = Math.max(0, (kcal - protein * 4 - fat * 9) / 4);
+  return { kcal: Math.round(kcal), protein: Math.round(protein), carbs: Math.round(carbs), fat: Math.round(fat) };
+}
+
+function nutriMacrosForDay(plan, log) {
+  if (!plan || !log) return { kcal:0, protein:0, carbs:0, fat:0 };
+  const parts = [];
+  if (log.breakfastEaten) parts.push(log.breakfastOverride || plan.breakfast.macros);
+  if (log.lunchEaten) {
+    if (log.momLunch) parts.push(log.momLunch.macros);
+    else if (plan.lunch.type === "recipe") parts.push(log.lunchOverride || plan.lunch.recipe.macros);
+  }
+  if (log.dinnerEaten) parts.push(log.dinnerOverride || plan.dinner.macros);
+  (log.extras || []).forEach(e => parts.push(e.macros));
+  return sumMacros(parts);
+}
+
+// ─── Punto de integración: calorías quemadas del entrenamiento de hoy ─────────
+// MET aproximado por tipo de sesión de Voltra; kcal/min = MET × 3.5 × kg / 200.
+const TRAINING_MET = { STRENGTH: 6, FITXR: 8 };
+function parseDurationMinutes(str) {
+  const m = String(str).match(/(\d+)\s*min/);
+  return m ? parseInt(m[1]) : 0;
+}
+function estimateBurnedKcal(day, pct, weightKg) {
+  const met = TRAINING_MET[day.type];
+  if (!met) return 0;
+  const minutes = parseDurationMinutes(day.duration) * (pct / 100);
+  return Math.round(met * 3.5 * weightKg / 200 * minutes);
+}
+
+const DEFAULT_NUTRI_PROFILE = { weightKg:70, heightCm:170, age:35, trainingDaysPerWeek:5, deficitPct:15 };
+const NUTRI_ACCENT = "#fbbf24";
+const NUTRI_EMPTY_LOG = { breakfastEaten:false, lunchEaten:false, dinnerEaten:false, extras:[] };
+
+function NutriProfileField({ label, value, onChange, step, min }) {
+  return (
+    <div style={{ display:"flex", flexDirection:"column", gap:3 }}>
+      <span style={{ fontSize:9, color:"#8a8f98", letterSpacing:"0.05em" }}>{label}</span>
+      <input type="number" value={value} step={step || 1} min={min ?? 0}
+        onChange={e => onChange(parseFloat(e.target.value) || 0)}
+        style={{ width:"100%", fontFamily:"'DM Mono',monospace", fontSize:12, fontWeight:600, color:"#f3f4f6", background:"rgba(255,255,255,0.05)", border:"1px solid rgba(255,255,255,0.1)", borderRadius:6, padding:"6px 8px" }}/>
+    </div>
+  );
+}
+
+function NutriMacroBar({ label, value, target, color }) {
+  const pct = target > 0 ? Math.min(100, Math.round(value / target * 100)) : 0;
+  return (
+    <div>
+      <div style={{ display:"flex", justifyContent:"space-between", fontSize:10, marginBottom:3 }}>
+        <span style={{ color:"#9ca3af" }}>{label}</span>
+        <span style={{ fontFamily:"'DM Mono',monospace", color }}>{Math.round(value)}/{target}g</span>
+      </div>
+      <div style={{ height:5, background:"rgba(255,255,255,0.06)", borderRadius:99, overflow:"hidden" }}>
+        <div style={{ height:"100%", width:`${pct}%`, background:color, borderRadius:99, transition:"width 0.3s" }}/>
+      </div>
+    </div>
+  );
+}
+
+function NutriMealRow({ name, note, kcal, isDone, onToggle, c }) {
+  return (
+    <div onClick={onToggle} style={{
+      display:"grid", gridTemplateColumns:"1fr auto auto", alignItems:"center", gap:10,
+      padding:"12px 14px", marginBottom:8, cursor:"pointer",
+      background: isDone ? "rgba(255,255,255,0.02)" : "rgba(255,255,255,0.04)",
+      border:`1px solid ${isDone ? "rgba(255,255,255,0.05)" : c+"30"}`,
+      borderLeft:`3px solid ${isDone ? "rgba(255,255,255,0.08)" : c}`,
+      borderRadius:10, opacity: isDone ? 0.5 : 1, transition:"all 0.15s",
+    }}>
+      <div>
+        <div style={{ fontSize:14, fontWeight:600, color: isDone ? "#6b7280" : "#f3f4f6", textDecoration: isDone ? "line-through" : "none" }}>{name}</div>
+        {note && <div style={{ fontSize:11, color:"#8a8f98", marginTop:2 }}>{note}</div>}
+      </div>
+      <div style={{ fontFamily:"'DM Mono',monospace", fontSize:12, color: isDone ? "#4b5563" : c, fontWeight:700 }}>{kcal} kcal</div>
+      <CompleteCheckbox isDone={isDone} dot={c} onToggle={onToggle}/>
+    </div>
+  );
+}
+
+function MomLunchLogger({ log, updateLog, c }) {
+  const [custom, setCustom] = useState({ kcal:600, protein:35, carbs:50, fat:20 });
+  const isDone = !!log.lunchEaten && !!log.momLunch;
+
+  const choose = (portion) => {
+    const macros = portion === "personalizado" ? custom : MOM_LUNCH_DEFAULTS[portion];
+    updateLog({ lunchEaten:true, momLunch:{ description:"Almuerzo de mamá", portion, macros } });
+  };
+  const unmark = () => updateLog({ lunchEaten:false, momLunch:undefined });
+
+  if (isDone) {
+    return <NutriMealRow name={`Almuerzo de mamá (${log.momLunch.portion})`} note="Toca para deshacer" kcal={log.momLunch.macros.kcal} isDone={true} onToggle={unmark} c={c}/>;
+  }
+  return (
+    <div style={{ padding:"12px 14px", marginBottom:8, borderRadius:10, background:"rgba(255,255,255,0.04)", border:`1px solid ${c}30`, borderLeft:`3px solid ${c}` }}>
+      <div style={{ fontSize:14, fontWeight:600, color:"#f3f4f6", marginBottom:8 }}>Almuerzo en casa de mamá</div>
+      <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
+        {["liviano","normal","abundante"].map(p => (
+          <button key={p} onClick={() => choose(p)} style={{
+            padding:"6px 12px", borderRadius:7, fontSize:11, fontWeight:600, cursor:"pointer",
+            background:"rgba(255,255,255,0.05)", border:`1px solid ${c}40`, color:c,
+          }}>{p} · {MOM_LUNCH_DEFAULTS[p].kcal} kcal</button>
+        ))}
+      </div>
+      <div style={{ display:"flex", gap:6, alignItems:"center", marginTop:8 }}>
+        {["kcal","protein","carbs","fat"].map(k => (
+          <input key={k} type="number" value={custom[k]} onChange={e => setCustom({ ...custom, [k]: parseFloat(e.target.value) || 0 })}
+            style={{ width:52, fontFamily:"'DM Mono',monospace", fontSize:10, color:"#e5e7eb", background:"rgba(255,255,255,0.05)", border:"1px solid rgba(255,255,255,0.1)", borderRadius:5, padding:"4px 5px", textAlign:"center" }}/>
+        ))}
+        <button onClick={() => choose("personalizado")} style={{ padding:"6px 10px", borderRadius:7, fontSize:11, fontWeight:600, cursor:"pointer", background:`${c}18`, border:`1px solid ${c}50`, color:c }}>Personalizado</button>
+      </div>
+    </div>
+  );
+}
+
+function SnackLogger({ log, updateLog, c }) {
+  const [query, setQuery] = useState("");
+  const results = query.trim() ? searchFoods(query) : [];
+
+  const addExtra = (food) => {
+    const entry = { id:`${food.id}-${Date.now()}`, name:food.name, qtyLabel:food.unit, macros:food.macros };
+    updateLog({ extras:[...(log.extras || []), entry] });
+    setQuery("");
+  };
+  const removeExtra = (id) => updateLog({ extras:(log.extras || []).filter(e => e.id !== id) });
+
+  return (
+    <div>
+      <div style={{ position:"relative" }}>
+        <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Buscar algo que comiste de más…"
+          style={{ width:"100%", fontSize:13, color:"#f3f4f6", background:"rgba(255,255,255,0.05)", border:`1px solid ${c}30`, borderRadius:8, padding:"9px 12px", boxSizing:"border-box" }}/>
+        {results.length > 0 && (
+          <div style={{ position:"absolute", top:"100%", left:0, right:0, marginTop:4, background:"#0a0a0a", border:"1px solid rgba(255,255,255,0.1)", borderRadius:8, zIndex:10, overflow:"hidden" }}>
+            {results.map(food => (
+              <div key={food.id} onClick={() => addExtra(food)} style={{ padding:"8px 12px", cursor:"pointer", display:"flex", justifyContent:"space-between", borderBottom:"1px solid rgba(255,255,255,0.05)" }}>
+                <span style={{ fontSize:12, color:"#e5e7eb" }}>{food.name} <span style={{ color:"#6b7280" }}>· {food.unit}</span></span>
+                <span style={{ fontFamily:"'DM Mono',monospace", fontSize:11, color:c }}>{food.macros.kcal} kcal</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+      {(log.extras || []).length > 0 && (
+        <div style={{ display:"flex", flexDirection:"column", gap:4, marginTop:8 }}>
+          {log.extras.map(e => (
+            <div key={e.id} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", fontSize:12, padding:"6px 10px", background:"rgba(255,255,255,0.02)", borderRadius:6 }}>
+              <span style={{ color:"#d1d5db" }}>{e.name} <span style={{ color:"#6b7280" }}>· {e.qtyLabel}</span></span>
+              <div style={{ display:"flex", gap:8, alignItems:"center" }}>
+                <span style={{ fontFamily:"'DM Mono',monospace", color:c }}>{e.macros.kcal} kcal</span>
+                <span onClick={() => removeExtra(e.id)} style={{ cursor:"pointer", color:"#6b7280", fontSize:13 }}>✕</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function NutriView({ profile, setProfile, logs, setLogs, burnedKcalToday, nutriCompletedDates, setNutriCompletedDates }) {
+  const todayIso = isoDate(new Date());
+  const plan = nutriPlanForDate(new Date());
+  const log = logs[todayIso] || NUTRI_EMPTY_LOG;
+  const c = NUTRI_ACCENT;
+
+  const updateLog = useCallback((patch) => {
+    setLogs(prev => {
+      const nextLog = { ...(prev[todayIso] || NUTRI_EMPTY_LOG), ...patch };
+      const next = { ...prev, [todayIso]: nextLog };
+      try { localStorage.setItem("voltra-nutri-logs", JSON.stringify(next)); } catch {}
+      return next;
+    });
+  }, [setLogs, todayIso]);
+
+  const allMealsEaten = log.breakfastEaten && log.lunchEaten && log.dinnerEaten;
+  useEffect(() => {
+    if (!allMealsEaten) return;
+    setNutriCompletedDates(prev => {
+      if (prev.includes(todayIso)) return prev;
+      const next = [...prev, todayIso];
+      try { localStorage.setItem("voltra-nutri-completed-dates", JSON.stringify(next)); } catch {}
+      return next;
+    });
+  }, [allMealsEaten, todayIso, setNutriCompletedDates]);
+
+  const targets = calcNutriTargets(profile);
+  const adjustedKcalTarget = targets.kcal + burnedKcalToday;
+  const consumed = nutriMacrosForDay(plan, log);
+  const remaining = Math.max(0, adjustedKcalTarget - consumed.kcal);
+  const pct = adjustedKcalTarget > 0 ? Math.min(100, Math.round(consumed.kcal / adjustedKcalTarget * 100)) : 0;
+  const reached = consumed.kcal >= adjustedKcalTarget;
+  const streak = computeSimpleStreak(new Set(nutriCompletedDates));
+
+  const setProfileField = (field) => (value) => {
+    setProfile(prev => {
+      const next = { ...prev, [field]: value };
+      try { localStorage.setItem("voltra-nutri-profile", JSON.stringify(next)); } catch {}
+      return next;
+    });
+  };
+
+  return (
+    <div style={{ maxWidth:560, margin:"0 auto" }}>
+      <div style={{ background:`${c}10`, border:`1px solid ${c}30`, borderRadius:14, padding:"18px 18px 16px", marginBottom:16 }}>
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:10 }}>
+          <div>
+            <div style={{ fontSize:9, fontWeight:700, letterSpacing:"0.12em", color:c }}>NUTRICIÓN · {plan.label.toUpperCase()}</div>
+            <div style={{ fontSize:20, fontWeight:700, color:"#f3f4f6", marginTop:3 }}>
+              {reached ? `${Math.round(consumed.kcal)} kcal hoy ✓` : `Faltan ${remaining} kcal`}
+            </div>
+          </div>
+          {streak > 0 && (
+            <div style={{ display:"flex", alignItems:"center", gap:4, background:`${c}15`, border:`1px solid ${c}40`, borderRadius:6, padding:"4px 9px" }}>
+              <span style={{ fontSize:12 }}>🥑</span>
+              <span style={{ fontFamily:"'DM Mono',monospace", fontSize:11, color:c, fontWeight:700 }}>{streak}</span>
+            </div>
+          )}
+        </div>
+        {burnedKcalToday > 0 && (
+          <div style={{ fontSize:11, color:"#9ca3af", marginBottom:10 }}>
+            + {burnedKcalToday} kcal quemadas hoy con tu entreno 🔥 — se suman a tu objetivo automáticamente.
+          </div>
+        )}
+        <div style={{ height:6, background:"rgba(255,255,255,0.08)", borderRadius:99, overflow:"hidden", marginBottom:12 }}>
+          <div style={{ height:"100%", width:`${pct}%`, background: reached ? "#39ff88" : c, borderRadius:99, transition:"width 0.3s" }}/>
+        </div>
+        <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+          <NutriMacroBar label="Proteína" value={consumed.protein} target={targets.protein} color="#39ff88"/>
+          <NutriMacroBar label="Carbos" value={consumed.carbs} target={targets.carbs} color="#a78bfa"/>
+          <NutriMacroBar label="Grasa" value={consumed.fat} target={targets.fat} color="#fb923c"/>
+        </div>
+      </div>
+
+      <div style={{ fontSize:9, fontWeight:700, letterSpacing:"0.12em", color:"#6b7280", marginBottom:6, paddingLeft:2 }}>HOY</div>
+      <NutriMealRow name={plan.breakfast.name} note={`${plan.breakfast.prepMinutes} min`} kcal={(log.breakfastOverride || plan.breakfast.macros).kcal} isDone={log.breakfastEaten} onToggle={() => updateLog({ breakfastEaten: !log.breakfastEaten })} c={c}/>
+      {plan.lunch.type === "mama" ? (
+        <MomLunchLogger log={log} updateLog={updateLog} c={c}/>
+      ) : (
+        <NutriMealRow name={plan.lunch.recipe.name} note={`${plan.lunch.recipe.prepMinutes} min`} kcal={(log.lunchOverride || plan.lunch.recipe.macros).kcal} isDone={log.lunchEaten} onToggle={() => updateLog({ lunchEaten: !log.lunchEaten })} c={c}/>
+      )}
+      <NutriMealRow name={plan.dinner.name} note={`${plan.dinner.prepMinutes} min${plan.dinner.batchCook ? " · batch cooking" : ""}`} kcal={(log.dinnerOverride || plan.dinner.macros).kcal} isDone={log.dinnerEaten} onToggle={() => updateLog({ dinnerEaten: !log.dinnerEaten })} c={c}/>
+
+      <div style={{ fontSize:9, fontWeight:700, letterSpacing:"0.12em", color:"#6b7280", marginTop:14, marginBottom:6, paddingLeft:2 }}>EXTRAS</div>
+      <SnackLogger log={log} updateLog={updateLog} c={c}/>
+
+      <div style={{ fontSize:9, fontWeight:700, letterSpacing:"0.12em", color:"#6b7280", marginTop:16, marginBottom:6, paddingLeft:2 }}>TU PERFIL</div>
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(3, 1fr)", gap:8, background:"rgba(255,255,255,0.02)", border:"1px solid rgba(255,255,255,0.07)", borderRadius:10, padding:12 }}>
+        <NutriProfileField label="PESO (KG)" value={profile.weightKg} onChange={setProfileField("weightKg")} step={0.5}/>
+        <NutriProfileField label="ALTURA (CM)" value={profile.heightCm} onChange={setProfileField("heightCm")}/>
+        <NutriProfileField label="EDAD" value={profile.age} onChange={setProfileField("age")}/>
+        <NutriProfileField label="DÍAS ENTRENO/SEM" value={profile.trainingDaysPerWeek} onChange={setProfileField("trainingDaysPerWeek")} min={0}/>
+        <NutriProfileField label="DÉFICIT %" value={profile.deficitPct} onChange={setProfileField("deficitPct")}/>
+        <div style={{ display:"flex", flexDirection:"column", justifyContent:"flex-end" }}>
+          <span style={{ fontSize:9, color:"#8a8f98" }}>OBJETIVO BASE</span>
+          <span style={{ fontFamily:"'DM Mono',monospace", fontSize:12, color:c, fontWeight:700 }}>{targets.kcal} kcal</span>
+        </div>
+      </div>
+
+      {plan.lucaJoins && (
+        <div style={{ fontSize:10, color:"#6b7280", marginTop:12, textAlign:"center" }}>Hoy Luca se une a la cena, con porción infantil (~{Math.round(LUCA_PORTION_FACTOR*100)}%).</div>
+      )}
+
+      {plan.day === "domingo" && (
+        <div style={{ marginTop:16, background:"rgba(255,255,255,0.02)", border:`1px solid ${c}25`, borderRadius:10, padding:"12px 14px" }}>
+          <div style={{ fontSize:9, fontWeight:700, letterSpacing:"0.12em", color:c, marginBottom:8 }}>DOMINGO · COMPRA Y PREP</div>
+          <div style={{ display:"flex", flexDirection:"column", gap:5 }}>
+            {SUNDAY_PREP_CHECKLIST.map((item, i) => (
+              <div key={i} style={{ fontSize:11, color:"#9ca3af", lineHeight:1.5, display:"flex", gap:6 }}>
+                <span style={{ color:c }}>·</span>{item}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── App ──────────────────────────────────────────────────────────────────────
 export default function App() {
   const [wk, setWk]       = useState(initWeek());
@@ -1332,6 +1897,24 @@ export default function App() {
       const saved = localStorage.getItem("luca-training-done");
       return saved ? JSON.parse(saved) : {};
     } catch { return {}; }
+  });
+  const [nutriProfile, setNutriProfile] = useState(() => {
+    try {
+      const saved = localStorage.getItem("voltra-nutri-profile");
+      return saved ? JSON.parse(saved) : DEFAULT_NUTRI_PROFILE;
+    } catch { return DEFAULT_NUTRI_PROFILE; }
+  });
+  const [nutriLogs, setNutriLogs] = useState(() => {
+    try {
+      const saved = localStorage.getItem("voltra-nutri-logs");
+      return saved ? JSON.parse(saved) : {};
+    } catch { return {}; }
+  });
+  const [nutriCompletedDates, setNutriCompletedDates] = useState(() => {
+    try {
+      const saved = localStorage.getItem("voltra-nutri-completed-dates");
+      return saved ? JSON.parse(saved) : [];
+    } catch { return []; }
   });
 
   const startTimer = useCallback((ex) => {
@@ -1380,6 +1963,11 @@ export default function App() {
   }, [di, day.type, total, pct]);
 
   const streak = computeStreak(new Set(completedDates));
+
+  // Today's estimated burned kcal, fed automatically into the nutrition tab's target.
+  const burnedKcalToday = (di === todayDayIndex() && day.type !== "REST")
+    ? estimateBurnedKcal(day, pct, nutriProfile.weightKg)
+    : 0;
 
   const gd = (i) => { setDi(i); setView("day"); setOpen(null); setShowMini(false); setTlView(false); };
   const gw = (i) => { setWk(i); setDi(0); setView("week"); setOpen(null); setShowMini(false); setTlView(false); };
@@ -1485,6 +2073,14 @@ export default function App() {
               fontFamily:"'DM Sans',sans-serif", fontWeight:600,
               transition:"all 0.15s",
             }}>🧒 Luca</button>
+            <button onClick={()=>setView("nutri")} title="Nutrición" style={{
+              background:view==="nutri"?"rgba(251,191,36,0.12)":"transparent",
+              border:`1px solid ${view==="nutri"?"rgba(251,191,36,0.4)":"rgba(255,255,255,0.08)"}`,
+              color:view==="nutri"?"#fbbf24":"#6b7280",
+              borderRadius:6, padding:"5px 12px", fontSize:11, cursor:"pointer",
+              fontFamily:"'DM Sans',sans-serif", fontWeight:600,
+              transition:"all 0.15s",
+            }}>🥗 Nutrición</button>
           </div>
         </div>
         {view==="day" && day.type!=="REST" && total>0 && (
@@ -1502,6 +2098,8 @@ export default function App() {
       <div style={{ width:"100%", maxWidth:1440, margin:"0 auto", padding:"14px 20px 56px", boxSizing:"border-box" }}>
         {view==="luca" ? (
           <LucaView done={lucaDone} setDone={setLucaDone}/>
+        ) : view==="nutri" ? (
+          <NutriView profile={nutriProfile} setProfile={setNutriProfile} logs={nutriLogs} setLogs={setNutriLogs} burnedKcalToday={burnedKcalToday} nutriCompletedDates={nutriCompletedDates} setNutriCompletedDates={setNutriCompletedDates}/>
         ) : (
         <div className="jay-shell">
 
