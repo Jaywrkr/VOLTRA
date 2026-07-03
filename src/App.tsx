@@ -1,5 +1,22 @@
 // @ts-nocheck
 import { useState, useCallback, useEffect, useRef, useMemo } from "react";
+import { setSyncEnabled, queueSync, pullSync, authStatus, authLogin, authLogout } from "./sync";
+
+// Every persisted key in the app goes through these two — localStorage stays
+// the instant local source of truth, and persist() also queues a debounced
+// cloud sync (no-op until a device has authenticated against /api).
+function loadLocal(key, fallback) {
+  try {
+    const saved = localStorage.getItem(key);
+    return saved ? JSON.parse(saved) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+function persist(key, value) {
+  try { localStorage.setItem(key, JSON.stringify(value)); } catch {}
+  queueSync(key, value);
+}
 
 // Equipment: 10kg | 6.8kg (15lbs) | 4.5kg (10lbs) | BW
 // NO exercises using two of the same KB weight simultaneously
@@ -837,7 +854,7 @@ function TimelineView({ day, wk, done, setDone, onStartTimer, weights, setWeight
   const toggle = useCallback((key) => {
     setDone(p => {
       const next = { ...p, [key]: !p[key] };
-      try { localStorage.setItem("jay-training-done", JSON.stringify(next)); } catch {}
+      persist("jay-training-done", next);
       return next;
     });
   }, [setDone]);
@@ -1276,7 +1293,7 @@ function LucaMissionPanel({ done, setDone, missionChoice, setMissionChoice, part
   const toggle = useCallback((key) => {
     setDone(p => {
       const next = { ...p, [key]: !p[key] };
-      try { localStorage.setItem("luca-training-done", JSON.stringify(next)); } catch {}
+      persist("luca-training-done", next);
       return next;
     });
   }, [setDone]);
@@ -1284,7 +1301,7 @@ function LucaMissionPanel({ done, setDone, missionChoice, setMissionChoice, part
   const pickMission = (idx) => {
     setMissionChoice(prev => {
       const next = { ...prev, [todayKey]: idx };
-      try { localStorage.setItem("voltra-luca-mission-choice", JSON.stringify(next)); } catch {}
+      persist("voltra-luca-mission-choice", next);
       return next;
     });
   };
@@ -1293,7 +1310,7 @@ function LucaMissionPanel({ done, setDone, missionChoice, setMissionChoice, part
     setParticipants(prev => {
       const dayPrev = prev[todayKey] || {};
       const next = { ...prev, [todayKey]: { ...dayPrev, [key]: !dayPrev[key] } };
-      try { localStorage.setItem("voltra-luca-participants", JSON.stringify(next)); } catch {}
+      persist("voltra-luca-participants", next);
       return next;
     });
   };
@@ -2092,11 +2109,11 @@ function ShoppingCartView({ budget, setBudget, checked, setChecked, c }) {
 
   const toggle = (key) => setChecked(prev => {
     const next = { ...prev, [key]: !prev[key] };
-    try { localStorage.setItem("voltra-nutri-shopping-checked", JSON.stringify(next)); } catch {}
+    persist("voltra-nutri-shopping-checked", next);
     return next;
   });
   const onBudgetChange = (v) => setBudget(() => {
-    try { localStorage.setItem("voltra-nutri-budget", JSON.stringify(v)); } catch {}
+    persist("voltra-nutri-budget", v);
     return v;
   });
 
@@ -2237,7 +2254,7 @@ function ReminderSection({ reminderSettings, setReminderSettings, c }) {
   const updateSettings = (patch) => {
     setReminderSettings(prev => {
       const next = { ...prev, ...patch };
-      try { localStorage.setItem("voltra-reminder-settings", JSON.stringify(next)); } catch {}
+      persist("voltra-reminder-settings", next);
       return next;
     });
   };
@@ -2284,18 +2301,71 @@ function ReminderSection({ reminderSettings, setReminderSettings, c }) {
   );
 }
 
-function PerfilView({ profile, setProfile, targets, c, protein, setProtein, reminderSettings, setReminderSettings }) {
+// ─── Sincronización en la nube ──────────────────────────────────────────────────
+// Opt-in: without a configured backend (no Postgres/PIN set on the Vercel
+// deployment) this section quietly says so and the app keeps working exactly
+// as it does today, local-only.
+function SyncSection({ cloudSync, connectSync, disconnectSync, c }) {
+  const [pin, setPin] = useState("");
+  const [error, setError] = useState(null);
+  const [connecting, setConnecting] = useState(false);
+
+  const submit = async () => {
+    setConnecting(true);
+    setError(null);
+    const result = await connectSync(pin);
+    setConnecting(false);
+    if (!result.ok) setError(result.error);
+    else setPin("");
+  };
+
+  return (
+    <div>
+      <div style={{ fontSize:9, fontWeight:700, letterSpacing:"0.12em", color:"#6b7280", marginBottom:6, paddingLeft:2 }}>SINCRONIZACIÓN EN LA NUBE</div>
+      <div style={{ background:"rgba(255,255,255,0.02)", border:"1px solid rgba(255,255,255,0.07)", borderRadius:10, padding:14 }}>
+        <div style={{ fontSize:11, color:"#9ca3af", lineHeight:1.6, marginBottom:12 }}>
+          Conecta este dispositivo para guardar tus datos también en la nube y verlos desde otro celular o navegador.
+        </div>
+        {!cloudSync.configured ? (
+          <div style={{ fontSize:11, color:"#6b7280" }}>Este deployment todavía no tiene sincronización configurada.</div>
+        ) : cloudSync.authenticated ? (
+          <div style={{ display:"flex", alignItems:"center", gap:10, flexWrap:"wrap" }}>
+            <span style={{ fontSize:11, color:"#39ff88", fontWeight:600 }}>☁️ Conectado</span>
+            <button onClick={disconnectSync} style={{
+              padding:"7px 12px", borderRadius:7, fontSize:11, fontWeight:600, cursor:"pointer",
+              background:"rgba(255,255,255,0.04)", border:"1px solid rgba(255,255,255,0.12)", color:"#d1d5db",
+            }}>Desconectar este dispositivo</button>
+          </div>
+        ) : (
+          <div>
+            <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
+              <input type="password" inputMode="numeric" placeholder="PIN" value={pin} onChange={e => setPin(e.target.value)}
+                style={{ width:100, fontSize:13, color:"#f3f4f6", background:"rgba(255,255,255,0.05)", border:"1px solid rgba(255,255,255,0.1)", borderRadius:7, padding:"8px 10px" }}/>
+              <button onClick={submit} disabled={connecting || !pin} style={{
+                padding:"8px 14px", borderRadius:7, fontSize:12, fontWeight:600, cursor: connecting || !pin ? "default" : "pointer",
+                background:`${c}18`, border:`1px solid ${c}50`, color:c, opacity: connecting || !pin ? 0.6 : 1,
+              }}>{connecting ? "Conectando…" : "Conectar"}</button>
+            </div>
+            {error && <div style={{ fontSize:11, color:"#f87171", marginTop:8 }}>{error}</div>}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function PerfilView({ profile, setProfile, targets, c, protein, setProtein, reminderSettings, setReminderSettings, cloudSync, connectSync, disconnectSync }) {
   const setField = (field) => (value) => {
     setProfile(prev => {
       const next = { ...prev, [field]: value };
-      try { localStorage.setItem("voltra-nutri-profile", JSON.stringify(next)); } catch {}
+      persist("voltra-nutri-profile", next);
       return next;
     });
   };
   const setProteinField = (field) => (value) => {
     setProtein(prev => {
       const next = { ...prev, [field]: value };
-      try { localStorage.setItem("voltra-nutri-protein", JSON.stringify(next)); } catch {}
+      persist("voltra-nutri-protein", next);
       return next;
     });
   };
@@ -2317,7 +2387,7 @@ function PerfilView({ profile, setProfile, targets, c, protein, setProtein, remi
           style={{ width:"100%", fontSize:13, color:"#f3f4f6", background:"rgba(255,255,255,0.05)", border:"1px solid rgba(255,255,255,0.1)", borderRadius:7, padding:"8px 10px", boxSizing:"border-box", marginBottom:12 }}/>
         <div style={{ fontSize:9, color:"#8a8f98", marginBottom:6 }}>MACROS POR 1 SCOOP (SOLO, SIN LECHE)</div>
         <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
-          <MacroFieldSet draft={protein} onChange={next => { setProtein(next); try { localStorage.setItem("voltra-nutri-protein", JSON.stringify(next)); } catch {} }} c={c}/>
+          <MacroFieldSet draft={protein} onChange={next => { setProtein(next); persist("voltra-nutri-protein", next); }} c={c}/>
         </div>
         <div style={{ fontSize:10, color:"#6b7280", marginTop:10, lineHeight:1.6 }}>
           Usado en "🥤 ¿Tu batido de siempre?" (desayuno) — actualiza estos valores si cambiás de proteína.
@@ -2342,6 +2412,10 @@ function PerfilView({ profile, setProfile, targets, c, protein, setProtein, remi
       </div>
 
       <div style={{ marginTop:16 }}>
+        <SyncSection cloudSync={cloudSync} connectSync={connectSync} disconnectSync={disconnectSync} c={c}/>
+      </div>
+
+      <div style={{ marginTop:16 }}>
         <ReminderSection reminderSettings={reminderSettings} setReminderSettings={setReminderSettings} c={c}/>
       </div>
 
@@ -2358,7 +2432,7 @@ function SundayBanner({ sundayPrep, setSundayPrep, c }) {
 
   const toggleItem = (i) => setSundayPrep(prev => {
     const next = { ...prev, [i]: !prev[i] };
-    try { localStorage.setItem("voltra-nutri-sunday-prep", JSON.stringify(next)); } catch {}
+    persist("voltra-nutri-sunday-prep", next);
     return next;
   });
 
@@ -2401,7 +2475,7 @@ function SundayBanner({ sundayPrep, setSundayPrep, c }) {
   );
 }
 
-function NutriView({ profile, setProfile, logs, setLogs, burnedKcalToday, nutriCompletedDates, budget, setBudget, shoppingChecked, setShoppingChecked, sundayPrep, setSundayPrep, protein, setProtein, workoutCompletedDates, reminderSettings, setReminderSettings }) {
+function NutriView({ profile, setProfile, logs, setLogs, burnedKcalToday, nutriCompletedDates, budget, setBudget, shoppingChecked, setShoppingChecked, sundayPrep, setSundayPrep, protein, setProtein, workoutCompletedDates, reminderSettings, setReminderSettings, cloudSync, connectSync, disconnectSync }) {
   const [tab, setTab] = useState("hoy");
   const [selectedIdx, setSelectedIdx] = useState(() => todayDayIndex());
   const todayIso = isoDate(new Date());
@@ -2413,7 +2487,7 @@ function NutriView({ profile, setProfile, logs, setLogs, burnedKcalToday, nutriC
     setLogs(prev => {
       const nextLog = { ...(prev[iso] || NUTRI_EMPTY_LOG), ...patch };
       const next = { ...prev, [iso]: nextLog };
-      try { localStorage.setItem("voltra-nutri-logs", JSON.stringify(next)); } catch {}
+      persist("voltra-nutri-logs", next);
       return next;
     });
   }, [setLogs]);
@@ -2484,7 +2558,8 @@ function NutriView({ profile, setProfile, logs, setLogs, burnedKcalToday, nutriC
       )}
 
       {tab === "perfil" && (
-        <PerfilView profile={profile} setProfile={setProfile} targets={targets} c={c} protein={protein} setProtein={setProtein} reminderSettings={reminderSettings} setReminderSettings={setReminderSettings}/>
+        <PerfilView profile={profile} setProfile={setProfile} targets={targets} c={c} protein={protein} setProtein={setProtein} reminderSettings={reminderSettings} setReminderSettings={setReminderSettings}
+          cloudSync={cloudSync} connectSync={connectSync} disconnectSync={disconnectSync}/>
       )}
 
       {tab === "insights" && (
@@ -2922,100 +2997,75 @@ export default function App() {
   const [wk, setWk]       = useState(initWeek());
   const [di, setDi]       = useState(() => todayDayIndex());
   const [view, setView]   = useState("hoy");
-  const [done, setDone] = useState(() => {
-    try {
-      const saved = localStorage.getItem("jay-training-done");
-      return saved ? JSON.parse(saved) : {};
-    } catch { return {}; }
-  });
-  const [weights, setWeights] = useState(() => {
-    try {
-      const saved = localStorage.getItem("jay-training-weights");
-      return saved ? JSON.parse(saved) : {};
-    } catch { return {}; }
-  });
+  const [done, setDone] = useState(() => loadLocal("jay-training-done", {}));
+  const [weights, setWeights] = useState(() => loadLocal("jay-training-weights", {}));
   const [open, setOpen]   = useState(null);
   const [showMini, setShowMini] = useState(false);
   const [tlView, setTlView] = useState(false);
   const [timer, setTimer] = useState(null);
-  const [completedDates, setCompletedDates] = useState(() => {
-    try {
-      const saved = localStorage.getItem("jay-training-completed-dates");
-      return saved ? JSON.parse(saved) : [];
-    } catch { return []; }
-  });
-  const [lucaDone, setLucaDone] = useState(() => {
-    try {
-      const saved = localStorage.getItem("luca-training-done");
-      return saved ? JSON.parse(saved) : {};
-    } catch { return {}; }
-  });
-  const [lucaMissionChoice, setLucaMissionChoice] = useState(() => {
-    try {
-      const saved = localStorage.getItem("voltra-luca-mission-choice");
-      return saved ? JSON.parse(saved) : {};
-    } catch { return {}; }
-  });
-  const [lucaParticipants, setLucaParticipants] = useState(() => {
-    try {
-      const saved = localStorage.getItem("voltra-luca-participants");
-      return saved ? JSON.parse(saved) : {};
-    } catch { return {}; }
-  });
-  const [lucaCompletedDates, setLucaCompletedDates] = useState(() => {
-    try {
-      const saved = localStorage.getItem("voltra-luca-completed-dates");
-      return saved ? JSON.parse(saved) : [];
-    } catch { return []; }
-  });
-  const [nutriProfile, setNutriProfile] = useState(() => {
-    try {
-      const saved = localStorage.getItem("voltra-nutri-profile");
-      return saved ? JSON.parse(saved) : DEFAULT_NUTRI_PROFILE;
-    } catch { return DEFAULT_NUTRI_PROFILE; }
-  });
-  const [nutriProtein, setNutriProtein] = useState(() => {
-    try {
-      const saved = localStorage.getItem("voltra-nutri-protein");
-      return saved ? JSON.parse(saved) : DEFAULT_PROTEIN_SUPPLEMENT;
-    } catch { return DEFAULT_PROTEIN_SUPPLEMENT; }
-  });
-  const [nutriLogs, setNutriLogs] = useState(() => {
-    try {
-      const saved = localStorage.getItem("voltra-nutri-logs");
-      return saved ? JSON.parse(saved) : {};
-    } catch { return {}; }
-  });
-  const [nutriCompletedDates, setNutriCompletedDates] = useState(() => {
-    try {
-      const saved = localStorage.getItem("voltra-nutri-completed-dates");
-      return saved ? JSON.parse(saved) : [];
-    } catch { return []; }
-  });
-  const [nutriBudget, setNutriBudget] = useState(() => {
-    try {
-      const saved = localStorage.getItem("voltra-nutri-budget");
-      return saved ? JSON.parse(saved) : 60;
-    } catch { return 60; }
-  });
-  const [nutriShoppingChecked, setNutriShoppingChecked] = useState(() => {
-    try {
-      const saved = localStorage.getItem("voltra-nutri-shopping-checked");
-      return saved ? JSON.parse(saved) : {};
-    } catch { return {}; }
-  });
-  const [nutriSundayPrep, setNutriSundayPrep] = useState(() => {
-    try {
-      const saved = localStorage.getItem("voltra-nutri-sunday-prep");
-      return saved ? JSON.parse(saved) : {};
-    } catch { return {}; }
-  });
-  const [reminderSettings, setReminderSettings] = useState(() => {
-    try {
-      const saved = localStorage.getItem("voltra-reminder-settings");
-      return saved ? JSON.parse(saved) : { enabled: false, time: "18:00" };
-    } catch { return { enabled: false, time: "18:00" }; }
-  });
+  const [completedDates, setCompletedDates] = useState(() => loadLocal("jay-training-completed-dates", []));
+  const [lucaDone, setLucaDone] = useState(() => loadLocal("luca-training-done", {}));
+  const [lucaMissionChoice, setLucaMissionChoice] = useState(() => loadLocal("voltra-luca-mission-choice", {}));
+  const [lucaParticipants, setLucaParticipants] = useState(() => loadLocal("voltra-luca-participants", {}));
+  const [lucaCompletedDates, setLucaCompletedDates] = useState(() => loadLocal("voltra-luca-completed-dates", []));
+  const [nutriProfile, setNutriProfile] = useState(() => loadLocal("voltra-nutri-profile", DEFAULT_NUTRI_PROFILE));
+  const [nutriProtein, setNutriProtein] = useState(() => loadLocal("voltra-nutri-protein", DEFAULT_PROTEIN_SUPPLEMENT));
+  const [nutriLogs, setNutriLogs] = useState(() => loadLocal("voltra-nutri-logs", {}));
+  const [nutriCompletedDates, setNutriCompletedDates] = useState(() => loadLocal("voltra-nutri-completed-dates", []));
+  const [nutriBudget, setNutriBudget] = useState(() => loadLocal("voltra-nutri-budget", 60));
+  const [nutriShoppingChecked, setNutriShoppingChecked] = useState(() => loadLocal("voltra-nutri-shopping-checked", {}));
+  const [nutriSundayPrep, setNutriSundayPrep] = useState(() => loadLocal("voltra-nutri-sunday-prep", {}));
+  const [reminderSettings, setReminderSettings] = useState(() => loadLocal("voltra-reminder-settings", { enabled: false, time: "18:00" }));
+  const [cloudSync, setCloudSync] = useState({ configured: false, authenticated: false });
+
+  const applyRemoteData = useCallback((data) => {
+    const setters = {
+      "jay-training-done": setDone, "jay-training-weights": setWeights,
+      "jay-training-completed-dates": setCompletedDates, "luca-training-done": setLucaDone,
+      "voltra-luca-mission-choice": setLucaMissionChoice, "voltra-luca-participants": setLucaParticipants,
+      "voltra-luca-completed-dates": setLucaCompletedDates, "voltra-nutri-profile": setNutriProfile,
+      "voltra-nutri-protein": setNutriProtein, "voltra-nutri-logs": setNutriLogs,
+      "voltra-nutri-completed-dates": setNutriCompletedDates, "voltra-nutri-budget": setNutriBudget,
+      "voltra-nutri-shopping-checked": setNutriShoppingChecked, "voltra-nutri-sunday-prep": setNutriSundayPrep,
+      "voltra-reminder-settings": setReminderSettings,
+    };
+    Object.entries(data || {}).forEach(([key, value]) => {
+      if (value === undefined || !setters[key]) return;
+      try { localStorage.setItem(key, JSON.stringify(value)); } catch {}
+      setters[key](value);
+    });
+  }, []);
+
+  // On mount: check whether this deployment has cloud sync configured/this
+  // device already authenticated, and if so pull down the latest data — the
+  // server is treated as authoritative on load, local writes take over from there.
+  useEffect(() => {
+    (async () => {
+      const status = await authStatus();
+      setCloudSync(status);
+      setSyncEnabled(!!status.authenticated);
+      if (!status.authenticated) return;
+      const remote = await pullSync();
+      if (remote?.data) applyRemoteData(remote.data);
+    })();
+  }, [applyRemoteData]);
+
+  const connectSync = useCallback(async (pin) => {
+    const result = await authLogin(pin);
+    if (result.ok) {
+      setCloudSync({ configured: true, authenticated: true });
+      setSyncEnabled(true);
+      const remote = await pullSync();
+      if (remote?.data) applyRemoteData(remote.data);
+    }
+    return result;
+  }, [applyRemoteData]);
+
+  const disconnectSync = useCallback(async () => {
+    await authLogout();
+    setSyncEnabled(false);
+    setCloudSync((s) => ({ ...s, authenticated: false }));
+  }, []);
 
   const startTimer = useCallback((ex) => {
     setTimer({ key: `${ex.info}-${ex.sets}`, label: ex.name, targetSeconds: parseTimeSeconds(ex.sets) });
@@ -3024,7 +3074,7 @@ export default function App() {
   const setWeight = useCallback((key, value) => {
     setWeights(p => {
       const next = { ...p, [key]: value };
-      try { localStorage.setItem("jay-training-weights", JSON.stringify(next)); } catch {}
+      persist("jay-training-weights", next);
       return next;
     });
   }, []);
@@ -3062,7 +3112,7 @@ export default function App() {
     setCompletedDates(prev => {
       if (prev.includes(todayIso)) return prev;
       const next = [...prev, todayIso];
-      try { localStorage.setItem("jay-training-completed-dates", JSON.stringify(next)); } catch {}
+      persist("jay-training-completed-dates", next);
       return next;
     });
   }, [di, day.type, total, pct]);
@@ -3092,7 +3142,7 @@ export default function App() {
     setNutriLogs(prev => {
       const nextLog = { ...(prev[todayNutriIso] || NUTRI_EMPTY_LOG), ...patch };
       const next = { ...prev, [todayNutriIso]: nextLog };
-      try { localStorage.setItem("voltra-nutri-logs", JSON.stringify(next)); } catch {}
+      persist("voltra-nutri-logs", next);
       return next;
     });
   }, [setNutriLogs, todayNutriIso]);
@@ -3103,7 +3153,7 @@ export default function App() {
     setNutriCompletedDates(prev => {
       if (prev.includes(todayNutriIso)) return prev;
       const next = [...prev, todayNutriIso];
-      try { localStorage.setItem("voltra-nutri-completed-dates", JSON.stringify(next)); } catch {}
+      persist("voltra-nutri-completed-dates", next);
       return next;
     });
   }, [allNutriMealsEatenToday, todayNutriIso, setNutriCompletedDates]);
@@ -3122,7 +3172,7 @@ export default function App() {
     setLucaCompletedDates(prev => {
       if (prev.includes(todayNutriIso)) return prev;
       const next = [...prev, todayNutriIso];
-      try { localStorage.setItem("voltra-luca-completed-dates", JSON.stringify(next)); } catch {}
+      persist("voltra-luca-completed-dates", next);
       return next;
     });
   }, [allLucaStepsDoneToday, todayNutriIso, setLucaCompletedDates]);
@@ -3307,7 +3357,8 @@ export default function App() {
           <NutriView profile={nutriProfile} setProfile={setNutriProfile} logs={nutriLogs} setLogs={setNutriLogs} burnedKcalToday={burnedKcalToday} nutriCompletedDates={nutriCompletedDates}
             budget={nutriBudget} setBudget={setNutriBudget} shoppingChecked={nutriShoppingChecked} setShoppingChecked={setNutriShoppingChecked}
             sundayPrep={nutriSundayPrep} setSundayPrep={setNutriSundayPrep} protein={nutriProtein} setProtein={setNutriProtein} workoutCompletedDates={completedDates}
-            reminderSettings={reminderSettings} setReminderSettings={setReminderSettings}/>
+            reminderSettings={reminderSettings} setReminderSettings={setReminderSettings}
+            cloudSync={cloudSync} connectSync={connectSync} disconnectSync={disconnectSync}/>
         ) : (
         <div className="jay-shell">
 
@@ -3507,7 +3558,7 @@ export default function App() {
                           const isDone=done[key]; const isOpen=open===key;
                           const doToggleDone = () => setDone(p => {
                             const next = {...p, [key]: !p[key]};
-                            try { localStorage.setItem("jay-training-done", JSON.stringify(next)); } catch {}
+                            persist("jay-training-done", next);
                             return next;
                           });
                           return (
