@@ -2793,6 +2793,21 @@ function CollapseChevron({ open }) {
   );
 }
 
+function MacroMini({ label, value, target, color }) {
+  const pct = target > 0 ? Math.min(100, Math.round(value / target * 100)) : 0;
+  return (
+    <div>
+      <div style={{ display:"flex", justifyContent:"space-between", fontSize:9, marginBottom:3 }}>
+        <span style={{ color:"#8a8f98", fontWeight:600, letterSpacing:"0.05em" }}>{label}</span>
+        <span style={{ fontFamily:"'DM Mono',monospace", color, fontWeight:700 }}>{Math.round(value)}/{Math.round(target)}g</span>
+      </div>
+      <div style={{ height:4, background:"rgba(255,255,255,0.08)", borderRadius:99, overflow:"hidden" }}>
+        <div style={{ height:"100%", width:`${pct}%`, background:color, borderRadius:99, transition:"width 0.3s" }}/>
+      </div>
+    </div>
+  );
+}
+
 // GitHub-contributions-style heatmap: one cell per day, shaded by how many of
 // the 3 daily tracks (entreno/nutrición/Luca) were completed that day.
 const CONTRIB_WEEKS = 9;
@@ -2934,8 +2949,14 @@ function TodayOverview({ day, tc, total, doneN, streak, onOpenSession, plan, log
             <CollapseChevron open={nutriOpen}/>
           </div>
         </div>
-        <div style={{ height:5, background:"rgba(255,255,255,0.08)", borderRadius:99, overflow:"hidden", marginTop:10, marginBottom: nutriOpen ? 12 : 0 }}>
+        <div style={{ height:5, background:"rgba(255,255,255,0.08)", borderRadius:99, overflow:"hidden", marginTop:10 }}>
           <div style={{ height:"100%", width:`${kcalPct}%`, background: reached ? "#39ff88" : nc, borderRadius:99, transition:"width 0.3s" }}/>
+        </div>
+
+        <div style={{ display:"grid", gridTemplateColumns:"repeat(3, 1fr)", gap:8, marginTop:10, marginBottom: nutriOpen ? 12 : 0 }}>
+          <MacroMini label="PROT" value={consumed.protein} target={targets.protein} color="#39ff88"/>
+          <MacroMini label="CARB" value={consumed.carbs} target={targets.carbs} color="#a78bfa"/>
+          <MacroMini label="GRASA" value={consumed.fat} target={targets.fat} color="#fb923c"/>
         </div>
 
         {nutriOpen && (
