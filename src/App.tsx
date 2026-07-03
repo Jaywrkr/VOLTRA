@@ -1683,6 +1683,28 @@ const FOOD_DB = [
   { id:"mora", name:"Mora", aliases:[], unit:"1 taza", macros:{ kcal:62, protein:2, carbs:14, fat:1 } },
   { id:"guanabana", name:"Guanábana", aliases:[], unit:"1 taza picada", macros:{ kcal:148, protein:2, carbs:38, fat:1 } },
   { id:"granadilla", name:"Granadilla", aliases:[], unit:"1 unidad", macros:{ kcal:20, protein:1, carbs:5, fat:0 } },
+  // Extras/convenience — cosas típicas fuera del plan, para el buscador de "algo que comiste de más"
+  { id:"pan-blanco", name:"Pan blanco", aliases:[], unit:"1 rebanada", macros:{ kcal:66, protein:2, carbs:13, fat:1 } },
+  { id:"pan-hamburguesa", name:"Pan de hamburguesa", aliases:[], unit:"1 unidad", macros:{ kcal:145, protein:5, carbs:27, fat:2 } },
+  { id:"tortilla-maiz", name:"Tortilla de maíz", aliases:[], unit:"1 unidad", macros:{ kcal:52, protein:1, carbs:11, fat:1 } },
+  { id:"arroz-blanco", name:"Arroz blanco cocido", aliases:[], unit:"1 taza", macros:{ kcal:205, protein:4, carbs:45, fat:0 } },
+  { id:"tallarin", name:"Tallarín (pasta) cocido", aliases:["pasta","fideos"], unit:"1 taza", macros:{ kcal:220, protein:8, carbs:43, fat:1 } },
+  { id:"papas-fritas", name:"Papas fritas", aliases:["fritas","french fries"], unit:"porción mediana", macros:{ kcal:365, protein:4, carbs:48, fat:17 } },
+  { id:"pizza", name:"Pizza de queso", aliases:[], unit:"1 rebanada", macros:{ kcal:285, protein:12, carbs:36, fat:10 } },
+  { id:"hamburguesa", name:"Hamburguesa sencilla", aliases:[], unit:"1 unidad", macros:{ kcal:313, protein:17, carbs:30, fat:14 } },
+  { id:"jamon", name:"Jamón cocido", aliases:[], unit:"2 rebanadas", macros:{ kcal:68, protein:10, carbs:1, fat:2 } },
+  { id:"salchicha", name:"Salchicha", aliases:["hot dog"], unit:"1 unidad", macros:{ kcal:151, protein:5, carbs:2, fat:13 } },
+  { id:"chicharron", name:"Chicharrón de cerdo", aliases:[], unit:"100 g", macros:{ kcal:468, protein:24, carbs:0, fat:40 } },
+  { id:"yogur-natural", name:"Yogur natural entero", aliases:[], unit:"200 g", macros:{ kcal:148, protein:8, carbs:11, fat:8 } },
+  { id:"leche-descremada", name:"Leche descremada", aliases:[], unit:"1 vaso (250 ml)", macros:{ kcal:90, protein:9, carbs:12, fat:0 } },
+  { id:"mantequilla-mani", name:"Mantequilla de maní", aliases:["crema de mani"], unit:"1 cda", macros:{ kcal:95, protein:4, carbs:3, fat:8 } },
+  { id:"miel", name:"Miel de abeja", aliases:[], unit:"1 cda", macros:{ kcal:64, protein:0, carbs:17, fat:0 } },
+  { id:"gaseosa", name:"Gaseosa/soda", aliases:["cola","refresco"], unit:"1 lata (355 ml)", macros:{ kcal:140, protein:0, carbs:39, fat:0 } },
+  { id:"jugo-natural", name:"Jugo natural de fruta", aliases:[], unit:"1 vaso (250 ml)", macros:{ kcal:110, protein:1, carbs:26, fat:0 } },
+  { id:"cerveza", name:"Cerveza", aliases:[], unit:"1 lata (355 ml)", macros:{ kcal:153, protein:2, carbs:13, fat:0 } },
+  { id:"helado", name:"Helado de vainilla", aliases:[], unit:"1 bola", macros:{ kcal:137, protein:2, carbs:16, fat:7 } },
+  { id:"chocolate", name:"Chocolate con leche", aliases:[], unit:"1 barra (43 g)", macros:{ kcal:235, protein:3, carbs:26, fat:13 } },
+  { id:"galletas", name:"Galletas dulces", aliases:[], unit:"4 unidades", macros:{ kcal:130, protein:2, carbs:21, fat:4 } },
 ];
 
 function normalizeFoodQuery(s) {
@@ -1762,7 +1784,7 @@ function nutriMacrosForDay(plan, log) {
 // best available without a wearable, so the goal here is to make the MET
 // values and the minutes they're applied to as realistic as possible, not to
 // claim lab-grade precision.
-const TRAINING_MET = { STRENGTH: 6 };
+
 // FitXR sub-types differ enough in intensity that one flat number under- or
 // over-counts most sessions — Flow is deliberately controlled/low-impact,
 // HIIT is near-maximal effort. Approximated against the Compendium of
@@ -1771,23 +1793,60 @@ const TRAINING_MET = { STRENGTH: 6 };
 const FITXR_MET = { fitxrFlow: 5, fitxrBox: 7, fitxrCombat: 8.5, fitxrHiit: 10 };
 const FITXR_MET_DEFAULT = 8;
 
+// Every KB/bodyweight exercise gets its own MET instead of one flat number
+// for the whole day — a bicep curl and a farmer carry are not the same
+// effort, and spreading the day's total duration evenly across every set
+// (the old approach) credited them identically. Grouped by movement demand,
+// approximated against the Compendium of Physical Activities: isolation/arm
+// work ≈3-4.5 (light-moderate resistance training), squats/hinges/rows
+// ≈5.5-6.5 (vigorous free-weight), loaded carries/ballistic swings ≈6.5-7
+// (comparable to loaded carrying / vigorous calisthenics), ab/core holds
+// ≈3-4, mountain climbers ≈7 (cardio-like).
+const STRENGTH_MET = {
+  gobletSquat:6, splitSquat:6, sumoSquat:6, rdl:6, singleLegDL:6, gluteBridge:5, lateralLunge:6, deadlift:6.5, gobletHold:4,
+  bentOverRow:5.5, bentOverRowPause:5, renegadeRow:6, pulloverKb:4.5, kbRowLight:4,
+  kbSwing:7, kbSwingSingle:7,
+  farmerCarry:6.5, suitcaseCarry:6.5, plankDrag:5.5,
+  bicepCurl:3.5, hammerCurl:3.5, concentrationCurl:3, kbPress:4.5, lateralRaise:3.5, frontRaise:3.5, uprightRow:4, tricepExt:3.5, tricepKickback:3.5,
+  kbHalo:5.5, cleanPress:6.5, kbWindmill:5,
+  diamondPushup:5.5, pushupLight:3.5, floorPress:5, floorFly:4.5, pushup:5, pushupArcher:6, pushupClose:5.5,
+  plank:3.5, plankShoulder:4, deadbug:3, hollowHold:3.5,
+  legRaise:4, hollowRock:4, russianTwist:4, russianHeavy:4.5, bicycle:4.5, toeTouches:3.5, crunches:3,
+  mountainClimber:7,
+};
+const STRENGTH_MET_DEFAULT = 5;
+// ~4s eccentric-focused tempo per rep, matching Voltra's own programming
+// notes ("4s excéntrico en todo") — used to turn a rep count into working
+// seconds when the exercise isn't already time-based.
+const SECONDS_PER_REP = 4;
+
 function parseDurationMinutes(str) {
   const m = String(str).match(/(\d+)\s*min/);
   return m ? parseInt(m[1]) : 0;
 }
+function parseRepsPerSet(str) {
+  const m = String(str).match(/[×x]\s*(\d+)/i);
+  return m ? parseInt(m[1]) : null;
+}
+function estimatedSetSeconds(ex) {
+  const timeSeconds = parseTimeSeconds(ex.sets);
+  if (timeSeconds != null) return timeSeconds;
+  const reps = parseRepsPerSet(ex.sets);
+  if (reps != null) return reps * SECONDS_PER_REP;
+  return 30;
+}
 
-// FitXR exercises are individually tagged with their own duration ("20 min")
-// and sub-type (info: "fitxrBox" etc.), so burned kcal is summed per block —
-// only for blocks actually marked done — instead of spreading one flat MET
-// over the day's nominal total duration times an overall completion %.
-// STRENGTH days have no per-exercise duration (they're rep-based), so they
-// still use the day's total nominal duration scaled by real completion.
+// Sums burned kcal per individual completed block (set or FitXR round) using
+// that specific exercise's own MET, instead of spreading one flat number
+// over the whole day's nominal duration — so only what was actually done,
+// weighted by what it actually was, counts.
 function estimateBurnedKcal(day, wk, done, weightKg, fitxrMinutesOverride = {}) {
-  if (day.type === "FITXR") {
-    const sections = day.sections.filter(s => s.exercises.length > 0);
-    let kcal = 0;
-    sections.forEach((section, si) => {
-      section.exercises.forEach((ex, ei) => {
+  const sections = day.sections.filter(s => s.exercises.length > 0);
+  let kcal = 0;
+  sections.forEach((section, si) => {
+    section.exercises.forEach((ex, ei) => {
+      const isFitxr = ex.info && ex.info.startsWith("fitxr");
+      if (isFitxr) {
         const key = `tl-w${wk}-${day.id}-${si}-${ei}-0`;
         if (!done[key]) return;
         const override = fitxrMinutesOverride[key];
@@ -1795,16 +1854,18 @@ function estimateBurnedKcal(day, wk, done, weightKg, fitxrMinutesOverride = {}) 
         if (!minutes) return;
         const met = FITXR_MET[ex.info] ?? FITXR_MET_DEFAULT;
         kcal += met * 3.5 * weightKg / 200 * minutes;
-      });
+        return;
+      }
+      const met = STRENGTH_MET[ex.info] ?? STRENGTH_MET_DEFAULT;
+      const seconds = estimatedSetSeconds(ex);
+      const n = parseSetCount(ex.sets);
+      for (let ri = 0; ri < n; ri++) {
+        if (!done[`tl-w${wk}-${day.id}-${si}-${ei}-${ri}`]) continue;
+        kcal += met * 3.5 * weightKg / 200 * (seconds / 60);
+      }
     });
-    return Math.round(kcal);
-  }
-  const met = TRAINING_MET[day.type];
-  if (!met) return 0;
-  const { total, doneN } = timelineTotals(day, wk, done);
-  const pct = total > 0 ? doneN / total : 0;
-  const minutes = parseDurationMinutes(day.duration) * pct;
-  return Math.round(met * 3.5 * weightKg / 200 * minutes);
+  });
+  return Math.round(kcal);
 }
 
 // Ad-hoc FitXR sessions logged outside the programmed plan — same per-type MET.
@@ -1942,6 +2003,17 @@ function MomLunchLogger({ log, updateLog, c }) {
   );
 }
 
+function MacroInline({ m, color }) {
+  return (
+    <span style={{ fontFamily:"'DM Mono',monospace", fontSize:10, color, whiteSpace:"nowrap" }}>
+      {m.kcal} kcal · {m.protein}p · {m.carbs}c · {m.fat}g
+    </span>
+  );
+}
+
+// Search + one-tap add for anything eaten outside the plan — every FOOD_DB
+// entry carries full macros (not just kcal), shown inline so it's visible
+// that protein/carbs/fat get tracked too, not only calories.
 function SnackLogger({ log, updateLog, c }) {
   const [query, setQuery] = useState("");
   const results = query.trim() ? searchFoods(query) : [];
@@ -1961,9 +2033,9 @@ function SnackLogger({ log, updateLog, c }) {
         {results.length > 0 && (
           <div style={{ position:"absolute", top:"100%", left:0, right:0, marginTop:4, background:"#0a0a0a", border:"1px solid rgba(255,255,255,0.1)", borderRadius:8, zIndex:10, overflow:"hidden" }}>
             {results.map(food => (
-              <div key={food.id} onClick={() => addExtra(food)} style={{ padding:"8px 12px", cursor:"pointer", display:"flex", justifyContent:"space-between", borderBottom:"1px solid rgba(255,255,255,0.05)" }}>
+              <div key={food.id} onClick={() => addExtra(food)} style={{ padding:"8px 12px", cursor:"pointer", display:"flex", justifyContent:"space-between", alignItems:"center", gap:8, borderBottom:"1px solid rgba(255,255,255,0.05)" }}>
                 <span style={{ fontSize:12, color:"#e5e7eb" }}>{food.name} <span style={{ color:"#6b7280" }}>· {food.unit}</span></span>
-                <span style={{ fontFamily:"'DM Mono',monospace", fontSize:11, color:c }}>{food.macros.kcal} kcal</span>
+                <MacroInline m={food.macros} color={c}/>
               </div>
             ))}
           </div>
@@ -1972,10 +2044,10 @@ function SnackLogger({ log, updateLog, c }) {
       {(log.extras || []).length > 0 && (
         <div style={{ display:"flex", flexDirection:"column", gap:4, marginTop:8 }}>
           {log.extras.map(e => (
-            <div key={e.id} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", fontSize:12, padding:"6px 10px", background:"rgba(255,255,255,0.02)", borderRadius:6 }}>
+            <div key={e.id} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", fontSize:12, padding:"6px 10px", background:"rgba(255,255,255,0.02)", borderRadius:6, gap:8 }}>
               <span style={{ color:"#d1d5db" }}>{e.name} <span style={{ color:"#6b7280" }}>· {e.qtyLabel}</span></span>
               <div style={{ display:"flex", gap:8, alignItems:"center" }}>
-                <span style={{ fontFamily:"'DM Mono',monospace", color:c }}>{e.macros.kcal} kcal</span>
+                <MacroInline m={e.macros} color={c}/>
                 <span onClick={() => removeExtra(e.id)} style={{ cursor:"pointer", color:"#6b7280", fontSize:13 }}>✕</span>
               </div>
             </div>
@@ -3110,7 +3182,10 @@ function TodayOverview({ day, tc, total, doneN, streak, onOpenSession, plan, log
             )}
             <NutriMealRow name={plan.dinner.name} note={`${plan.dinner.prepMinutes} min${plan.dinner.batchCook ? " · batch cooking" : ""}`} macros={plan.dinner.macros} overrideMacros={log.dinnerOverride} onOverrideChange={m => updateLog({ dinnerOverride: m || undefined })} isDone={log.dinnerEaten} onToggle={() => updateLog({ dinnerEaten: !log.dinnerEaten })} c={nc}/>
 
-            <div onClick={onOpenNutri} style={{ textAlign:"right", marginTop:4, fontSize:10, color:nc, fontWeight:600, cursor:"pointer" }}>Extras, carrito, perfil →</div>
+            <div style={{ fontSize:9, fontWeight:700, letterSpacing:"0.12em", color:"#6b7280", marginTop:12, marginBottom:6, paddingLeft:2 }}>EXTRAS</div>
+            <SnackLogger log={log} updateLog={updateLog} c={nc}/>
+
+            <div onClick={onOpenNutri} style={{ textAlign:"right", marginTop:8, fontSize:10, color:nc, fontWeight:600, cursor:"pointer" }}>Carrito, perfil →</div>
           </>
         )}
       </div>
