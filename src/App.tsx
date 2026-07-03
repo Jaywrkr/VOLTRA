@@ -2177,6 +2177,210 @@ function NutriView({ profile, setProfile, logs, setLogs, burnedKcalToday, nutriC
   );
 }
 
+// ─── Exportar "Wrapped" del día ─────────────────────────────────────────────────
+// Tarjeta tipo Spotify Wrapped con el resumen del día (entreno + nutrición),
+// dibujada a mano en <canvas> — sin librerías nuevas.
+function drawRoundedRectPath(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+
+function drawProgressBar(ctx, x, y, w, h, pct, color) {
+  drawRoundedRectPath(ctx, x, y, w, h, h / 2);
+  ctx.fillStyle = "rgba(255,255,255,0.1)";
+  ctx.fill();
+  const fillW = Math.max(h, w * Math.min(1, Math.max(0, pct)));
+  drawRoundedRectPath(ctx, x, y, fillW, h, h / 2);
+  ctx.fillStyle = color;
+  ctx.fill();
+}
+
+async function generateDayWrappedImage(d) {
+  try { await document.fonts.ready; } catch {}
+
+  const W = 1080, H = 1920;
+  const canvas = document.createElement("canvas");
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext("2d");
+  const SANS = "'DM Sans', sans-serif";
+  const MONO = "'DM Mono', monospace";
+
+  const bg = ctx.createLinearGradient(0, 0, W, H);
+  bg.addColorStop(0, "#05070a");
+  bg.addColorStop(0.5, "#07090a");
+  bg.addColorStop(1, "#090705");
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, W, H);
+
+  const glow1 = ctx.createRadialGradient(W*0.12, H*0.1, 0, W*0.12, H*0.1, 520);
+  glow1.addColorStop(0, "rgba(57,255,136,0.16)");
+  glow1.addColorStop(1, "rgba(57,255,136,0)");
+  ctx.fillStyle = glow1; ctx.fillRect(0, 0, W, H);
+
+  const glow2 = ctx.createRadialGradient(W*0.9, H*0.92, 0, W*0.9, H*0.92, 560);
+  glow2.addColorStop(0, "rgba(251,191,36,0.14)");
+  glow2.addColorStop(1, "rgba(251,191,36,0)");
+  ctx.fillStyle = glow2; ctx.fillRect(0, 0, W, H);
+
+  ctx.textAlign = "left";
+  ctx.fillStyle = "#39ff88";
+  ctx.font = `700 30px ${MONO}`;
+  ctx.fillText("VOLTRA", 64, 96);
+  ctx.fillStyle = "rgba(255,255,255,0.5)";
+  ctx.font = `500 26px ${SANS}`;
+  ctx.fillText(d.dateLabel, 64, 132);
+
+  ctx.fillStyle = "#f3f4f6";
+  ctx.font = `700 60px ${SANS}`;
+  ctx.fillText("Así fue tu día", 64, 220);
+
+  // ── Entreno ──
+  let y = 300;
+  const cardW = W - 128;
+  drawRoundedRectPath(ctx, 64, y, cardW, 500, 32);
+  const wg = ctx.createLinearGradient(64, y, 64, y + 500);
+  wg.addColorStop(0, "rgba(57,255,136,0.12)");
+  wg.addColorStop(1, "rgba(57,255,136,0.02)");
+  ctx.fillStyle = wg; ctx.fill();
+  ctx.strokeStyle = "rgba(57,255,136,0.3)"; ctx.lineWidth = 2;
+  drawRoundedRectPath(ctx, 64, y, cardW, 500, 32); ctx.stroke();
+
+  ctx.fillStyle = "#39ff88";
+  ctx.font = `700 26px ${MONO}`;
+  ctx.fillText(`🏋️ ENTRENO · ${d.dayType}`, 104, y + 66);
+
+  ctx.fillStyle = "#f3f4f6";
+  ctx.font = `700 46px ${SANS}`;
+  ctx.fillText(d.dayFocus, 104, y + 128);
+
+  if (d.isRest) {
+    ctx.fillStyle = "rgba(255,255,255,0.6)";
+    ctx.font = `500 32px ${SANS}`;
+    ctx.fillText("Descanso — el músculo crece hoy.", 104, y + 190);
+  } else {
+    ctx.font = `700 110px ${MONO}`;
+    ctx.fillStyle = d.workoutPct >= 100 ? "#39ff88" : "#f3f4f6";
+    ctx.fillText(`${d.workoutPct}%`, 104, y + 260);
+
+    ctx.font = `500 30px ${SANS}`;
+    ctx.fillStyle = "rgba(255,255,255,0.6)";
+    ctx.fillText(`${d.workoutDoneN}/${d.workoutTotal} ejercicios completados`, 104, y + 310);
+
+    drawProgressBar(ctx, 104, y + 350, cardW - 80, 16, d.workoutPct / 100, "#39ff88");
+
+    if (d.workoutStreak > 0) {
+      ctx.font = `700 36px ${SANS}`;
+      ctx.fillStyle = "#fb923c";
+      ctx.fillText(`🔥 Racha de ${d.workoutStreak} día${d.workoutStreak===1?"":"s"}`, 104, y + 430);
+    }
+  }
+
+  // ── Nutrición ──
+  y = 850;
+  const nutriH = 660;
+  drawRoundedRectPath(ctx, 64, y, cardW, nutriH, 32);
+  const ng = ctx.createLinearGradient(64, y, 64, y + nutriH);
+  ng.addColorStop(0, "rgba(251,191,36,0.12)");
+  ng.addColorStop(1, "rgba(251,191,36,0.02)");
+  ctx.fillStyle = ng; ctx.fill();
+  ctx.strokeStyle = "rgba(251,191,36,0.3)"; ctx.lineWidth = 2;
+  drawRoundedRectPath(ctx, 64, y, cardW, nutriH, 32); ctx.stroke();
+
+  ctx.fillStyle = "#fbbf24";
+  ctx.font = `700 26px ${MONO}`;
+  ctx.fillText("🥗 NUTRICIÓN", 104, y + 66);
+
+  ctx.fillStyle = "#f3f4f6";
+  ctx.font = `700 52px ${SANS}`;
+  ctx.fillText(d.kcalReached ? `${d.kcalConsumed} kcal ✓` : `${d.kcalConsumed} / ${d.kcalTarget} kcal`, 104, y + 130);
+
+  let ny = y + 150;
+  if (d.burnedKcal > 0) {
+    ctx.font = `500 26px ${SANS}`;
+    ctx.fillStyle = "rgba(255,255,255,0.6)";
+    ctx.fillText(`+${d.burnedKcal} kcal quemadas con el entreno 🔥`, 104, ny + 30);
+    ny += 40;
+  }
+
+  ny += 40;
+  const macroRows = [["Proteína", d.protein, d.proteinTarget, "#39ff88"], ["Carbos", d.carbs, d.carbsTarget, "#a78bfa"], ["Grasa", d.fat, d.fatTarget, "#fb923c"]];
+  macroRows.forEach(([label, val, target, color]) => {
+    ctx.font = `500 26px ${SANS}`;
+    ctx.fillStyle = "rgba(255,255,255,0.65)";
+    ctx.fillText(`${label}   ${Math.round(val)}/${Math.round(target)}g`, 104, ny);
+    drawProgressBar(ctx, 104, ny + 16, cardW - 80, 13, target > 0 ? val / target : 0, color);
+    ny += 68;
+  });
+
+  ny += 24;
+  ctx.font = `600 30px ${SANS}`;
+  let mx = 104;
+  d.meals.forEach(([label, done]) => {
+    ctx.fillStyle = done ? "#39ff88" : "rgba(255,255,255,0.3)";
+    ctx.fillText(`${done ? "✓" : "○"} ${label}`, mx, ny);
+    mx += 280;
+  });
+  ny += 70;
+
+  if (d.nutriStreak > 0) {
+    ctx.font = `700 36px ${SANS}`;
+    ctx.fillStyle = "#fbbf24";
+    ctx.fillText(`🥑 Racha de ${d.nutriStreak} día${d.nutriStreak===1?"":"s"}`, 104, ny);
+  }
+
+  ctx.textAlign = "center";
+  ctx.font = `500 24px ${MONO}`;
+  ctx.fillStyle = "rgba(255,255,255,0.32)";
+  ctx.fillText(`Generado con Voltra · v${__APP_VERSION__}`, W / 2, H - 60);
+
+  return canvas.toDataURL("image/png");
+}
+
+async function shareOrDownloadImage(dataUrl, filename) {
+  try {
+    const res = await fetch(dataUrl);
+    const blob = await res.blob();
+    const file = new File([blob], filename, { type: "image/png" });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      await navigator.share({ files: [file], title: "Mi día en Voltra" });
+      return true;
+    }
+  } catch {}
+  const a = document.createElement("a");
+  a.href = dataUrl;
+  a.download = filename;
+  a.click();
+  return false;
+}
+
+function DayWrappedModal({ imageUrl, onClose }) {
+  return (
+    <div onClick={onClose} style={{
+      position:"fixed", inset:0, zIndex:300, background:"rgba(0,0,0,0.85)",
+      display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:20,
+    }}>
+      <div onClick={e => e.stopPropagation()} style={{ maxWidth:340, width:"100%", display:"flex", flexDirection:"column", gap:14 }}>
+        <img src={imageUrl} alt="Resumen del día" style={{ width:"100%", borderRadius:16, border:"1px solid rgba(255,255,255,0.1)" }}/>
+        <div style={{ display:"flex", gap:8 }}>
+          <button onClick={() => shareOrDownloadImage(imageUrl, "voltra-mi-dia.png")} style={{
+            flex:1, padding:"12px", borderRadius:10, cursor:"pointer", fontSize:13, fontWeight:700,
+            background:"rgba(57,255,136,0.15)", border:"1px solid rgba(57,255,136,0.4)", color:"#39ff88",
+          }}>Compartir / Descargar</button>
+          <button onClick={onClose} style={{
+            padding:"12px 16px", borderRadius:10, cursor:"pointer", fontSize:13, fontWeight:600,
+            background:"rgba(255,255,255,0.05)", border:"1px solid rgba(255,255,255,0.15)", color:"#9ca3af",
+          }}>Cerrar</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Hoy: vista compacta combinada (entreno + nutrición) ──────────────────────
 // Punto de entrada por defecto — un vistazo a ambos sin tener que elegir tab.
 function TodayOverview({ day, tc, total, doneN, streak, onOpenSession, plan, log, updateLog, targets, burnedKcal, nutriStreak, onOpenNutri }) {
@@ -2192,6 +2396,28 @@ function TodayOverview({ day, tc, total, doneN, streak, onOpenSession, plan, log
     e.stopPropagation();
     if (field === "lunchEaten" && plan.lunch.type === "mama" && !log.lunchEaten) { onOpenNutri(); return; }
     updateLog({ [field]: !log[field] });
+  };
+
+  const [wrappedUrl, setWrappedUrl] = useState(null);
+  const [generating, setGenerating] = useState(false);
+
+  const exportDay = async () => {
+    setGenerating(true);
+    const now = new Date();
+    const rawLabel = now.toLocaleDateString("es-ES", { weekday:"long", day:"numeric", month:"long" });
+    const url = await generateDayWrappedImage({
+      dateLabel: rawLabel.charAt(0).toUpperCase() + rawLabel.slice(1),
+      dayFocus: day.focus, dayType: day.type, isRest: day.type === "REST",
+      workoutPct: pct, workoutDoneN: doneN, workoutTotal: total, workoutStreak: streak,
+      kcalConsumed: Math.round(consumed.kcal), kcalTarget: Math.round(adjustedTarget), kcalReached: reached, burnedKcal,
+      protein: consumed.protein, proteinTarget: targets.protein,
+      carbs: consumed.carbs, carbsTarget: targets.carbs,
+      fat: consumed.fat, fatTarget: targets.fat,
+      meals: [["Desayuno", !!log.breakfastEaten], ["Almuerzo", !!log.lunchEaten], ["Cena", !!log.dinnerEaten]],
+      nutriStreak,
+    });
+    setWrappedUrl(url);
+    setGenerating(false);
   };
 
   return (
@@ -2245,6 +2471,16 @@ function TodayOverview({ day, tc, total, doneN, streak, onOpenSession, plan, log
         </div>
         <div onClick={onOpenNutri} style={{ textAlign:"right", marginTop:8, fontSize:10, color:nc, fontWeight:600, cursor:"pointer" }}>Ver nutrición →</div>
       </div>
+
+      <button onClick={exportDay} disabled={generating} style={{
+        marginTop:2, padding:"12px", borderRadius:10, cursor: generating ? "default" : "pointer",
+        background:"linear-gradient(90deg, rgba(57,255,136,0.12), rgba(251,191,36,0.12))",
+        border:"1px solid rgba(255,255,255,0.15)", color:"#f3f4f6",
+        fontSize:12, fontWeight:700, fontFamily:"'DM Sans',sans-serif",
+        display:"flex", alignItems:"center", justifyContent:"center", gap:8, opacity: generating ? 0.6 : 1,
+      }}>{generating ? "Generando…" : "📸 Compartir mi día"}</button>
+
+      {wrappedUrl && <DayWrappedModal imageUrl={wrappedUrl} onClose={() => setWrappedUrl(null)}/>}
     </div>
   );
 }
