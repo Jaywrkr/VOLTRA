@@ -1628,6 +1628,14 @@ const DEFAULT_NUTRI_PROFILE = { weightKg:70, heightCm:170, age:35, trainingDaysP
 const NUTRI_ACCENT = "#fbbf24";
 const NUTRI_EMPTY_LOG = { breakfastEaten:false, lunchEaten:false, dinnerEaten:false, extras:[] };
 
+// Applied Nutrition Critical Whey (vainilla) — real macros del envase, por 1 scoop
+// (16.5 g, la mitad de la porción de 2 scoops/33 g que indica la etiqueta).
+// Editable en Perfil por si cambia de marca/sabor más adelante.
+const DEFAULT_PROTEIN_SUPPLEMENT = { name:"Applied Nutrition Critical Whey (Vainilla)", kcal:61, protein:11.9, carbs:1.95, fat:0.55 };
+// Leche deslactosada, escalada de la porción de 250 ml de FOOD_DB a los 350 ml reales que toma.
+const MILK_350ML = { kcal:171, protein:11, carbs:17, fat:7 };
+const BANANA_1 = { kcal:105, protein:1, carbs:27, fat:0 };
+
 function NutriProfileField({ label, value, onChange, step, min }) {
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:3 }}>
@@ -1788,7 +1796,43 @@ function SnackLogger({ log, updateLog, c }) {
   );
 }
 
-function NutriDayCard({ plan, log, updateLog, targets, burnedKcal, isToday, c }) {
+// Quick-fill for a real, repeated routine: 1 scoop of whey + 350ml of milk,
+// optionally with a banana. Macros come from the editable protein settings
+// in Perfil so this stays correct if the brand/flavor changes.
+function ProteinShakeQuickLog({ protein, updateLog, c }) {
+  const [open, setOpen] = useState(false);
+  const [withBanana, setWithBanana] = useState(false);
+
+  const parts = [protein, MILK_350ML, ...(withBanana ? [BANANA_1] : [])];
+  const total = sumMacros(parts);
+  const rounded = { kcal:Math.round(total.kcal), protein:Math.round(total.protein), carbs:Math.round(total.carbs), fat:Math.round(total.fat) };
+
+  const use = () => updateLog({ breakfastEaten:true, breakfastOverride:rounded });
+
+  if (!open) {
+    return (
+      <div onClick={() => setOpen(true)} style={{ fontSize:11, color:c, fontWeight:600, cursor:"pointer", marginTop:-2, marginBottom:8, paddingLeft:2 }}>
+        🥤 ¿Tu batido de siempre?
+      </div>
+    );
+  }
+  return (
+    <div style={{ padding:"12px 14px", marginBottom:8, marginTop:-2, borderRadius:10, background:"rgba(255,255,255,0.03)", border:`1px solid ${c}25` }}>
+      <div style={{ fontSize:12, fontWeight:600, color:"#f3f4f6" }}>🥤 {protein.name}</div>
+      <div style={{ fontSize:11, color:"#8a8f98", marginTop:2 }}>1 scoop + 350 ml de leche{withBanana ? " + 1 plátano" : ""}</div>
+      <div style={{ fontFamily:"'DM Mono',monospace", fontSize:12, color:c, fontWeight:700, marginTop:6 }}>{rounded.kcal} kcal · {rounded.protein}g prot</div>
+      <label style={{ display:"flex", alignItems:"center", gap:6, marginTop:8, fontSize:11, color:"#9ca3af", cursor:"pointer" }}>
+        <input type="checkbox" checked={withBanana} onChange={e => setWithBanana(e.target.checked)}/> Con plátano
+      </label>
+      <div style={{ display:"flex", gap:6, marginTop:10 }}>
+        <button onClick={use} style={{ flex:1, padding:"7px 0", borderRadius:7, fontSize:11, fontWeight:700, cursor:"pointer", background:`${c}18`, border:`1px solid ${c}50`, color:c }}>Usar como desayuno</button>
+        <button onClick={() => setOpen(false)} style={{ padding:"7px 12px", borderRadius:7, fontSize:11, fontWeight:600, cursor:"pointer", background:"transparent", border:"1px solid rgba(255,255,255,0.12)", color:"#9ca3af" }}>Cerrar</button>
+      </div>
+    </div>
+  );
+}
+
+function NutriDayCard({ plan, log, updateLog, targets, burnedKcal, isToday, c, protein }) {
   const adjustedKcalTarget = targets.kcal + (burnedKcal || 0);
   const consumed = nutriMacrosForDay(plan, log);
   const remaining = Math.max(0, adjustedKcalTarget - consumed.kcal);
@@ -1820,6 +1864,7 @@ function NutriDayCard({ plan, log, updateLog, targets, burnedKcal, isToday, c })
       </div>
 
       <NutriMealRow name={plan.breakfast.name} note={`${plan.breakfast.prepMinutes} min`} macros={plan.breakfast.macros} overrideMacros={log.breakfastOverride} onOverrideChange={m => updateLog({ breakfastOverride: m || undefined })} isDone={log.breakfastEaten} onToggle={() => updateLog({ breakfastEaten: !log.breakfastEaten })} c={c}/>
+      {protein && <ProteinShakeQuickLog protein={protein} updateLog={updateLog} c={c}/>}
       {plan.lunch.type === "mama" ? (
         <MomLunchLogger log={log} updateLog={updateLog} c={c}/>
       ) : (
@@ -1996,11 +2041,18 @@ function ShoppingCartView({ budget, setBudget, checked, setChecked, c }) {
 }
 
 // ─── Perfil ─────────────────────────────────────────────────────────────────────
-function PerfilView({ profile, setProfile, targets, c }) {
+function PerfilView({ profile, setProfile, targets, c, protein, setProtein }) {
   const setField = (field) => (value) => {
     setProfile(prev => {
       const next = { ...prev, [field]: value };
       try { localStorage.setItem("voltra-nutri-profile", JSON.stringify(next)); } catch {}
+      return next;
+    });
+  };
+  const setProteinField = (field) => (value) => {
+    setProtein(prev => {
+      const next = { ...prev, [field]: value };
+      try { localStorage.setItem("voltra-nutri-protein", JSON.stringify(next)); } catch {}
       return next;
     });
   };
@@ -2013,6 +2065,20 @@ function PerfilView({ profile, setProfile, targets, c }) {
         <NutriProfileField label="EDAD" value={profile.age} onChange={setField("age")}/>
         <NutriProfileField label="DÍAS ENTRENO/SEM" value={profile.trainingDaysPerWeek} onChange={setField("trainingDaysPerWeek")} min={0}/>
         <NutriProfileField label="DÉFICIT %" value={profile.deficitPct} onChange={setField("deficitPct")}/>
+      </div>
+
+      <div style={{ fontSize:9, fontWeight:700, letterSpacing:"0.12em", color:"#6b7280", marginBottom:6, paddingLeft:2 }}>TU PROTEÍNA</div>
+      <div style={{ background:"rgba(255,255,255,0.02)", border:"1px solid rgba(255,255,255,0.07)", borderRadius:10, padding:14, marginBottom:16 }}>
+        <div style={{ fontSize:9, color:"#8a8f98", marginBottom:4 }}>MARCA / SABOR</div>
+        <input type="text" value={protein.name} onChange={e => setProteinField("name")(e.target.value)}
+          style={{ width:"100%", fontSize:13, color:"#f3f4f6", background:"rgba(255,255,255,0.05)", border:"1px solid rgba(255,255,255,0.1)", borderRadius:7, padding:"8px 10px", boxSizing:"border-box", marginBottom:12 }}/>
+        <div style={{ fontSize:9, color:"#8a8f98", marginBottom:6 }}>MACROS POR 1 SCOOP (SOLO, SIN LECHE)</div>
+        <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
+          <MacroFieldSet draft={protein} onChange={next => { setProtein(next); try { localStorage.setItem("voltra-nutri-protein", JSON.stringify(next)); } catch {} }} c={c}/>
+        </div>
+        <div style={{ fontSize:10, color:"#6b7280", marginTop:10, lineHeight:1.6 }}>
+          Usado en "🥤 ¿Tu batido de siempre?" (desayuno) — actualiza estos valores si cambiás de proteína.
+        </div>
       </div>
 
       <div style={{ fontSize:9, fontWeight:700, letterSpacing:"0.12em", color:"#6b7280", marginBottom:6, paddingLeft:2 }}>TU OBJETIVO DIARIO CALCULADO</div>
@@ -2084,7 +2150,7 @@ function SundayBanner({ sundayPrep, setSundayPrep, c }) {
   );
 }
 
-function NutriView({ profile, setProfile, logs, setLogs, burnedKcalToday, nutriCompletedDates, budget, setBudget, shoppingChecked, setShoppingChecked, sundayPrep, setSundayPrep }) {
+function NutriView({ profile, setProfile, logs, setLogs, burnedKcalToday, nutriCompletedDates, budget, setBudget, shoppingChecked, setShoppingChecked, sundayPrep, setSundayPrep, protein, setProtein }) {
   const [tab, setTab] = useState("hoy");
   const [selectedIdx, setSelectedIdx] = useState(() => todayDayIndex());
   const todayIso = isoDate(new Date());
@@ -2135,7 +2201,7 @@ function NutriView({ profile, setProfile, logs, setLogs, burnedKcalToday, nutriC
       </div>
 
       {tab === "hoy" && (
-        <NutriDayCard plan={todayPlan} log={todayLog} updateLog={updateLogFor(todayIso)} targets={targets} burnedKcal={burnedKcalToday} isToday={true} c={c}/>
+        <NutriDayCard plan={todayPlan} log={todayLog} updateLog={updateLogFor(todayIso)} targets={targets} burnedKcal={burnedKcalToday} isToday={true} c={c} protein={protein}/>
       )}
 
       {tab === "semana" && (
@@ -2158,7 +2224,7 @@ function NutriView({ profile, setProfile, logs, setLogs, burnedKcalToday, nutriC
               );
             })}
           </div>
-          <NutriDayCard plan={selectedPlan} log={selectedLog} updateLog={updateLogFor(selectedIso)} targets={targets} burnedKcal={isSelectedToday ? burnedKcalToday : 0} isToday={isSelectedToday} c={c}/>
+          <NutriDayCard plan={selectedPlan} log={selectedLog} updateLog={updateLogFor(selectedIso)} targets={targets} burnedKcal={isSelectedToday ? burnedKcalToday : 0} isToday={isSelectedToday} c={c} protein={protein}/>
         </div>
       )}
 
@@ -2167,7 +2233,7 @@ function NutriView({ profile, setProfile, logs, setLogs, burnedKcalToday, nutriC
       )}
 
       {tab === "perfil" && (
-        <PerfilView profile={profile} setProfile={setProfile} targets={targets} c={c}/>
+        <PerfilView profile={profile} setProfile={setProfile} targets={targets} c={c} protein={protein} setProtein={setProtein}/>
       )}
 
       {tab === "insights" && (
@@ -2524,6 +2590,12 @@ export default function App() {
       return saved ? JSON.parse(saved) : DEFAULT_NUTRI_PROFILE;
     } catch { return DEFAULT_NUTRI_PROFILE; }
   });
+  const [nutriProtein, setNutriProtein] = useState(() => {
+    try {
+      const saved = localStorage.getItem("voltra-nutri-protein");
+      return saved ? JSON.parse(saved) : DEFAULT_PROTEIN_SUPPLEMENT;
+    } catch { return DEFAULT_PROTEIN_SUPPLEMENT; }
+  });
   const [nutriLogs, setNutriLogs] = useState(() => {
     try {
       const saved = localStorage.getItem("voltra-nutri-logs");
@@ -2790,7 +2862,7 @@ export default function App() {
         ) : view==="nutri" ? (
           <NutriView profile={nutriProfile} setProfile={setNutriProfile} logs={nutriLogs} setLogs={setNutriLogs} burnedKcalToday={burnedKcalToday} nutriCompletedDates={nutriCompletedDates}
             budget={nutriBudget} setBudget={setNutriBudget} shoppingChecked={nutriShoppingChecked} setShoppingChecked={setNutriShoppingChecked}
-            sundayPrep={nutriSundayPrep} setSundayPrep={setNutriSundayPrep}/>
+            sundayPrep={nutriSundayPrep} setSundayPrep={setNutriSundayPrep} protein={nutriProtein} setProtein={setNutriProtein}/>
         ) : (
         <div className="jay-shell">
 
