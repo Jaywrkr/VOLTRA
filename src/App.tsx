@@ -1263,7 +1263,7 @@ function lucaMissionForToday() {
 
 const LUCA_COMPANIONS = [
   { key: "papa", label: "Papá", emoji: "🧔" },
-  { key: "kira", label: "Kira", emoji: "👧" },
+  { key: "kira", label: "Kira", emoji: "🌭" },
 ];
 
 function LucaMissionPanel({ done, setDone, missionChoice, setMissionChoice, participants, setParticipants }) {
@@ -2160,7 +2160,7 @@ const BACKUP_KEYS = [
   "jay-training-completed-dates", "jay-training-done", "jay-training-weights",
   "luca-training-done", "voltra-luca-completed-dates", "voltra-luca-mission-choice", "voltra-luca-participants",
   "voltra-nutri-budget", "voltra-nutri-completed-dates", "voltra-nutri-logs", "voltra-nutri-profile",
-  "voltra-nutri-protein", "voltra-nutri-shopping-checked", "voltra-nutri-sunday-prep",
+  "voltra-nutri-protein", "voltra-nutri-shopping-checked", "voltra-nutri-sunday-prep", "voltra-reminder-settings",
 ];
 
 function BackupSection({ c }) {
@@ -2227,7 +2227,64 @@ function BackupSection({ c }) {
   );
 }
 
-function PerfilView({ profile, setProfile, targets, c, protein, setProtein }) {
+// ─── Recordatorio diario ────────────────────────────────────────────────────────
+// Browser notifications only fire while Voltra is open somewhere (foreground or
+// backgrounded tab) — there's no server to push through, so this can't wake up
+// a fully closed browser. Still useful as a same-day nudge while the app is up.
+function ReminderSection({ reminderSettings, setReminderSettings, c }) {
+  const [notifStatus, setNotifStatus] = useState(typeof Notification !== "undefined" ? Notification.permission : "unsupported");
+
+  const updateSettings = (patch) => {
+    setReminderSettings(prev => {
+      const next = { ...prev, ...patch };
+      try { localStorage.setItem("voltra-reminder-settings", JSON.stringify(next)); } catch {}
+      return next;
+    });
+  };
+
+  const enable = async () => {
+    if (typeof Notification === "undefined") return;
+    const result = await Notification.requestPermission();
+    setNotifStatus(result);
+    if (result === "granted") updateSettings({ enabled: true });
+  };
+
+  return (
+    <div>
+      <div style={{ fontSize:9, fontWeight:700, letterSpacing:"0.12em", color:"#6b7280", marginBottom:6, paddingLeft:2 }}>RECORDATORIO DIARIO</div>
+      <div style={{ background:"rgba(255,255,255,0.02)", border:"1px solid rgba(255,255,255,0.07)", borderRadius:10, padding:14 }}>
+        <div style={{ fontSize:11, color:"#9ca3af", lineHeight:1.6, marginBottom:12 }}>
+          Un aviso a la hora que elijas si todavía te falta entrenar, registrar comida o la misión de Luca.
+          Solo funciona mientras Voltra esté abierta en el navegador (aunque sea en segundo plano).
+        </div>
+        {notifStatus === "unsupported" ? (
+          <div style={{ fontSize:11, color:"#f87171" }}>Este navegador no soporta notificaciones.</div>
+        ) : notifStatus !== "granted" ? (
+          <button onClick={enable} style={{
+            padding:"9px 14px", borderRadius:8, fontSize:12, fontWeight:600, cursor:"pointer",
+            background:`${c}18`, border:`1px solid ${c}50`, color:c,
+          }}>{notifStatus === "denied" ? "Notificaciones bloqueadas — actívalas en el navegador" : "🔔 Activar recordatorio"}</button>
+        ) : (
+          <div style={{ display:"flex", alignItems:"center", gap:12, flexWrap:"wrap" }}>
+            <div onClick={() => updateSettings({ enabled: !reminderSettings.enabled })} style={{
+              cursor:"pointer", padding:"7px 13px", borderRadius:8, fontSize:12, fontWeight:600,
+              background: reminderSettings.enabled ? `${c}18` : "rgba(255,255,255,0.03)",
+              border:`1px solid ${reminderSettings.enabled ? c+"60" : "rgba(255,255,255,0.1)"}`,
+              color: reminderSettings.enabled ? c : "#9ca3af",
+            }}>{reminderSettings.enabled ? "✓ Activo" : "Desactivado"}</div>
+            <div>
+              <div style={{ fontSize:9, color:"#8a8f98", marginBottom:3 }}>HORA</div>
+              <input type="time" value={reminderSettings.time} onChange={e => updateSettings({ time: e.target.value })}
+                style={{ fontSize:13, color:"#f3f4f6", background:"rgba(255,255,255,0.05)", border:"1px solid rgba(255,255,255,0.1)", borderRadius:7, padding:"6px 8px" }}/>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function PerfilView({ profile, setProfile, targets, c, protein, setProtein, reminderSettings, setReminderSettings }) {
   const setField = (field) => (value) => {
     setProfile(prev => {
       const next = { ...prev, [field]: value };
@@ -2282,6 +2339,10 @@ function PerfilView({ profile, setProfile, targets, c, protein, setProtein }) {
           peso corporal, la grasa en 25% de las calorías, y el resto son carbos. Este es tu piso
           base — los días que entrenás, Voltra suma las calorías quemadas encima automáticamente.
         </div>
+      </div>
+
+      <div style={{ marginTop:16 }}>
+        <ReminderSection reminderSettings={reminderSettings} setReminderSettings={setReminderSettings} c={c}/>
       </div>
 
       <div style={{ marginTop:16 }}>
@@ -2340,7 +2401,7 @@ function SundayBanner({ sundayPrep, setSundayPrep, c }) {
   );
 }
 
-function NutriView({ profile, setProfile, logs, setLogs, burnedKcalToday, nutriCompletedDates, budget, setBudget, shoppingChecked, setShoppingChecked, sundayPrep, setSundayPrep, protein, setProtein, workoutCompletedDates }) {
+function NutriView({ profile, setProfile, logs, setLogs, burnedKcalToday, nutriCompletedDates, budget, setBudget, shoppingChecked, setShoppingChecked, sundayPrep, setSundayPrep, protein, setProtein, workoutCompletedDates, reminderSettings, setReminderSettings }) {
   const [tab, setTab] = useState("hoy");
   const [selectedIdx, setSelectedIdx] = useState(() => todayDayIndex());
   const todayIso = isoDate(new Date());
@@ -2423,7 +2484,7 @@ function NutriView({ profile, setProfile, logs, setLogs, burnedKcalToday, nutriC
       )}
 
       {tab === "perfil" && (
-        <PerfilView profile={profile} setProfile={setProfile} targets={targets} c={c} protein={protein} setProtein={setProtein}/>
+        <PerfilView profile={profile} setProfile={setProfile} targets={targets} c={c} protein={protein} setProtein={setProtein} reminderSettings={reminderSettings} setReminderSettings={setReminderSettings}/>
       )}
 
       {tab === "insights" && (
@@ -2657,8 +2718,47 @@ function CollapseChevron({ open }) {
   );
 }
 
+// GitHub-contributions-style heatmap: one cell per day, shaded by how many of
+// the 3 daily tracks (entreno/nutrición/Luca) were completed that day.
+const CONTRIB_WEEKS = 9;
+function ContributionsCalendar({ workoutDates, nutriDates, lucaDates }) {
+  const workoutSet = new Set(workoutDates);
+  const nutriSet = new Set(nutriDates);
+  const lucaSet = new Set(lucaDates);
+  const totalDays = CONTRIB_WEEKS * 7;
+  const today = new Date();
+  const cells = [];
+  for (let i = totalDays - 1; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(d.getDate() - i);
+    const iso = isoDate(d);
+    const count = (workoutSet.has(iso) ? 1 : 0) + (nutriSet.has(iso) ? 1 : 0) + (lucaSet.has(iso) ? 1 : 0);
+    cells.push({ iso, count, isToday: i === 0 });
+  }
+  const firstDow = (new Date(cells[0].iso + "T00:00:00").getDay() + 6) % 7; // 0=Lun
+  const padded = Array(firstDow).fill(null).concat(cells);
+  const shade = (count) => count === 0 ? "rgba(255,255,255,0.05)" : count === 1 ? "#39ff8840" : count === 2 ? "#39ff8890" : "#39ff88";
+
+  return (
+    <div style={{ background:"rgba(255,255,255,0.02)", border:"1px solid rgba(255,255,255,0.07)", borderRadius:12, padding:"14px 16px" }}>
+      <div style={{ fontSize:9, fontWeight:700, letterSpacing:"0.1em", color:"#6b7280", marginBottom:10 }}>TUS ÚLTIMAS {CONTRIB_WEEKS} SEMANAS</div>
+      <div style={{ display:"grid", gridTemplateRows:"repeat(7, 1fr)", gridAutoFlow:"column", gap:3, overflowX:"auto", paddingBottom:2 }}>
+        {padded.map((cell, i) => cell ? (
+          <div key={cell.iso} title={`${cell.iso} · ${cell.count}/3`} style={{
+            width:11, height:11, borderRadius:3, background:shade(cell.count),
+            outline: cell.isToday ? "1px solid #39ff88" : "none", outlineOffset:1, flexShrink:0,
+          }}/>
+        ) : (
+          <div key={`pad-${i}`} style={{ width:11, height:11, flexShrink:0 }}/>
+        ))}
+      </div>
+      <div style={{ fontSize:9, color:"#6b7280", marginTop:8 }}>Cada casilla es un día — más brillante entre más de tus 3 hábitos (entreno, comida, Luca) cumpliste.</div>
+    </div>
+  );
+}
+
 function TodayOverview({ day, tc, total, doneN, streak, onOpenSession, plan, log, updateLog, targets, burnedKcal, nutriStreak, onOpenNutri, wk, done, setDone, startTimer, protein, weights, setWeight,
-  onOpenLuca, lucaDone, setLucaDone, lucaMissionChoice, setLucaMissionChoice, lucaParticipants, setLucaParticipants, lucaStreak }) {
+  onOpenLuca, lucaDone, setLucaDone, lucaMissionChoice, setLucaMissionChoice, lucaParticipants, setLucaParticipants, lucaStreak, workoutCompletedDates, nutriCompletedDates, lucaCompletedDates }) {
   const pct = total > 0 ? Math.round(doneN / total * 100) : 0;
   const consumed = nutriMacrosForDay(plan, log);
   const adjustedTarget = targets.kcal + burnedKcal;
@@ -2802,6 +2902,8 @@ function TodayOverview({ day, tc, total, doneN, streak, onOpenSession, plan, log
         )}
       </div>
 
+      <ContributionsCalendar workoutDates={workoutCompletedDates} nutriDates={nutriCompletedDates} lucaDates={lucaCompletedDates}/>
+
       <button onClick={exportDay} disabled={generating} style={{
         marginTop:2, padding:"12px", borderRadius:10, cursor: generating ? "default" : "pointer",
         background:"linear-gradient(90deg, rgba(57,255,136,0.12), rgba(251,191,36,0.12))",
@@ -2907,6 +3009,12 @@ export default function App() {
       const saved = localStorage.getItem("voltra-nutri-sunday-prep");
       return saved ? JSON.parse(saved) : {};
     } catch { return {}; }
+  });
+  const [reminderSettings, setReminderSettings] = useState(() => {
+    try {
+      const saved = localStorage.getItem("voltra-reminder-settings");
+      return saved ? JSON.parse(saved) : { enabled: false, time: "18:00" };
+    } catch { return { enabled: false, time: "18:00" }; }
   });
 
   const startTimer = useCallback((ex) => {
@@ -3018,6 +3126,35 @@ export default function App() {
       return next;
     });
   }, [allLucaStepsDoneToday, todayNutriIso, setLucaCompletedDates]);
+
+  // Best-effort daily nudge: only fires while Voltra is open (foreground or
+  // backgrounded tab), since there's no push server to wake a closed browser.
+  const workoutPendingToday = todayWorkoutDay.type !== "REST" && todayWorkoutPct < 100;
+  const nutriPendingToday = !allNutriMealsEatenToday;
+  const lucaPendingToday = !allLucaStepsDoneToday;
+  useEffect(() => {
+    if (!reminderSettings.enabled || typeof Notification === "undefined" || Notification.permission !== "granted") return;
+    const check = () => {
+      const now = new Date();
+      const nowHHMM = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+      if (nowHHMM < reminderSettings.time) return;
+      const todayIso = isoDate(now);
+      let lastFired = null;
+      try { lastFired = localStorage.getItem("voltra-reminder-last-fired"); } catch {}
+      if (lastFired === todayIso) return;
+      const pending = [
+        workoutPendingToday && "entrenar",
+        nutriPendingToday && "registrar comida",
+        lucaPendingToday && "la misión de Luca",
+      ].filter(Boolean);
+      if (pending.length === 0) return;
+      new Notification("Voltra", { body: `Todavía te falta: ${pending.join(", ")}.`, icon: "/favicon.svg" });
+      try { localStorage.setItem("voltra-reminder-last-fired", todayIso); } catch {}
+    };
+    check();
+    const id = setInterval(check, 60000);
+    return () => clearInterval(id);
+  }, [reminderSettings.enabled, reminderSettings.time, workoutPendingToday, nutriPendingToday, lucaPendingToday]);
 
   const gd = (i) => { setDi(i); setView("day"); setOpen(null); setShowMini(false); setTlView(false); };
   const gw = (i) => { setWk(i); setDi(0); setView("week"); setOpen(null); setShowMini(false); setTlView(false); };
@@ -3161,14 +3298,16 @@ export default function App() {
             plan={todayNutriPlan} log={todayNutriLog} updateLog={updateTodayNutriLog} targets={nutriTargets} burnedKcal={burnedKcalToday} nutriStreak={nutriStreak} onOpenNutri={()=>setView("nutri")}
             wk={wk} done={done} setDone={setDone} startTimer={startTimer} protein={nutriProtein} weights={weights} setWeight={setWeight}
             onOpenLuca={()=>setView("luca")} lucaDone={lucaDone} setLucaDone={setLucaDone} lucaMissionChoice={lucaMissionChoice} setLucaMissionChoice={setLucaMissionChoice}
-            lucaParticipants={lucaParticipants} setLucaParticipants={setLucaParticipants} lucaStreak={lucaStreak}/>
+            lucaParticipants={lucaParticipants} setLucaParticipants={setLucaParticipants} lucaStreak={lucaStreak}
+            workoutCompletedDates={completedDates} nutriCompletedDates={nutriCompletedDates} lucaCompletedDates={lucaCompletedDates}/>
         ) : view==="luca" ? (
           <LucaView done={lucaDone} setDone={setLucaDone} missionChoice={lucaMissionChoice} setMissionChoice={setLucaMissionChoice}
             participants={lucaParticipants} setParticipants={setLucaParticipants}/>
         ) : view==="nutri" ? (
           <NutriView profile={nutriProfile} setProfile={setNutriProfile} logs={nutriLogs} setLogs={setNutriLogs} burnedKcalToday={burnedKcalToday} nutriCompletedDates={nutriCompletedDates}
             budget={nutriBudget} setBudget={setNutriBudget} shoppingChecked={nutriShoppingChecked} setShoppingChecked={setNutriShoppingChecked}
-            sundayPrep={nutriSundayPrep} setSundayPrep={setNutriSundayPrep} protein={nutriProtein} setProtein={setNutriProtein} workoutCompletedDates={completedDates}/>
+            sundayPrep={nutriSundayPrep} setSundayPrep={setNutriSundayPrep} protein={nutriProtein} setProtein={setNutriProtein} workoutCompletedDates={completedDates}
+            reminderSettings={reminderSettings} setReminderSettings={setReminderSettings}/>
         ) : (
         <div className="jay-shell">
 
