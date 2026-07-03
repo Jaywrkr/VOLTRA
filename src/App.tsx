@@ -2966,8 +2966,8 @@ function TodayOverview({ day, tc, total, doneN, streak, onOpenSession, plan, log
   const mealsEatenN = [log.breakfastEaten, log.lunchEaten, log.dinnerEaten].filter(Boolean).length;
 
   return (
-    <div style={{ maxWidth:560, margin:"0 auto", display:"flex", flexDirection:"column", gap:10 }}>
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(3, 1fr)", gap:6 }}>
+    <div className="jay-hoy-shell">
+      <div className="jay-hoy-stats">
         <StatTile icon="🔥" value={streak} label="racha entreno" color="#fb923c"/>
         <StatTile icon="🥑" value={nutriStreak} label="racha nutrición" color={nc}/>
         <StatTile icon="🧒" value={lucaStreak} label="racha luca" color={lc}/>
@@ -2976,6 +2976,7 @@ function TodayOverview({ day, tc, total, doneN, streak, onOpenSession, plan, log
         <StatTile icon="✅" value={total > 0 ? `${pct}%` : "—"} label="entreno hoy" color={tc.accent}/>
       </div>
 
+      <div className="jay-hoy-cards">
       <div style={{ background:tc.bg, border:`1px solid ${tc.accent}30`, borderRadius:12, padding:"14px 16px" }}>
         <div onClick={() => setEntrenoOpen(o => !o)} style={{ cursor:"pointer", display:"flex", justifyContent:"space-between", alignItems:"flex-start" }}>
           <div>
@@ -3071,6 +3072,7 @@ function TodayOverview({ day, tc, total, doneN, streak, onOpenSession, plan, log
         {lucaOpen && (
           <LucaMissionPanel done={lucaDone} setDone={setLucaDone} missionChoice={lucaMissionChoice} setMissionChoice={setLucaMissionChoice} participants={lucaParticipants} setParticipants={setLucaParticipants}/>
         )}
+      </div>
       </div>
 
       <ContributionsCalendar workoutDates={workoutCompletedDates} nutriDates={nutriCompletedDates} lucaDates={lucaCompletedDates}/>
@@ -3392,6 +3394,20 @@ export default function App() {
         @media (min-width: 640px) {
           .jay-header-inner { flex-direction: row; align-items: center; justify-content: space-between; }
           .jay-header-nav { width: auto; overflow-x: visible; }
+        }
+
+        /* ── Hoy: single column on mobile, dashboard grid on desktop so the
+           cards fill the width instead of staying a stretched narrow strip ── */
+        .jay-hoy-shell { max-width: 560px; margin: 0 auto; display: flex; flex-direction: column; gap: 10px; }
+        .jay-hoy-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+        .jay-hoy-cards { display: flex; flex-direction: column; gap: 10px; }
+        @media (min-width: 1024px) {
+          .jay-hoy-shell { max-width: 1280px; }
+          .jay-hoy-stats { grid-template-columns: repeat(6, 1fr); }
+          .jay-hoy-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; align-items: start; }
+        }
+        @media (min-width: 1600px) {
+          .jay-hoy-shell { max-width: 1440px; }
         }
       `}</style>
 
