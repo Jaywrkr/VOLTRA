@@ -1152,6 +1152,154 @@ function MuscleBalancePanel({ days }) {
   );
 }
 
+// ─── Luca's kid circuit ─────────────────────────────────────────────────────
+// Separate track for a 10-year-old, overweight, currently inactive: bodyweight
+// only, short low-impact bursts with generous rest, framed as a game so he can
+// do it solo next to dad's session — not a scaled-down adult workout.
+const LUCA_MISSIONS = [
+  {
+    title: "Misión Animales", emoji: "🐻", color: "#38bdf8",
+    warmup: { name: "Baile libre", note: "Pon una canción y muévete como quieras 1 minuto — ese es tu calentamiento.", time: "1 min" },
+    exercises: [
+      { name: "Camina como oso", note: "Manos y pies en el suelo, camina lento por el cuarto.", time: "20s" },
+      { name: "Camina como cangrejo", note: "Boca arriba, apóyate en manos y pies, camina de lado.", time: "20s" },
+      { name: "Salta como rana", note: "Agáchate y salta hacia adelante, con calma.", reps: "8 saltos" },
+      { name: "Marcha de soldado", note: "Rodillas arriba, marcha en tu lugar.", time: "20s" },
+      { name: "Tabla del cocodrilo", note: "Cuerpo recto apoyado en los antebrazos.", time: "12s" },
+    ],
+    rounds: 2,
+    cooldown: "Respira hondo 3 veces y estira los brazos hacia el techo. ¡Misión cumplida! 🏅",
+  },
+  {
+    title: "Misión Superhéroe", emoji: "🦸", color: "#a78bfa",
+    warmup: { name: "Vuelo de superhéroe", note: "Brazos abiertos, corre suave en tu lugar 1 minuto.", time: "1 min" },
+    exercises: [
+      { name: "Sentadilla de superhéroe", note: "Baja como si fueras a aterrizar, sube despacio.", reps: "8 veces" },
+      { name: "Escalador lento", note: "Manos en el suelo, lleva una rodilla al pecho, luego la otra.", time: "20s" },
+      { name: "Saltos de estrella", note: "Abre brazos y piernas al saltar, con calma.", reps: "8 veces" },
+      { name: "Silla invisible", note: "Espalda en la pared, como sentado sin silla.", time: "12s" },
+      { name: "Giros de brazos", note: "Brazos estirados, círculos grandes y lentos.", time: "15s" },
+    ],
+    rounds: 2,
+    cooldown: "Sacude todo el cuerpo como gelatina 10 segundos. ¡Salvaste el día! 🎖️",
+  },
+  {
+    title: "Misión Deportista", emoji: "⚽", color: "#fb923c",
+    warmup: { name: "Trote suave en tu lugar", note: "Rodillas bajitas, ritmo tranquilo.", time: "1 min" },
+    exercises: [
+      { name: "Sube al escalón", note: "Usa un escalón bajo o step, sube y baja despacio.", reps: "8 veces/pierna" },
+      { name: "Boxeo imaginario", note: "Golpes al aire, sin correr, solo brazos.", time: "20s" },
+      { name: "Saltos laterales", note: "Salta de lado a lado sobre una línea imaginaria.", reps: "8 veces" },
+      { name: "Tabla del cocodrilo", note: "Cuerpo recto apoyado en los antebrazos.", time: "12s" },
+      { name: "Toques de balón", note: "Si tienes pelota, tócala con cada pie alternando. Si no, marcha en tu lugar.", time: "20s" },
+    ],
+    rounds: 2,
+    cooldown: "Estira las piernas sentado, brazos hacia los pies. ¡Buen partido! 🏆",
+  },
+  {
+    title: "Misión Ninja", emoji: "🥷", color: "#34d399",
+    warmup: { name: "Sigilo en cuclillas", note: "Camina agachado y despacio por el cuarto.", time: "1 min" },
+    exercises: [
+      { name: "Salto de ninja", note: "Salto largo hacia adelante, aterriza suave.", reps: "6 veces" },
+      { name: "Equilibrio de ninja", note: "Párate en un pie, brazos abiertos.", time: "15s/lado" },
+      { name: "Saltos de payaso", note: "Jumping jacks a tu ritmo.", reps: "10 veces" },
+      { name: "Gateo de ninja", note: "Gatea lento y silencioso, como espiando.", time: "20s" },
+      { name: "Tabla del cocodrilo", note: "Cuerpo recto apoyado en los antebrazos.", time: "12s" },
+    ],
+    rounds: 2,
+    cooldown: "Cierra los ojos, respira lento 3 veces. ¡Misión secreta cumplida! 🥋",
+  },
+];
+
+function lucaMissionForToday() {
+  const start = new Date(new Date().getFullYear(), 0, 0);
+  const dayOfYear = Math.floor((new Date() - start) / 86400000);
+  return LUCA_MISSIONS[dayOfYear % LUCA_MISSIONS.length];
+}
+
+function LucaView({ done, setDone }) {
+  const mission = lucaMissionForToday();
+  const todayKey = isoDate(new Date());
+
+  const toggle = useCallback((key) => {
+    setDone(p => {
+      const next = { ...p, [key]: !p[key] };
+      try { localStorage.setItem("luca-training-done", JSON.stringify(next)); } catch {}
+      return next;
+    });
+  }, [setDone]);
+
+  const totalSteps = 1 + mission.exercises.length * mission.rounds;
+  let doneCount = 0;
+  const warmupKey = `luca-${todayKey}-warmup`;
+  if (done[warmupKey]) doneCount++;
+  for (let ri = 0; ri < mission.rounds; ri++) {
+    mission.exercises.forEach((_, ei) => {
+      if (done[`luca-${todayKey}-${ri}-${ei}`]) doneCount++;
+    });
+  }
+  const pct = Math.round((doneCount / totalSteps) * 100);
+  const c = mission.color;
+
+  const Row = ({ rowKey, name, note, right }) => {
+    const isDone = done[rowKey];
+    return (
+      <div onClick={() => toggle(rowKey)} style={{
+        display:"grid", gridTemplateColumns:"1fr auto auto", alignItems:"center", gap:10,
+        padding:"12px 14px", marginBottom:8, cursor:"pointer",
+        background: isDone ? "rgba(255,255,255,0.02)" : "rgba(255,255,255,0.04)",
+        border:`1px solid ${isDone ? "rgba(255,255,255,0.05)" : c+"30"}`,
+        borderLeft:`3px solid ${isDone ? "rgba(255,255,255,0.08)" : c}`,
+        borderRadius:10, opacity: isDone ? 0.45 : 1, transition:"all 0.15s",
+      }}>
+        <div>
+          <div style={{ fontSize:14, fontWeight:600, color: isDone ? "#6b7280" : "#f3f4f6", textDecoration: isDone ? "line-through" : "none" }}>{name}</div>
+          {note && <div style={{ fontSize:11, color:"#8a8f98", marginTop:2 }}>{note}</div>}
+        </div>
+        <div style={{ fontFamily:"'DM Mono',monospace", fontSize:12, color: isDone ? "#4b5563" : c, fontWeight:700 }}>{right}</div>
+        <CompleteCheckbox isDone={isDone} dot={c} onToggle={() => toggle(rowKey)}/>
+      </div>
+    );
+  };
+
+  return (
+    <div style={{ maxWidth:560, margin:"0 auto" }}>
+      <div style={{ background:`${c}12`, border:`1px solid ${c}35`, borderRadius:14, padding:"18px 18px 14px", marginBottom:16, textAlign:"center" }}>
+        <div style={{ fontSize:34, marginBottom:4 }}>{mission.emoji}</div>
+        <div style={{ fontSize:19, fontWeight:700, color:"#f3f4f6" }}>{mission.title}</div>
+        <div style={{ fontSize:11, color:"#9ca3af", marginTop:4 }}>Circuito para Luca — ¡mientras papá entrena, tú cumples tu misión!</div>
+        <div style={{ marginTop:12 }}>
+          <div style={{ height:5, background:"rgba(255,255,255,0.08)", borderRadius:99, overflow:"hidden" }}>
+            <div style={{ height:"100%", width:`${pct}%`, background:c, borderRadius:99, transition:"width 0.3s" }}/>
+          </div>
+          <div style={{ fontSize:10, color:c, marginTop:5, fontFamily:"'DM Mono',monospace" }}>{doneCount}/{totalSteps} pasos</div>
+        </div>
+      </div>
+
+      <div style={{ fontSize:9, fontWeight:700, letterSpacing:"0.12em", color:"#6b7280", marginBottom:6, paddingLeft:2 }}>CALENTAMIENTO</div>
+      <Row rowKey={warmupKey} name={mission.warmup.name} note={mission.warmup.note} right={mission.warmup.time}/>
+
+      {Array.from({ length: mission.rounds }, (_, ri) => (
+        <div key={ri} style={{ marginTop:14 }}>
+          <div style={{ fontSize:9, fontWeight:700, letterSpacing:"0.12em", color:c, marginBottom:6, paddingLeft:2, fontFamily:"'DM Mono',monospace" }}>RONDA {ri + 1}</div>
+          {mission.exercises.map((ex, ei) => (
+            <Row key={ei} rowKey={`luca-${todayKey}-${ri}-${ei}`} name={ex.name} note={ex.note} right={ex.time || ex.reps}/>
+          ))}
+        </div>
+      ))}
+
+      <div style={{ background:"rgba(255,255,255,0.02)", borderLeft:`2px solid ${c}`, borderRadius:"0 8px 8px 0", padding:"10px 13px", marginTop:14 }}>
+        <div style={{ fontSize:9, fontWeight:600, letterSpacing:"0.1em", color:c, marginBottom:2 }}>PARA CERRAR</div>
+        <div style={{ fontSize:12, color:"#d1d5db", lineHeight:1.6 }}>{mission.cooldown}</div>
+      </div>
+
+      <div style={{ fontSize:10, color:"#6b7280", marginTop:12, textAlign:"center", lineHeight:1.6 }}>
+        No hay prisa ni carrera contra nadie — cada paso cuenta. Toma agua cuando quieras. 💧
+      </div>
+    </div>
+  );
+}
+
 // ─── App ──────────────────────────────────────────────────────────────────────
 export default function App() {
   const [wk, setWk]       = useState(initWeek());
@@ -1178,6 +1326,12 @@ export default function App() {
       const saved = localStorage.getItem("jay-training-completed-dates");
       return saved ? JSON.parse(saved) : [];
     } catch { return []; }
+  });
+  const [lucaDone, setLucaDone] = useState(() => {
+    try {
+      const saved = localStorage.getItem("luca-training-done");
+      return saved ? JSON.parse(saved) : {};
+    } catch { return {}; }
   });
 
   const startTimer = useCallback((ex) => {
@@ -1323,6 +1477,14 @@ export default function App() {
                 transition:"all 0.15s",
               }}>{v==="week"?"Semana":"Sesión"}</button>
             ))}
+            <button onClick={()=>setView("luca")} title="Circuito de Luca" style={{
+              background:view==="luca"?"rgba(56,189,248,0.12)":"transparent",
+              border:`1px solid ${view==="luca"?"rgba(56,189,248,0.4)":"rgba(255,255,255,0.08)"}`,
+              color:view==="luca"?"#38bdf8":"#6b7280",
+              borderRadius:6, padding:"5px 12px", fontSize:11, cursor:"pointer",
+              fontFamily:"'DM Sans',sans-serif", fontWeight:600,
+              transition:"all 0.15s",
+            }}>🧒 Luca</button>
           </div>
         </div>
         {view==="day" && day.type!=="REST" && total>0 && (
@@ -1338,6 +1500,9 @@ export default function App() {
 
       {/* Content */}
       <div style={{ width:"100%", maxWidth:1440, margin:"0 auto", padding:"14px 20px 56px", boxSizing:"border-box" }}>
+        {view==="luca" ? (
+          <LucaView done={lucaDone} setDone={setLucaDone}/>
+        ) : (
         <div className="jay-shell">
 
         {/* ── SIDEBAR (nav) ── */}
@@ -1610,7 +1775,8 @@ export default function App() {
         {/* ── END MAIN CONTENT ── */}
 
         </div>
-        {/* ── END SHELL ── */}
+        )}
+        {/* ── END SHELL / LUCA ── */}
       </div>
       <FloatingStopwatch info={timer} onClose={()=>setTimer(null)}/>
       <VersionBadge/>
