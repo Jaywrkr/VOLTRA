@@ -2449,7 +2449,7 @@ function DayWrappedModal({ imageUrl, onClose }) {
 
 // ─── Hoy: vista compacta combinada (entreno + nutrición) ──────────────────────
 // Punto de entrada por defecto — un vistazo a ambos sin tener que elegir tab.
-function TodayOverview({ day, tc, total, doneN, streak, onOpenSession, plan, log, updateLog, targets, burnedKcal, nutriStreak, onOpenNutri }) {
+function TodayOverview({ day, tc, total, doneN, streak, onOpenSession, plan, log, updateLog, targets, burnedKcal, nutriStreak, onOpenNutri, wk, done, setDone, startTimer, protein }) {
   const pct = total > 0 ? Math.round(doneN / total * 100) : 0;
   const consumed = nutriMacrosForDay(plan, log);
   const adjustedTarget = targets.kcal + burnedKcal;
@@ -2458,10 +2458,13 @@ function TodayOverview({ day, tc, total, doneN, streak, onOpenSession, plan, log
   const reached = consumed.kcal >= adjustedTarget;
   const nc = NUTRI_ACCENT;
 
-  const toggleMeal = (field, e) => {
-    e.stopPropagation();
-    if (field === "lunchEaten" && plan.lunch.type === "mama" && !log.lunchEaten) { onOpenNutri(); return; }
-    updateLog({ [field]: !log[field] });
+  const toggleExercise = (idx) => {
+    const key = `w${wk}-${day.id}-${idx}`;
+    setDone(p => {
+      const next = { ...p, [key]: !p[key] };
+      try { localStorage.setItem("jay-training-done", JSON.stringify(next)); } catch {}
+      return next;
+    });
   };
 
   const [wrappedUrl, setWrappedUrl] = useState(null);
@@ -2486,10 +2489,12 @@ function TodayOverview({ day, tc, total, doneN, streak, onOpenSession, plan, log
     setGenerating(false);
   };
 
+  let ct = -1;
+
   return (
     <div style={{ maxWidth:560, margin:"0 auto", display:"flex", flexDirection:"column", gap:10 }}>
-      <div onClick={onOpenSession} style={{ cursor:"pointer", background:tc.bg, border:`1px solid ${tc.accent}30`, borderRadius:12, padding:"14px 16px" }}>
-        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start" }}>
+      <div style={{ background:tc.bg, border:`1px solid ${tc.accent}30`, borderRadius:12, padding:"14px 16px" }}>
+        <div onClick={onOpenSession} style={{ cursor:"pointer", display:"flex", justifyContent:"space-between", alignItems:"flex-start" }}>
           <div>
             <div style={{ fontSize:9, fontWeight:700, letterSpacing:"0.1em", color:tc.label }}>ENTRENO DE HOY</div>
             <div style={{ fontSize:16, fontWeight:700, color:"#f3f4f6", marginTop:2 }}>{day.focus}</div>
@@ -2501,10 +2506,46 @@ function TodayOverview({ day, tc, total, doneN, streak, onOpenSession, plan, log
             <div style={{ height:5, background:"rgba(255,255,255,0.08)", borderRadius:99, overflow:"hidden", marginTop:10 }}>
               <div style={{ height:"100%", width:`${pct}%`, background:tc.accent, borderRadius:99, transition:"width 0.3s" }}/>
             </div>
-            <div style={{ display:"flex", justifyContent:"space-between", marginTop:5, fontSize:10, color:"#9ca3af" }}>
+            <div style={{ display:"flex", justifyContent:"space-between", marginTop:5, marginBottom:10, fontSize:10, color:"#9ca3af" }}>
               <span>{doneN}/{total} ejercicios</span>
-              <span style={{ color:tc.label, fontWeight:600 }}>Ver sesión →</span>
+              <span onClick={onOpenSession} style={{ color:tc.label, fontWeight:600, cursor:"pointer" }}>Detalle completo →</span>
             </div>
+            {day.sections.filter(s => s.exercises.length > 0).map(section => {
+              const dot = SDOT(section.name);
+              return (
+                <div key={section.name} style={{ marginBottom:8 }}>
+                  <div style={{ display:"flex", alignItems:"center", gap:5, marginBottom:4, paddingLeft:2 }}>
+                    <div style={{ width:3, height:3, borderRadius:"50%", background:dot, flexShrink:0 }}/>
+                    <span style={{ fontSize:8, fontWeight:600, letterSpacing:"0.08em", color:"#6b7280" }}>{section.name.toUpperCase()}</span>
+                  </div>
+                  <div style={{ display:"flex", flexDirection:"column", gap:3 }}>
+                    {section.exercises.map(ex => {
+                      ct++;
+                      const idx = ct;
+                      const key = `w${wk}-${day.id}-${idx}`;
+                      const isDone = !!done[key];
+                      return (
+                        <div key={idx} onClick={() => toggleExercise(idx)} style={{
+                          display:"grid", gridTemplateColumns:"1fr auto auto auto", alignItems:"center", gap:8,
+                          padding:"8px 10px", cursor:"pointer",
+                          background: isDone ? "rgba(255,255,255,0.015)" : "rgba(255,255,255,0.035)",
+                          border:`1px solid ${isDone ? "rgba(255,255,255,0.04)" : dot+"20"}`,
+                          borderLeft:`3px solid ${isDone ? "rgba(255,255,255,0.06)" : dot}`,
+                          borderRadius:8, opacity: isDone ? 0.45 : 1, transition:"all 0.15s",
+                        }}>
+                          <span style={{ fontSize:12, fontWeight:500, color: isDone ? "#6b7280" : "#f3f4f6", textDecoration: isDone ? "line-through" : "none" }}>{ex.name}</span>
+                          <span style={{ fontFamily:"'DM Mono',monospace", fontSize:9, color: isDone ? "#4b5563" : "#9ca3af", background: isDone ? "transparent" : "rgba(255,255,255,0.05)", padding:"2px 5px", borderRadius:4 }}>{ex.weight}</span>
+                          <span style={{ fontFamily:"'DM Mono',monospace", fontSize:11, color: isDone ? "#4b5563" : dot, fontWeight:600 }}>{parseRepsLabel(ex.sets)}</span>
+                          <span style={{ display:"flex", alignItems:"center" }} onClick={e => e.stopPropagation()}>
+                            {isTimed(ex) && <TimerButton ex={ex} dot={dot} onStart={startTimer}/>}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
           </>
         ) : (
           <div style={{ fontSize:11, color:"#9ca3af", marginTop:8 }}>Descanso — el músculo crece hoy.</div>
@@ -2519,23 +2560,20 @@ function TodayOverview({ day, tc, total, doneN, streak, onOpenSession, plan, log
           </div>
           {nutriStreak > 0 && <span style={{ fontSize:11, color:nc, fontWeight:700, flexShrink:0 }}>🥑 {nutriStreak}</span>}
         </div>
-        <div style={{ height:5, background:"rgba(255,255,255,0.08)", borderRadius:99, overflow:"hidden", marginTop:10 }}>
+        <div style={{ height:5, background:"rgba(255,255,255,0.08)", borderRadius:99, overflow:"hidden", marginTop:10, marginBottom:12 }}>
           <div style={{ height:"100%", width:`${kcalPct}%`, background: reached ? "#39ff88" : nc, borderRadius:99, transition:"width 0.3s" }}/>
         </div>
-        <div style={{ display:"flex", gap:6, marginTop:10 }}>
-          {[["breakfastEaten","Desayuno"],["lunchEaten","Almuerzo"],["dinnerEaten","Cena"]].map(([field,label]) => {
-            const isDone = !!log[field];
-            return (
-              <button key={field} onClick={e => toggleMeal(field, e)} style={{
-                flex:1, padding:"7px 4px", borderRadius:7, fontSize:10, fontWeight:600, cursor:"pointer",
-                background: isDone ? `${nc}18` : "rgba(255,255,255,0.04)",
-                border:`1px solid ${isDone ? nc+"50" : "rgba(255,255,255,0.1)"}`,
-                color: isDone ? nc : "#9ca3af",
-              }}>{isDone ? "✓ " : ""}{label}</button>
-            );
-          })}
-        </div>
-        <div onClick={onOpenNutri} style={{ textAlign:"right", marginTop:8, fontSize:10, color:nc, fontWeight:600, cursor:"pointer" }}>Ver nutrición →</div>
+
+        <NutriMealRow name={plan.breakfast.name} note={`${plan.breakfast.prepMinutes} min`} macros={plan.breakfast.macros} overrideMacros={log.breakfastOverride} onOverrideChange={m => updateLog({ breakfastOverride: m || undefined })} isDone={log.breakfastEaten} onToggle={() => updateLog({ breakfastEaten: !log.breakfastEaten })} c={nc}/>
+        {protein && <ProteinShakeQuickLog protein={protein} updateLog={updateLog} c={nc}/>}
+        {plan.lunch.type === "mama" ? (
+          <MomLunchLogger log={log} updateLog={updateLog} c={nc}/>
+        ) : (
+          <NutriMealRow name={plan.lunch.recipe.name} note={`${plan.lunch.recipe.prepMinutes} min`} macros={plan.lunch.recipe.macros} overrideMacros={log.lunchOverride} onOverrideChange={m => updateLog({ lunchOverride: m || undefined })} isDone={log.lunchEaten} onToggle={() => updateLog({ lunchEaten: !log.lunchEaten })} c={nc}/>
+        )}
+        <NutriMealRow name={plan.dinner.name} note={`${plan.dinner.prepMinutes} min${plan.dinner.batchCook ? " · batch cooking" : ""}`} macros={plan.dinner.macros} overrideMacros={log.dinnerOverride} onOverrideChange={m => updateLog({ dinnerOverride: m || undefined })} isDone={log.dinnerEaten} onToggle={() => updateLog({ dinnerEaten: !log.dinnerEaten })} c={nc}/>
+
+        <div onClick={onOpenNutri} style={{ textAlign:"right", marginTop:4, fontSize:10, color:nc, fontWeight:600, cursor:"pointer" }}>Extras, carrito, perfil →</div>
       </div>
 
       <button onClick={exportDay} disabled={generating} style={{
@@ -2856,7 +2894,8 @@ export default function App() {
       <div style={{ width:"100%", maxWidth:1440, margin:"0 auto", padding:"14px 20px 56px", boxSizing:"border-box" }}>
         {view==="hoy" ? (
           <TodayOverview day={todayWorkoutDay} tc={todayTc} total={todayWorkoutTotal} doneN={todayWorkoutDoneN} streak={streak} onOpenSession={openSession}
-            plan={todayNutriPlan} log={todayNutriLog} updateLog={updateTodayNutriLog} targets={nutriTargets} burnedKcal={burnedKcalToday} nutriStreak={nutriStreak} onOpenNutri={()=>setView("nutri")}/>
+            plan={todayNutriPlan} log={todayNutriLog} updateLog={updateTodayNutriLog} targets={nutriTargets} burnedKcal={burnedKcalToday} nutriStreak={nutriStreak} onOpenNutri={()=>setView("nutri")}
+            wk={wk} done={done} setDone={setDone} startTimer={startTimer} protein={nutriProtein}/>
         ) : view==="luca" ? (
           <LucaView done={lucaDone} setDone={setLucaDone}/>
         ) : view==="nutri" ? (
