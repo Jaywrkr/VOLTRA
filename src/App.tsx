@@ -1731,23 +1731,59 @@ function nutriMacrosForDay(plan, log) {
 }
 
 // ─── Punto de integración: calorías quemadas del entrenamiento de hoy ─────────
-// MET aproximado por tipo de sesión de Voltra; kcal/min = MET × 3.5 × kg / 200.
-const TRAINING_MET = { STRENGTH: 6, FITXR: 8 };
+// Standard ACSM metabolic equation: kcal/min = MET × 3.5 × kg / 200
+// (VO2 in ml/kg/min = MET × 3.5, kcal/min = VO2(L/min) × ~5 kcal/L O2).
+// This is a MET-based estimate, not a heart-rate/VO2-measured one — it's the
+// best available without a wearable, so the goal here is to make the MET
+// values and the minutes they're applied to as realistic as possible, not to
+// claim lab-grade precision.
+const TRAINING_MET = { STRENGTH: 6 };
+// FitXR sub-types differ enough in intensity that one flat number under- or
+// over-counts most sessions — Flow is deliberately controlled/low-impact,
+// HIIT is near-maximal effort. Approximated against the Compendium of
+// Physical Activities: punching-bag boxing ≈5.5, vigorous calisthenics/
+// circuit training ≈8.0, kickboxing/cardio-combat ≈10.0.
+const FITXR_MET = { fitxrFlow: 5, fitxrBox: 7, fitxrCombat: 8.5, fitxrHiit: 10 };
+const FITXR_MET_DEFAULT = 8;
+
 function parseDurationMinutes(str) {
   const m = String(str).match(/(\d+)\s*min/);
   return m ? parseInt(m[1]) : 0;
 }
-function estimateBurnedKcal(day, pct, weightKg) {
+
+// FitXR exercises are individually tagged with their own duration ("20 min")
+// and sub-type (info: "fitxrBox" etc.), so burned kcal is summed per block —
+// only for blocks actually marked done — instead of spreading one flat MET
+// over the day's nominal total duration times an overall completion %.
+// STRENGTH days have no per-exercise duration (they're rep-based), so they
+// still use the day's total nominal duration scaled by real completion.
+function estimateBurnedKcal(day, wk, done, weightKg) {
+  if (day.type === "FITXR") {
+    const sections = day.sections.filter(s => s.exercises.length > 0);
+    let kcal = 0;
+    sections.forEach((section, si) => {
+      section.exercises.forEach((ex, ei) => {
+        const minutes = parseDurationMinutes(ex.sets);
+        if (!minutes || !done[`tl-w${wk}-${day.id}-${si}-${ei}-0`]) return;
+        const met = FITXR_MET[ex.info] ?? FITXR_MET_DEFAULT;
+        kcal += met * 3.5 * weightKg / 200 * minutes;
+      });
+    });
+    return Math.round(kcal);
+  }
   const met = TRAINING_MET[day.type];
   if (!met) return 0;
-  const minutes = parseDurationMinutes(day.duration) * (pct / 100);
+  const { total, doneN } = timelineTotals(day, wk, done);
+  const pct = total > 0 ? doneN / total : 0;
+  const minutes = parseDurationMinutes(day.duration) * pct;
   return Math.round(met * 3.5 * weightKg / 200 * minutes);
 }
 
-// Ad-hoc FitXR sessions logged outside the programmed plan (same MET model).
+// Ad-hoc FitXR sessions logged outside the programmed plan — same per-type MET.
 const FITXR_EXTRA_TYPES = ["fitxrBox", "fitxrCombat", "fitxrHiit", "fitxrFlow"];
-function extraBurnedKcal(minutes, weightKg) {
-  return Math.round(TRAINING_MET.FITXR * 3.5 * weightKg / 200 * minutes);
+function extraBurnedKcal(type, minutes, weightKg) {
+  const met = FITXR_MET[type] ?? FITXR_MET_DEFAULT;
+  return Math.round(met * 3.5 * weightKg / 200 * minutes);
 }
 
 const DEFAULT_NUTRI_PROFILE = { weightKg:70, heightCm:170, age:35, trainingDaysPerWeek:5, deficitPct:15 };
@@ -2826,7 +2862,7 @@ function MacroMini({ label, value, target, color }) {
 function ExtraFitxrSection({ items, onAdd, onRemove, weightKg, dot }) {
   const [type, setType] = useState(FITXR_EXTRA_TYPES[0]);
   const [minutes, setMinutes] = useState(20);
-  const totalKcal = items.reduce((s, w) => s + extraBurnedKcal(w.minutes, weightKg), 0);
+  const totalKcal = items.reduce((s, w) => s + extraBurnedKcal(w.type, w.minutes, weightKg), 0);
 
   return (
     <div style={{ marginTop:12, paddingTop:12, borderTop:"1px solid rgba(255,255,255,0.06)" }}>
@@ -2837,7 +2873,7 @@ function ExtraFitxrSection({ items, onAdd, onRemove, weightKg, dot }) {
         <div key={w.id} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"5px 0", fontSize:11 }}>
           <span style={{ color:"#d1d5db" }}>{EX_NAME(w.type)} · {w.minutes} min</span>
           <span style={{ display:"flex", alignItems:"center", gap:8 }}>
-            <span style={{ color:dot, fontFamily:"'DM Mono',monospace", fontSize:10, fontWeight:700 }}>+{extraBurnedKcal(w.minutes, weightKg)} kcal</span>
+            <span style={{ color:dot, fontFamily:"'DM Mono',monospace", fontSize:10, fontWeight:700 }}>+{extraBurnedKcal(w.type, w.minutes, weightKg)} kcal</span>
             <span onClick={() => onRemove(w.id)} style={{ cursor:"pointer", color:"#6b7280", fontSize:13, lineHeight:1 }}>✕</span>
           </span>
         </div>
@@ -3247,10 +3283,10 @@ export default function App() {
   const todayWorkoutPct = todayWorkoutTotal > 0 ? Math.round(todayWorkoutDoneN / todayWorkoutTotal * 100) : 0;
 
   const programmedBurnedKcalToday = todayWorkoutDay.type !== "REST"
-    ? estimateBurnedKcal(todayWorkoutDay, todayWorkoutPct, nutriProfile.weightKg)
+    ? estimateBurnedKcal(todayWorkoutDay, wk, done, nutriProfile.weightKg)
     : 0;
   const todayExtraWorkouts = extraWorkouts[isoDate(new Date())] || [];
-  const extraBurnedKcalToday = todayExtraWorkouts.reduce((s, w) => s + extraBurnedKcal(w.minutes, nutriProfile.weightKg), 0);
+  const extraBurnedKcalToday = todayExtraWorkouts.reduce((s, w) => s + extraBurnedKcal(w.type, w.minutes, nutriProfile.weightKg), 0);
   const burnedKcalToday = programmedBurnedKcalToday + extraBurnedKcalToday;
 
   const todayNutriIso = isoDate(new Date());
