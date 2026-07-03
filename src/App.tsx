@@ -1171,6 +1171,7 @@ function MuscleBalancePanel({ days }) {
 const LUCA_MISSIONS = [
   {
     title: "Misión Animales", emoji: "🐻", color: "#38bdf8",
+    story: "El bosque necesita un explorador. Cada animal te presta su movimiento para cruzarlo entero.",
     warmup: { name: "Baile libre", note: "Pon una canción y muévete como quieras 1 minuto — ese es tu calentamiento.", time: "1 min" },
     exercises: [
       { name: "Camina como oso", note: "Manos y pies en el suelo, camina lento por el cuarto.", time: "20s" },
@@ -1184,6 +1185,7 @@ const LUCA_MISSIONS = [
   },
   {
     title: "Misión Superhéroe", emoji: "🦸", color: "#a78bfa",
+    story: "La ciudad te necesita. Antes de volar hay que entrenar los poderes — uno por uno.",
     warmup: { name: "Vuelo de superhéroe", note: "Brazos abiertos, corre suave en tu lugar 1 minuto.", time: "1 min" },
     exercises: [
       { name: "Sentadilla de superhéroe", note: "Baja como si fueras a aterrizar, sube despacio.", reps: "8 veces" },
@@ -1197,6 +1199,7 @@ const LUCA_MISSIONS = [
   },
   {
     title: "Misión Deportista", emoji: "⚽", color: "#fb923c",
+    story: "Faltan 5 minutos para el partido final. El equipo necesita que llegues calentito y listo.",
     warmup: { name: "Trote suave en tu lugar", note: "Rodillas bajitas, ritmo tranquilo.", time: "1 min" },
     exercises: [
       { name: "Sube al escalón", note: "Usa un escalón bajo o step, sube y baja despacio.", reps: "8 veces/pierna" },
@@ -1210,6 +1213,7 @@ const LUCA_MISSIONS = [
   },
   {
     title: "Misión Ninja", emoji: "🥷", color: "#34d399",
+    story: "El templo secreto solo deja pasar a quien camina sin hacer ruido y salta sin caerse.",
     warmup: { name: "Sigilo en cuclillas", note: "Camina agachado y despacio por el cuarto.", time: "1 min" },
     exercises: [
       { name: "Salto de ninja", note: "Salto largo hacia adelante, aterriza suave.", reps: "6 veces" },
@@ -1221,17 +1225,53 @@ const LUCA_MISSIONS = [
     rounds: 2,
     cooldown: "Cierra los ojos, respira lento 3 veces. ¡Misión secreta cumplida! 🥋",
   },
+  {
+    title: "Misión Selva", emoji: "🌴", color: "#facc15",
+    story: "El mapa marca un templo perdido en la selva. Solo se llega trepando, saltando raíces y esquivando ramas.",
+    warmup: { name: "Machete imaginario", note: "Abre camino entre las plantas: corta despacio a los lados 1 minuto.", time: "1 min" },
+    exercises: [
+      { name: "Trepa de mono", note: "En cuclillas, avanza con manos y pies tocando el suelo.", time: "20s" },
+      { name: "Salta la raíz", note: "Pies juntos, salta de lado a lado sobre una línea imaginaria.", reps: "8 veces" },
+      { name: "Esquiva ramas", note: "Agáchate rápido como si esquivaras una rama, luego levántate.", reps: "8 veces" },
+      { name: "Tabla del jaguar", note: "Cuerpo recto apoyado en los antebrazos, quieto y fuerte.", time: "12s" },
+      { name: "Vuelo de guacamayo", note: "Brazos abiertos, gira despacio en tu lugar.", time: "15s" },
+    ],
+    rounds: 2,
+    cooldown: "Siéntate, respira el aire de la selva 3 veces hondo. ¡Encontraste el templo! 🗿",
+  },
+  {
+    title: "Misión Espacio", emoji: "🚀", color: "#60a5fa",
+    story: "La nave despega en 60 segundos. El entrenamiento de astronauta prepara tu cuerpo para la gravedad cero.",
+    warmup: { name: "Cuenta regresiva", note: "Salta suave en tu lugar mientras cuentas del 10 al 1.", time: "1 min" },
+    exercises: [
+      { name: "Caminata lunar", note: "Pasos largos y lentos, como si flotaras.", time: "20s" },
+      { name: "Giro de asteroide", note: "Gira los brazos en círculos grandes, despacio.", time: "15s" },
+      { name: "Despegue", note: "Agáchate y salta hacia arriba con los brazos al cielo.", reps: "8 veces" },
+      { name: "Escudo de nave", note: "Espalda en la pared, como sentado sin silla.", time: "12s" },
+      { name: "Flotar en el espacio", note: "Tabla apoyada en antebrazos, cuerpo recto e inmóvil.", time: "12s" },
+    ],
+    rounds: 2,
+    cooldown: "Aterrizaje suave: respira hondo 3 veces y estira los brazos. ¡Misión espacial cumplida! 🪐",
+  },
 ];
 
 function lucaMissionForToday() {
   const start = new Date(new Date().getFullYear(), 0, 0);
   const dayOfYear = Math.floor((new Date() - start) / 86400000);
-  return LUCA_MISSIONS[dayOfYear % LUCA_MISSIONS.length];
+  return dayOfYear % LUCA_MISSIONS.length;
 }
 
-function LucaView({ done, setDone }) {
-  const mission = lucaMissionForToday();
+const LUCA_COMPANIONS = [
+  { key: "papa", label: "Papá", emoji: "🧔" },
+  { key: "kira", label: "Kira", emoji: "👧" },
+];
+
+function LucaMissionPanel({ done, setDone, missionChoice, setMissionChoice, participants, setParticipants }) {
   const todayKey = isoDate(new Date());
+  const suggestedIdx = lucaMissionForToday();
+  const chosenIdx = missionChoice[todayKey] ?? suggestedIdx;
+  const mission = LUCA_MISSIONS[chosenIdx];
+  const todayParticipants = participants[todayKey] || {};
 
   const toggle = useCallback((key) => {
     setDone(p => {
@@ -1240,6 +1280,23 @@ function LucaView({ done, setDone }) {
       return next;
     });
   }, [setDone]);
+
+  const pickMission = (idx) => {
+    setMissionChoice(prev => {
+      const next = { ...prev, [todayKey]: idx };
+      try { localStorage.setItem("voltra-luca-mission-choice", JSON.stringify(next)); } catch {}
+      return next;
+    });
+  };
+
+  const toggleCompanion = (key) => {
+    setParticipants(prev => {
+      const dayPrev = prev[todayKey] || {};
+      const next = { ...prev, [todayKey]: { ...dayPrev, [key]: !dayPrev[key] } };
+      try { localStorage.setItem("voltra-luca-participants", JSON.stringify(next)); } catch {}
+      return next;
+    });
+  };
 
   const totalSteps = 1 + mission.exercises.length * mission.rounds;
   let doneCount = 0;
@@ -1252,6 +1309,11 @@ function LucaView({ done, setDone }) {
   }
   const pct = Math.round((doneCount / totalSteps) * 100);
   const c = mission.color;
+
+  const joinedNames = LUCA_COMPANIONS.filter(p => todayParticipants[p.key]).map(p => p.label);
+  const cooldownText = joinedNames.length > 0
+    ? mission.cooldown.replace(/¡([^!]*)!/, `¡${joinedNames.join(" y ")} y Luca lo lograron!`)
+    : mission.cooldown;
 
   const Row = ({ rowKey, name, note, right }) => {
     const isDone = done[rowKey];
@@ -1275,17 +1337,50 @@ function LucaView({ done, setDone }) {
   };
 
   return (
-    <div style={{ maxWidth:560, margin:"0 auto" }}>
+    <div>
+      <div style={{ fontSize:9, fontWeight:700, letterSpacing:"0.12em", color:"#6b7280", marginBottom:6, paddingLeft:2 }}>ELIGE TU MISIÓN</div>
+      <div style={{ display:"flex", gap:6, overflowX:"auto", paddingBottom:4, marginBottom:14 }}>
+        {LUCA_MISSIONS.map((m, idx) => {
+          const active = idx === chosenIdx;
+          return (
+            <div key={m.title} onClick={() => pickMission(idx)} style={{
+              flexShrink:0, cursor:"pointer", textAlign:"center", width:76, padding:"10px 6px",
+              borderRadius:12, background: active ? `${m.color}18` : "rgba(255,255,255,0.03)",
+              border:`1px solid ${active ? m.color+"60" : "rgba(255,255,255,0.08)"}`, transition:"all 0.15s",
+            }}>
+              <div style={{ fontSize:22 }}>{m.emoji}</div>
+              <div style={{ fontSize:9, fontWeight:600, color: active ? m.color : "#9ca3af", marginTop:3, lineHeight:1.3 }}>{m.title.replace("Misión ", "")}</div>
+              {idx === suggestedIdx && <div style={{ fontSize:7, color:"#6b7280", marginTop:2 }}>sugerida</div>}
+            </div>
+          );
+        })}
+      </div>
+
       <div style={{ background:`${c}12`, border:`1px solid ${c}35`, borderRadius:14, padding:"18px 18px 14px", marginBottom:16, textAlign:"center" }}>
         <div style={{ fontSize:34, marginBottom:4 }}>{mission.emoji}</div>
         <div style={{ fontSize:19, fontWeight:700, color:"#f3f4f6" }}>{mission.title}</div>
-        <div style={{ fontSize:11, color:"#9ca3af", marginTop:4 }}>Circuito para Luca — ¡mientras papá entrena, tú cumples tu misión!</div>
+        <div style={{ fontSize:11, color:"#9ca3af", marginTop:4, fontStyle:"italic" }}>{mission.story}</div>
         <div style={{ marginTop:12 }}>
           <div style={{ height:5, background:"rgba(255,255,255,0.08)", borderRadius:99, overflow:"hidden" }}>
             <div style={{ height:"100%", width:`${pct}%`, background:c, borderRadius:99, transition:"width 0.3s" }}/>
           </div>
           <div style={{ fontSize:10, color:c, marginTop:5, fontFamily:"'DM Mono',monospace" }}>{doneCount}/{totalSteps} pasos</div>
         </div>
+      </div>
+
+      <div style={{ fontSize:9, fontWeight:700, letterSpacing:"0.12em", color:"#6b7280", marginBottom:6, paddingLeft:2 }}>¿QUIÉN SE UNE HOY?</div>
+      <div style={{ display:"flex", gap:6, marginBottom:16 }}>
+        {LUCA_COMPANIONS.map(p => {
+          const active = !!todayParticipants[p.key];
+          return (
+            <div key={p.key} onClick={() => toggleCompanion(p.key)} style={{
+              cursor:"pointer", padding:"7px 13px", borderRadius:8, fontSize:12, fontWeight:600,
+              background: active ? `${c}18` : "rgba(255,255,255,0.03)",
+              border:`1px solid ${active ? c+"60" : "rgba(255,255,255,0.08)"}`,
+              color: active ? c : "#9ca3af", transition:"all 0.15s",
+            }}>{p.emoji} {p.label}{active ? " ✓" : ""}</div>
+          );
+        })}
       </div>
 
       <div style={{ fontSize:9, fontWeight:700, letterSpacing:"0.12em", color:"#6b7280", marginBottom:6, paddingLeft:2 }}>CALENTAMIENTO</div>
@@ -1302,12 +1397,21 @@ function LucaView({ done, setDone }) {
 
       <div style={{ background:"rgba(255,255,255,0.02)", borderLeft:`2px solid ${c}`, borderRadius:"0 8px 8px 0", padding:"10px 13px", marginTop:14 }}>
         <div style={{ fontSize:9, fontWeight:600, letterSpacing:"0.1em", color:c, marginBottom:2 }}>PARA CERRAR</div>
-        <div style={{ fontSize:12, color:"#d1d5db", lineHeight:1.6 }}>{mission.cooldown}</div>
+        <div style={{ fontSize:12, color:"#d1d5db", lineHeight:1.6 }}>{cooldownText}</div>
       </div>
 
       <div style={{ fontSize:10, color:"#6b7280", marginTop:12, textAlign:"center", lineHeight:1.6 }}>
         No hay prisa ni carrera contra nadie — cada paso cuenta. Toma agua cuando quieras. 💧
       </div>
+    </div>
+  );
+}
+
+function LucaView({ done, setDone, missionChoice, setMissionChoice, participants, setParticipants }) {
+  return (
+    <div style={{ maxWidth:560, margin:"0 auto" }}>
+      <div style={{ fontSize:11, color:"#9ca3af", marginBottom:14, textAlign:"center" }}>Circuito para Luca — ¡mientras papá entrena, tú cumples tu misión!</div>
+      <LucaMissionPanel done={done} setDone={setDone} missionChoice={missionChoice} setMissionChoice={setMissionChoice} participants={participants} setParticipants={setParticipants}/>
     </div>
   );
 }
@@ -1890,8 +1994,9 @@ function NutriDayCard({ plan, log, updateLog, targets, burnedKcal, isToday, c, p
 
 const NUTRI_WEEKDAY_SHORT = ["DOM","LUN","MAR","MIÉ","JUE","VIE","SÁB"];
 
-function WeeklyInsights({ logs, targets, c }) {
+function WeeklyInsights({ logs, targets, c, workoutCompletedDates }) {
   const [metric, setMetric] = useState("kcal");
+  const workoutSet = new Set(workoutCompletedDates || []);
   const days = Array.from({ length: 7 }, (_, i) => {
     const d = new Date();
     d.setDate(d.getDate() - (6 - i));
@@ -1899,7 +2004,8 @@ function WeeklyInsights({ logs, targets, c }) {
     const plan = nutriPlanForDate(d);
     const log = logs[iso] || NUTRI_EMPTY_LOG;
     const consumed = nutriMacrosForDay(plan, log);
-    return { iso, label: NUTRI_WEEKDAY_SHORT[d.getDay()], value: consumed[metric], isToday: i === 6 };
+    const workoutStatus = isRestWeekday(d) ? "rest" : workoutSet.has(iso) ? "trained" : "missed";
+    return { iso, label: NUTRI_WEEKDAY_SHORT[d.getDay()], value: consumed[metric], isToday: i === 6, workoutStatus };
   });
   const target = metric === "kcal" ? targets.kcal : targets.protein;
   const max = Math.max(target, ...days.map(d => d.value), 1);
@@ -1932,6 +2038,18 @@ function WeeklyInsights({ logs, targets, c }) {
           </div>
         ))}
       </div>
+      <div style={{ display:"flex", alignItems:"center", gap:8, marginTop:8 }}>
+        {days.map(d => (
+          <div key={d.iso} style={{ flex:1, display:"flex", justifyContent:"center" }} title={d.workoutStatus === "trained" ? "Entrenaste" : d.workoutStatus === "rest" ? "Descanso" : "No entrenaste"}>
+            <div style={{
+              width:6, height:6, borderRadius:"50%",
+              background: d.workoutStatus === "trained" ? "#fb923c" : d.workoutStatus === "rest" ? "rgba(255,255,255,0.15)" : "transparent",
+              border: d.workoutStatus === "missed" ? "1px solid rgba(255,255,255,0.2)" : "none",
+            }}/>
+          </div>
+        ))}
+      </div>
+      <div style={{ fontSize:9, color:"#6b7280", marginTop:5, textAlign:"center" }}>🔥 entrenaste · ⚪ descanso · ◦ no entrenaste</div>
       <div style={{ fontSize:11, color:"#9ca3af", marginTop:10, lineHeight:1.6 }}>
         {diff >= 0
           ? `Vas ${diff} ${unit} por encima del objetivo diario en promedio esta semana.`
@@ -2034,6 +2152,81 @@ function ShoppingCartView({ budget, setBudget, checked, setChecked, c }) {
 }
 
 // ─── Perfil ─────────────────────────────────────────────────────────────────────
+// ─── Respaldo de datos ──────────────────────────────────────────────────────────
+// Everything lives in localStorage only — no server, no account — so losing the
+// browser (new phone, cleared cache) loses the whole history. This lets that
+// data round-trip through a JSON file the user keeps themselves.
+const BACKUP_KEYS = [
+  "jay-training-completed-dates", "jay-training-done", "jay-training-weights",
+  "luca-training-done", "voltra-luca-completed-dates", "voltra-luca-mission-choice", "voltra-luca-participants",
+  "voltra-nutri-budget", "voltra-nutri-completed-dates", "voltra-nutri-logs", "voltra-nutri-profile",
+  "voltra-nutri-protein", "voltra-nutri-shopping-checked", "voltra-nutri-sunday-prep",
+];
+
+function BackupSection({ c }) {
+  const [importMsg, setImportMsg] = useState(null);
+  const fileInputRef = useRef(null);
+
+  const exportBackup = () => {
+    const data = {};
+    BACKUP_KEYS.forEach(key => {
+      const raw = localStorage.getItem(key);
+      if (raw != null) { try { data[key] = JSON.parse(raw); } catch {} }
+    });
+    const blob = new Blob([JSON.stringify({ exportedAt: new Date().toISOString(), data }, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `voltra-respaldo-${isoDate(new Date())}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const importBackup = (file) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const parsed = JSON.parse(reader.result);
+        const data = parsed.data || parsed;
+        if (!window.confirm("Esto va a reemplazar todos tus datos actuales (entreno, nutrición y Luca) con los del archivo. ¿Continuar?")) return;
+        BACKUP_KEYS.forEach(key => {
+          if (data[key] !== undefined) localStorage.setItem(key, JSON.stringify(data[key]));
+        });
+        setImportMsg("✓ Restaurado — recargando…");
+        setTimeout(() => window.location.reload(), 900);
+      } catch {
+        setImportMsg("El archivo no es un respaldo válido de Voltra.");
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  return (
+    <div>
+      <div style={{ fontSize:9, fontWeight:700, letterSpacing:"0.12em", color:"#6b7280", marginBottom:6, paddingLeft:2 }}>RESPALDO DE DATOS</div>
+      <div style={{ background:"rgba(255,255,255,0.02)", border:"1px solid rgba(255,255,255,0.07)", borderRadius:10, padding:14 }}>
+        <div style={{ fontSize:11, color:"#9ca3af", lineHeight:1.6, marginBottom:12 }}>
+          Todo se guarda solo en este navegador. Si cambiás de celular o borrás el caché, se pierde el historial —
+          descarga un respaldo de vez en cuando y guárdalo donde quieras.
+        </div>
+        <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
+          <button onClick={exportBackup} style={{
+            padding:"9px 14px", borderRadius:8, fontSize:12, fontWeight:600, cursor:"pointer",
+            background:`${c}18`, border:`1px solid ${c}50`, color:c,
+          }}>⬇️ Descargar respaldo</button>
+          <button onClick={() => fileInputRef.current?.click()} style={{
+            padding:"9px 14px", borderRadius:8, fontSize:12, fontWeight:600, cursor:"pointer",
+            background:"rgba(255,255,255,0.04)", border:"1px solid rgba(255,255,255,0.12)", color:"#d1d5db",
+          }}>⬆️ Restaurar desde archivo</button>
+          <input ref={fileInputRef} type="file" accept="application/json" style={{ display:"none" }}
+            onChange={e => { const f = e.target.files?.[0]; if (f) importBackup(f); e.target.value = ""; }}/>
+        </div>
+        {importMsg && <div style={{ fontSize:11, color: importMsg.startsWith("✓") ? "#39ff88" : "#f87171", marginTop:10 }}>{importMsg}</div>}
+      </div>
+    </div>
+  );
+}
+
 function PerfilView({ profile, setProfile, targets, c, protein, setProtein }) {
   const setField = (field) => (value) => {
     setProfile(prev => {
@@ -2090,6 +2283,10 @@ function PerfilView({ profile, setProfile, targets, c, protein, setProtein }) {
           base — los días que entrenás, Voltra suma las calorías quemadas encima automáticamente.
         </div>
       </div>
+
+      <div style={{ marginTop:16 }}>
+        <BackupSection c={c}/>
+      </div>
     </div>
   );
 }
@@ -2143,7 +2340,7 @@ function SundayBanner({ sundayPrep, setSundayPrep, c }) {
   );
 }
 
-function NutriView({ profile, setProfile, logs, setLogs, burnedKcalToday, nutriCompletedDates, budget, setBudget, shoppingChecked, setShoppingChecked, sundayPrep, setSundayPrep, protein, setProtein }) {
+function NutriView({ profile, setProfile, logs, setLogs, burnedKcalToday, nutriCompletedDates, budget, setBudget, shoppingChecked, setShoppingChecked, sundayPrep, setSundayPrep, protein, setProtein, workoutCompletedDates }) {
   const [tab, setTab] = useState("hoy");
   const [selectedIdx, setSelectedIdx] = useState(() => todayDayIndex());
   const todayIso = isoDate(new Date());
@@ -2230,7 +2427,7 @@ function NutriView({ profile, setProfile, logs, setLogs, burnedKcalToday, nutriC
       )}
 
       {tab === "insights" && (
-        <WeeklyInsights logs={logs} targets={targets} c={c}/>
+        <WeeklyInsights logs={logs} targets={targets} c={c} workoutCompletedDates={workoutCompletedDates}/>
       )}
     </div>
   );
@@ -2460,7 +2657,8 @@ function CollapseChevron({ open }) {
   );
 }
 
-function TodayOverview({ day, tc, total, doneN, streak, onOpenSession, plan, log, updateLog, targets, burnedKcal, nutriStreak, onOpenNutri, wk, done, setDone, startTimer, protein, weights, setWeight }) {
+function TodayOverview({ day, tc, total, doneN, streak, onOpenSession, plan, log, updateLog, targets, burnedKcal, nutriStreak, onOpenNutri, wk, done, setDone, startTimer, protein, weights, setWeight,
+  onOpenLuca, lucaDone, setLucaDone, lucaMissionChoice, setLucaMissionChoice, lucaParticipants, setLucaParticipants, lucaStreak }) {
   const pct = total > 0 ? Math.round(doneN / total * 100) : 0;
   const consumed = nutriMacrosForDay(plan, log);
   const adjustedTarget = targets.kcal + burnedKcal;
@@ -2469,8 +2667,22 @@ function TodayOverview({ day, tc, total, doneN, streak, onOpenSession, plan, log
   const reached = consumed.kcal >= adjustedTarget;
   const nc = NUTRI_ACCENT;
 
-  const [entrenoOpen, setEntrenoOpen] = useState(true);
-  const [nutriOpen, setNutriOpen] = useState(true);
+  const [entrenoOpen, setEntrenoOpen] = useState(false);
+  const [nutriOpen, setNutriOpen] = useState(false);
+  const [lucaOpen, setLucaOpen] = useState(false);
+
+  const lucaTodayKey = isoDate(new Date());
+  const lucaMission = LUCA_MISSIONS[lucaMissionChoice[lucaTodayKey] ?? lucaMissionForToday()];
+  const lc = lucaMission.color;
+  const lucaTotalSteps = 1 + lucaMission.exercises.length * lucaMission.rounds;
+  let lucaDoneCount = 0;
+  if (lucaDone[`luca-${lucaTodayKey}-warmup`]) lucaDoneCount++;
+  for (let ri = 0; ri < lucaMission.rounds; ri++) {
+    lucaMission.exercises.forEach((_, ei) => {
+      if (lucaDone[`luca-${lucaTodayKey}-${ri}-${ei}`]) lucaDoneCount++;
+    });
+  }
+  const lucaPct = Math.round((lucaDoneCount / lucaTotalSteps) * 100);
 
   const [wrappedUrl, setWrappedUrl] = useState(null);
   const [generating, setGenerating] = useState(false);
@@ -2498,11 +2710,13 @@ function TodayOverview({ day, tc, total, doneN, streak, onOpenSession, plan, log
 
   return (
     <div style={{ maxWidth:560, margin:"0 auto", display:"flex", flexDirection:"column", gap:10 }}>
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(4, 1fr)", gap:6 }}>
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(3, 1fr)", gap:6 }}>
         <StatTile icon="🔥" value={streak} label="racha entreno" color="#fb923c"/>
         <StatTile icon="🥑" value={nutriStreak} label="racha nutrición" color={nc}/>
+        <StatTile icon="🧒" value={lucaStreak} label="racha luca" color={lc}/>
         <StatTile icon="⚡" value={Math.round(burnedKcal)} label="kcal quemadas" color={tc.accent}/>
         <StatTile icon="🍽️" value={`${mealsEatenN}/3`} label="comidas hoy" color={nc}/>
+        <StatTile icon="✅" value={total > 0 ? `${pct}%` : "—"} label="entreno hoy" color={tc.accent}/>
       </div>
 
       <div style={{ background:tc.bg, border:`1px solid ${tc.accent}30`, borderRadius:12, padding:"14px 16px" }}>
@@ -2565,6 +2779,29 @@ function TodayOverview({ day, tc, total, doneN, streak, onOpenSession, plan, log
         )}
       </div>
 
+      <div style={{ background:`${lc}10`, border:`1px solid ${lc}30`, borderRadius:12, padding:"14px 16px" }}>
+        <div onClick={() => setLucaOpen(o => !o)} style={{ cursor:"pointer", display:"flex", justifyContent:"space-between", alignItems:"flex-start" }}>
+          <div>
+            <div style={{ fontSize:9, fontWeight:700, letterSpacing:"0.1em", color:lc }}>MISIÓN DE LUCA</div>
+            <div style={{ fontSize:16, fontWeight:700, color:"#f3f4f6", marginTop:2 }}>{lucaMission.emoji} {lucaMission.title}</div>
+          </div>
+          <div style={{ display:"flex", alignItems:"center", gap:8, flexShrink:0 }}>
+            {lucaStreak > 0 && <span style={{ fontSize:11, color:lc, fontWeight:700 }}>🧒 {lucaStreak}</span>}
+            <CollapseChevron open={lucaOpen}/>
+          </div>
+        </div>
+        <div style={{ height:5, background:"rgba(255,255,255,0.08)", borderRadius:99, overflow:"hidden", marginTop:10 }}>
+          <div style={{ height:"100%", width:`${lucaPct}%`, background:lc, borderRadius:99, transition:"width 0.3s" }}/>
+        </div>
+        <div style={{ display:"flex", justifyContent:"space-between", marginTop:5, marginBottom: lucaOpen ? 10 : 0, fontSize:10, color:"#9ca3af" }}>
+          <span>{lucaDoneCount}/{lucaTotalSteps} pasos</span>
+          <span onClick={e => { e.stopPropagation(); onOpenLuca(); }} style={{ color:lc, fontWeight:600, cursor:"pointer" }}>Pantalla completa →</span>
+        </div>
+        {lucaOpen && (
+          <LucaMissionPanel done={lucaDone} setDone={setLucaDone} missionChoice={lucaMissionChoice} setMissionChoice={setLucaMissionChoice} participants={lucaParticipants} setParticipants={setLucaParticipants}/>
+        )}
+      </div>
+
       <button onClick={exportDay} disabled={generating} style={{
         marginTop:2, padding:"12px", borderRadius:10, cursor: generating ? "default" : "pointer",
         background:"linear-gradient(90deg, rgba(57,255,136,0.12), rgba(251,191,36,0.12))",
@@ -2610,6 +2847,24 @@ export default function App() {
       const saved = localStorage.getItem("luca-training-done");
       return saved ? JSON.parse(saved) : {};
     } catch { return {}; }
+  });
+  const [lucaMissionChoice, setLucaMissionChoice] = useState(() => {
+    try {
+      const saved = localStorage.getItem("voltra-luca-mission-choice");
+      return saved ? JSON.parse(saved) : {};
+    } catch { return {}; }
+  });
+  const [lucaParticipants, setLucaParticipants] = useState(() => {
+    try {
+      const saved = localStorage.getItem("voltra-luca-participants");
+      return saved ? JSON.parse(saved) : {};
+    } catch { return {}; }
+  });
+  const [lucaCompletedDates, setLucaCompletedDates] = useState(() => {
+    try {
+      const saved = localStorage.getItem("voltra-luca-completed-dates");
+      return saved ? JSON.parse(saved) : [];
+    } catch { return []; }
   });
   const [nutriProfile, setNutriProfile] = useState(() => {
     try {
@@ -2723,6 +2978,7 @@ export default function App() {
   const todayNutriLog = nutriLogs[todayNutriIso] || NUTRI_EMPTY_LOG;
   const nutriTargets = calcNutriTargets(nutriProfile);
   const nutriStreak = computeSimpleStreak(new Set(nutriCompletedDates));
+  const lucaStreak = computeSimpleStreak(new Set(lucaCompletedDates));
 
   const updateTodayNutriLog = useCallback((patch) => {
     setNutriLogs(prev => {
@@ -2743,6 +2999,25 @@ export default function App() {
       return next;
     });
   }, [allNutriMealsEatenToday, todayNutriIso, setNutriCompletedDates]);
+
+  const todayLucaMission = LUCA_MISSIONS[lucaMissionChoice[todayNutriIso] ?? lucaMissionForToday()];
+  const todayLucaTotalSteps = 1 + todayLucaMission.exercises.length * todayLucaMission.rounds;
+  let todayLucaDoneCount = lucaDone[`luca-${todayNutriIso}-warmup`] ? 1 : 0;
+  for (let ri = 0; ri < todayLucaMission.rounds; ri++) {
+    todayLucaMission.exercises.forEach((_, ei) => {
+      if (lucaDone[`luca-${todayNutriIso}-${ri}-${ei}`]) todayLucaDoneCount++;
+    });
+  }
+  const allLucaStepsDoneToday = todayLucaDoneCount === todayLucaTotalSteps;
+  useEffect(() => {
+    if (!allLucaStepsDoneToday) return;
+    setLucaCompletedDates(prev => {
+      if (prev.includes(todayNutriIso)) return prev;
+      const next = [...prev, todayNutriIso];
+      try { localStorage.setItem("voltra-luca-completed-dates", JSON.stringify(next)); } catch {}
+      return next;
+    });
+  }, [allLucaStepsDoneToday, todayNutriIso, setLucaCompletedDates]);
 
   const gd = (i) => { setDi(i); setView("day"); setOpen(null); setShowMini(false); setTlView(false); };
   const gw = (i) => { setWk(i); setDi(0); setView("week"); setOpen(null); setShowMini(false); setTlView(false); };
@@ -2884,13 +3159,16 @@ export default function App() {
         {view==="hoy" ? (
           <TodayOverview day={todayWorkoutDay} tc={todayTc} total={todayWorkoutTotal} doneN={todayWorkoutDoneN} streak={streak} onOpenSession={openSession}
             plan={todayNutriPlan} log={todayNutriLog} updateLog={updateTodayNutriLog} targets={nutriTargets} burnedKcal={burnedKcalToday} nutriStreak={nutriStreak} onOpenNutri={()=>setView("nutri")}
-            wk={wk} done={done} setDone={setDone} startTimer={startTimer} protein={nutriProtein} weights={weights} setWeight={setWeight}/>
+            wk={wk} done={done} setDone={setDone} startTimer={startTimer} protein={nutriProtein} weights={weights} setWeight={setWeight}
+            onOpenLuca={()=>setView("luca")} lucaDone={lucaDone} setLucaDone={setLucaDone} lucaMissionChoice={lucaMissionChoice} setLucaMissionChoice={setLucaMissionChoice}
+            lucaParticipants={lucaParticipants} setLucaParticipants={setLucaParticipants} lucaStreak={lucaStreak}/>
         ) : view==="luca" ? (
-          <LucaView done={lucaDone} setDone={setLucaDone}/>
+          <LucaView done={lucaDone} setDone={setLucaDone} missionChoice={lucaMissionChoice} setMissionChoice={setLucaMissionChoice}
+            participants={lucaParticipants} setParticipants={setLucaParticipants}/>
         ) : view==="nutri" ? (
           <NutriView profile={nutriProfile} setProfile={setNutriProfile} logs={nutriLogs} setLogs={setNutriLogs} burnedKcalToday={burnedKcalToday} nutriCompletedDates={nutriCompletedDates}
             budget={nutriBudget} setBudget={setNutriBudget} shoppingChecked={nutriShoppingChecked} setShoppingChecked={setNutriShoppingChecked}
-            sundayPrep={nutriSundayPrep} setSundayPrep={setNutriSundayPrep} protein={nutriProtein} setProtein={setNutriProtein}/>
+            sundayPrep={nutriSundayPrep} setSundayPrep={setNutriSundayPrep} protein={nutriProtein} setProtein={setNutriProtein} workoutCompletedDates={completedDates}/>
         ) : (
         <div className="jay-shell">
 
