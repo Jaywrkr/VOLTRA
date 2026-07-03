@@ -2026,17 +2026,27 @@ export default function App() {
         @media (min-width: 1024px) {
           .jay-ex-open { grid-column: 1 / -1; }
         }
+
+        /* ── Header: stacked + scrollable nav on mobile, single row on desktop ── */
+        .jay-header-inner { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; }
+        .jay-header-nav { display: flex; gap: 4px; align-items: center; overflow-x: auto; width: 100%; -webkit-overflow-scrolling: touch; }
+        .jay-header-nav::-webkit-scrollbar { display: none; }
+        .jay-header-nav > * { flex-shrink: 0; white-space: nowrap; }
+        @media (min-width: 640px) {
+          .jay-header-inner { flex-direction: row; align-items: center; justify-content: space-between; }
+          .jay-header-nav { width: auto; overflow-x: visible; }
+        }
       `}</style>
 
       {/* Header — includes a compact progress row in day view so it stays
           visible while scrolling a long session, regardless of header height */}
       <div style={{ background:"#000000", borderBottom:"1px solid rgba(57,255,136,0.12)", padding:"14px 0 12px", position:"sticky", top:0, zIndex:20 }}>
-        <div style={{ width:"100%", maxWidth:1440, margin:"0 auto", padding:"0 20px", boxSizing:"border-box", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+        <div style={{ width:"100%", maxWidth:1440, margin:"0 auto", padding:"0 20px", boxSizing:"border-box" }} className="jay-header-inner">
           <div>
             <div style={{ fontFamily:"'DM Mono',monospace", fontSize:9, color:"#39ff88", letterSpacing:"0.22em", fontWeight:600 }}>JAY · HIPERTROFIA · 8 SEMANAS</div>
             <div style={{ fontSize:14, fontWeight:700, marginTop:3, color:"#f3f4f6", letterSpacing:"0.01em" }}>Masa muscular + Abdomen definido</div>
           </div>
-          <div style={{ display:"flex", gap:4, alignItems:"center" }}>
+          <div className="jay-header-nav">
             {streak > 0 && (
               <div title="Racha de días completados" style={{
                 display:"flex", alignItems:"center", gap:4,
