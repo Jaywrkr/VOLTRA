@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 
 // Equipment: 10kg | 6.8kg (15lbs) | 4.5kg (10lbs) | BW
 // NO exercises using two of the same KB weight simultaneously
@@ -1813,7 +1813,7 @@ function NutriDayCard({ plan, log, updateLog, targets, burnedKcal, isToday, c })
         <div style={{ fontSize:10, color:"#6b7280", marginTop:12, textAlign:"center" }}>{isToday ? "Hoy" : "Ese día"} Luca se une a la cena, con porción infantil (~{Math.round(LUCA_PORTION_FACTOR*100)}%).</div>
       )}
 
-      {plan.day === "domingo" && (
+      {plan.day === "domingo" && !isToday && (
         <div style={{ marginTop:16, background:"rgba(255,255,255,0.02)", border:`1px solid ${c}25`, borderRadius:10, padding:"12px 14px" }}>
           <div style={{ fontSize:9, fontWeight:700, letterSpacing:"0.12em", color:c, marginBottom:8 }}>DOMINGO · COMPRA Y PREP</div>
           <div style={{ display:"flex", flexDirection:"column", gap:5 }}>
@@ -1882,7 +1882,188 @@ function WeeklyInsights({ logs, targets, c }) {
   );
 }
 
-function NutriView({ profile, setProfile, logs, setLogs, burnedKcalToday, nutriCompletedDates, setNutriCompletedDates }) {
+// ─── Carrito de compras ────────────────────────────────────────────────────────
+const SHOPPING_SECTION_ORDER = ["Proteínas","Verduras y frutas","Granos y legumbres","Lácteos y huevos","Grasas y condimentos","Otros"];
+
+function buildShoppingList() {
+  const items = {};
+  WEEK_PLAN.forEach(day => {
+    const recipes = [day.breakfast, day.dinner, ...(day.lunch.type === "recipe" ? [day.lunch.recipe] : [])];
+    recipes.forEach(r => {
+      r.ingredients.forEach(ing => {
+        const key = `${ing.section}|${ing.name}|${ing.qty}`;
+        if (!items[key]) items[key] = { key, section: ing.section, name: ing.name, qty: ing.qty, estCost: 0, count: 0 };
+        items[key].estCost += ing.estCost;
+        items[key].count += 1;
+      });
+    });
+  });
+  const bySection = {};
+  Object.values(items).forEach(item => {
+    (bySection[item.section] ||= []).push(item);
+  });
+  Object.values(bySection).forEach(list => list.sort((a, b) => a.name.localeCompare(b.name)));
+  return bySection;
+}
+
+function ShoppingCartView({ budget, setBudget, checked, setChecked, c }) {
+  const bySection = useMemo(() => buildShoppingList(), []);
+  const allItems = Object.values(bySection).flat();
+  const total = allItems.reduce((s, it) => s + it.estCost, 0);
+  const checkedTotal = allItems.filter(it => checked[it.key]).reduce((s, it) => s + it.estCost, 0);
+  const overBudget = total > budget;
+
+  const toggle = (key) => setChecked(prev => {
+    const next = { ...prev, [key]: !prev[key] };
+    try { localStorage.setItem("voltra-nutri-shopping-checked", JSON.stringify(next)); } catch {}
+    return next;
+  });
+  const onBudgetChange = (v) => setBudget(() => {
+    try { localStorage.setItem("voltra-nutri-budget", JSON.stringify(v)); } catch {}
+    return v;
+  });
+
+  return (
+    <div>
+      <div style={{ background:`${c}10`, border:`1px solid ${c}30`, borderRadius:14, padding:"16px 18px", marginBottom:16 }}>
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+          <div>
+            <div style={{ fontSize:9, fontWeight:700, letterSpacing:"0.12em", color:c }}>CARRITO · SEMANA COMPLETA</div>
+            <div style={{ fontSize:20, fontWeight:700, color: overBudget ? "#f87171" : "#f3f4f6", marginTop:3 }}>${total.toFixed(2)}</div>
+          </div>
+          <div style={{ textAlign:"right" }}>
+            <div style={{ fontSize:9, color:"#8a8f98" }}>PRESUPUESTO</div>
+            <input type="number" value={budget} onChange={e => onBudgetChange(parseFloat(e.target.value) || 0)}
+              style={{ width:70, fontFamily:"'DM Mono',monospace", fontSize:13, fontWeight:700, color:c, background:"rgba(255,255,255,0.05)", border:"1px solid rgba(255,255,255,0.1)", borderRadius:6, padding:"4px 6px", textAlign:"right" }}/>
+          </div>
+        </div>
+        <div style={{ fontSize:11, color: overBudget ? "#f87171" : "#9ca3af", marginTop:8 }}>
+          {overBudget ? `Te pasas $${(total - budget).toFixed(2)} del presupuesto.` : `$${(budget - total).toFixed(2)} dentro del presupuesto.`}
+          {" "}Ya marcaste ${checkedTotal.toFixed(2)} comprado.
+        </div>
+      </div>
+
+      {SHOPPING_SECTION_ORDER.filter(s => bySection[s]).map(section => (
+        <div key={section} style={{ marginBottom:14 }}>
+          <div style={{ fontSize:9, fontWeight:700, letterSpacing:"0.12em", color:"#6b7280", marginBottom:6, paddingLeft:2 }}>{section.toUpperCase()}</div>
+          <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
+            {bySection[section].map(item => {
+              const isDone = !!checked[item.key];
+              return (
+                <div key={item.key} onClick={() => toggle(item.key)} style={{
+                  display:"grid", gridTemplateColumns:"1fr auto auto", alignItems:"center", gap:10,
+                  padding:"10px 13px", cursor:"pointer",
+                  background: isDone ? "rgba(255,255,255,0.02)" : "rgba(255,255,255,0.04)",
+                  border:`1px solid ${isDone ? "rgba(255,255,255,0.05)" : c+"25"}`,
+                  borderRadius:9, opacity: isDone ? 0.45 : 1, transition:"all 0.15s",
+                }}>
+                  <div>
+                    <span style={{ fontSize:13, fontWeight:500, color: isDone ? "#6b7280" : "#f3f4f6", textDecoration: isDone ? "line-through" : "none" }}>{item.name}</span>
+                    {item.count > 1 && <span style={{ fontSize:10, color:c, marginLeft:6 }}>×{item.count}</span>}
+                    <div style={{ fontSize:10, color:"#8a8f98", marginTop:1 }}>{item.qty}</div>
+                  </div>
+                  <span style={{ fontFamily:"'DM Mono',monospace", fontSize:11, color: isDone ? "#4b5563" : c }}>${item.estCost.toFixed(2)}</span>
+                  <CompleteCheckbox isDone={isDone} dot={c} onToggle={() => toggle(item.key)}/>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ─── Perfil ─────────────────────────────────────────────────────────────────────
+function PerfilView({ profile, setProfile, targets, c }) {
+  const setField = (field) => (value) => {
+    setProfile(prev => {
+      const next = { ...prev, [field]: value };
+      try { localStorage.setItem("voltra-nutri-profile", JSON.stringify(next)); } catch {}
+      return next;
+    });
+  };
+  return (
+    <div>
+      <div style={{ fontSize:9, fontWeight:700, letterSpacing:"0.12em", color:"#6b7280", marginBottom:6, paddingLeft:2 }}>TUS DATOS</div>
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(2, 1fr)", gap:8, background:"rgba(255,255,255,0.02)", border:"1px solid rgba(255,255,255,0.07)", borderRadius:10, padding:14, marginBottom:16 }}>
+        <NutriProfileField label="PESO (KG)" value={profile.weightKg} onChange={setField("weightKg")} step={0.5}/>
+        <NutriProfileField label="ALTURA (CM)" value={profile.heightCm} onChange={setField("heightCm")}/>
+        <NutriProfileField label="EDAD" value={profile.age} onChange={setField("age")}/>
+        <NutriProfileField label="DÍAS ENTRENO/SEM" value={profile.trainingDaysPerWeek} onChange={setField("trainingDaysPerWeek")} min={0}/>
+        <NutriProfileField label="DÉFICIT %" value={profile.deficitPct} onChange={setField("deficitPct")}/>
+      </div>
+
+      <div style={{ fontSize:9, fontWeight:700, letterSpacing:"0.12em", color:"#6b7280", marginBottom:6, paddingLeft:2 }}>TU OBJETIVO DIARIO CALCULADO</div>
+      <div style={{ background:`${c}10`, border:`1px solid ${c}30`, borderRadius:12, padding:16 }}>
+        <div style={{ fontSize:26, fontWeight:700, color:c, marginBottom:12 }}>{targets.kcal} kcal</div>
+        <div style={{ display:"grid", gridTemplateColumns:"repeat(3, 1fr)", gap:10 }}>
+          <div><div style={{ fontSize:9, color:"#8a8f98" }}>PROTEÍNA</div><div style={{ fontFamily:"'DM Mono',monospace", fontSize:14, color:"#39ff88", fontWeight:700 }}>{targets.protein}g</div></div>
+          <div><div style={{ fontSize:9, color:"#8a8f98" }}>CARBOS</div><div style={{ fontFamily:"'DM Mono',monospace", fontSize:14, color:"#a78bfa", fontWeight:700 }}>{targets.carbs}g</div></div>
+          <div><div style={{ fontSize:9, color:"#8a8f98" }}>GRASA</div><div style={{ fontFamily:"'DM Mono',monospace", fontSize:14, color:"#fb923c", fontWeight:700 }}>{targets.fat}g</div></div>
+        </div>
+        <div style={{ fontSize:11, color:"#9ca3af", marginTop:14, lineHeight:1.7 }}>
+          Calculado con Mifflin-St Jeor: tu metabolismo basal (BMR) por tu factor de actividad
+          (según cuántos días entrenás por semana) te da el gasto total diario (TDEE). A eso le
+          restamos tu % de déficit para llegar al objetivo. La proteína va fija en 2 g por kg de
+          peso corporal, la grasa en 25% de las calorías, y el resto son carbos. Este es tu piso
+          base — los días que entrenás, Voltra suma las calorías quemadas encima automáticamente.
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Banner de domingo ──────────────────────────────────────────────────────────
+function SundayBanner({ sundayPrep, setSundayPrep, c }) {
+  const [notifStatus, setNotifStatus] = useState(typeof Notification !== "undefined" ? Notification.permission : "unsupported");
+
+  const toggleItem = (i) => setSundayPrep(prev => {
+    const next = { ...prev, [i]: !prev[i] };
+    try { localStorage.setItem("voltra-nutri-sunday-prep", JSON.stringify(next)); } catch {}
+    return next;
+  });
+
+  const requestNotifs = async () => {
+    if (typeof Notification === "undefined") return;
+    const result = await Notification.requestPermission();
+    setNotifStatus(result);
+  };
+
+  const doneCount = SUNDAY_PREP_CHECKLIST.filter((_, i) => sundayPrep[i]).length;
+
+  return (
+    <div style={{ background:`${c}10`, border:`1px solid ${c}35`, borderRadius:12, padding:"14px 16px", marginBottom:16 }}>
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:8 }}>
+        <div>
+          <div style={{ fontSize:9, fontWeight:700, letterSpacing:"0.12em", color:c }}>DOMINGO · COMPRA Y PREP</div>
+          <div style={{ fontSize:15, fontWeight:700, color:"#f3f4f6", marginTop:2 }}>{doneCount}/{SUNDAY_PREP_CHECKLIST.length} listo para la semana</div>
+        </div>
+        {notifStatus !== "granted" && notifStatus !== "unsupported" && (
+          <button onClick={requestNotifs} style={{ padding:"6px 11px", borderRadius:7, fontSize:10, fontWeight:600, cursor:"pointer", background:`${c}18`, border:`1px solid ${c}50`, color:c, flexShrink:0 }}>
+            {notifStatus === "denied" ? "Notificaciones bloqueadas" : "Activar recordatorio"}
+          </button>
+        )}
+        {notifStatus === "granted" && <span style={{ fontSize:10, color:"#39ff88", flexShrink:0 }}>✓ recordatorio activo</span>}
+      </div>
+      <div style={{ display:"flex", flexDirection:"column", gap:5 }}>
+        {SUNDAY_PREP_CHECKLIST.map((item, i) => {
+          const isDone = !!sundayPrep[i];
+          return (
+            <div key={i} onClick={() => toggleItem(i)} style={{ display:"flex", gap:8, alignItems:"flex-start", cursor:"pointer", opacity: isDone ? 0.5 : 1 }}>
+              <div style={{ width:14, height:14, borderRadius:4, flexShrink:0, marginTop:1, background: isDone ? c : "rgba(255,255,255,0.06)", border:`1px solid ${isDone ? c : "rgba(255,255,255,0.15)"}`, display:"flex", alignItems:"center", justifyContent:"center" }}>
+                {isDone && <span style={{ fontSize:9, color:"#000" }}>✓</span>}
+              </div>
+              <span style={{ fontSize:11, color:"#d1d5db", lineHeight:1.5, textDecoration: isDone ? "line-through" : "none" }}>{item}</span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function NutriView({ profile, setProfile, logs, setLogs, burnedKcalToday, nutriCompletedDates, setNutriCompletedDates, budget, setBudget, shoppingChecked, setShoppingChecked, sundayPrep, setSundayPrep }) {
   const [tab, setTab] = useState("hoy");
   const [selectedIdx, setSelectedIdx] = useState(() => todayDayIndex());
   const todayIso = isoDate(new Date());
@@ -1913,24 +2094,19 @@ function NutriView({ profile, setProfile, logs, setLogs, burnedKcalToday, nutriC
   const targets = calcNutriTargets(profile);
   const streak = computeSimpleStreak(new Set(nutriCompletedDates));
 
-  const setProfileField = (field) => (value) => {
-    setProfile(prev => {
-      const next = { ...prev, [field]: value };
-      try { localStorage.setItem("voltra-nutri-profile", JSON.stringify(next)); } catch {}
-      return next;
-    });
-  };
-
   const selectedIso = isoDateForWeekdayIndex(selectedIdx);
   const selectedPlan = WEEK_PLAN[selectedIdx];
   const selectedLog = logs[selectedIso] || NUTRI_EMPTY_LOG;
   const isSelectedToday = selectedIdx === todayDayIndex();
+  const isSunday = new Date().getDay() === 0;
 
   return (
     <div style={{ maxWidth:560, margin:"0 auto" }}>
-      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:14, flexWrap:"wrap", gap:8 }}>
-        <div style={{ display:"flex", gap:4, background:"rgba(255,255,255,0.04)", borderRadius:7, padding:3 }}>
-          {[["hoy","Hoy"],["semana","Semana"],["insights","Insights"]].map(([v,label]) => (
+      {isSunday && <SundayBanner sundayPrep={sundayPrep} setSundayPrep={setSundayPrep} c={c}/>}
+
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:14, gap:8 }}>
+        <div className="jay-header-nav" style={{ display:"flex", gap:4, background:"rgba(255,255,255,0.04)", borderRadius:7, padding:3, flex:1 }}>
+          {[["hoy","Hoy"],["semana","Semana"],["carrito","Carrito"],["perfil","Perfil"],["insights","Insights"]].map(([v,label]) => (
             <button key={v} onClick={() => setTab(v)} style={{
               padding:"5px 12px", borderRadius:5, fontSize:11, fontWeight:600, cursor:"pointer",
               background: tab===v ? `${c}18` : "transparent",
@@ -1941,7 +2117,7 @@ function NutriView({ profile, setProfile, logs, setLogs, burnedKcalToday, nutriC
           ))}
         </div>
         {streak > 0 && (
-          <div style={{ display:"flex", alignItems:"center", gap:4, background:`${c}15`, border:`1px solid ${c}40`, borderRadius:6, padding:"4px 9px" }}>
+          <div style={{ display:"flex", alignItems:"center", gap:4, background:`${c}15`, border:`1px solid ${c}40`, borderRadius:6, padding:"4px 9px", flexShrink:0 }}>
             <span style={{ fontSize:12 }}>🥑</span>
             <span style={{ fontFamily:"'DM Mono',monospace", fontSize:11, color:c, fontWeight:700 }}>{streak}</span>
           </div>
@@ -1976,22 +2152,17 @@ function NutriView({ profile, setProfile, logs, setLogs, burnedKcalToday, nutriC
         </div>
       )}
 
+      {tab === "carrito" && (
+        <ShoppingCartView budget={budget} setBudget={setBudget} checked={shoppingChecked} setChecked={setShoppingChecked} c={c}/>
+      )}
+
+      {tab === "perfil" && (
+        <PerfilView profile={profile} setProfile={setProfile} targets={targets} c={c}/>
+      )}
+
       {tab === "insights" && (
         <WeeklyInsights logs={logs} targets={targets} c={c}/>
       )}
-
-      <div style={{ fontSize:9, fontWeight:700, letterSpacing:"0.12em", color:"#6b7280", marginTop:20, marginBottom:6, paddingLeft:2 }}>TU PERFIL</div>
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(3, 1fr)", gap:8, background:"rgba(255,255,255,0.02)", border:"1px solid rgba(255,255,255,0.07)", borderRadius:10, padding:12 }}>
-        <NutriProfileField label="PESO (KG)" value={profile.weightKg} onChange={setProfileField("weightKg")} step={0.5}/>
-        <NutriProfileField label="ALTURA (CM)" value={profile.heightCm} onChange={setProfileField("heightCm")}/>
-        <NutriProfileField label="EDAD" value={profile.age} onChange={setProfileField("age")}/>
-        <NutriProfileField label="DÍAS ENTRENO/SEM" value={profile.trainingDaysPerWeek} onChange={setProfileField("trainingDaysPerWeek")} min={0}/>
-        <NutriProfileField label="DÉFICIT %" value={profile.deficitPct} onChange={setProfileField("deficitPct")}/>
-        <div style={{ display:"flex", flexDirection:"column", justifyContent:"flex-end" }}>
-          <span style={{ fontSize:9, color:"#8a8f98" }}>OBJETIVO BASE</span>
-          <span style={{ fontFamily:"'DM Mono',monospace", fontSize:12, color:c, fontWeight:700 }}>{targets.kcal} kcal</span>
-        </div>
-      </div>
     </div>
   );
 }
@@ -2046,6 +2217,24 @@ export default function App() {
       const saved = localStorage.getItem("voltra-nutri-completed-dates");
       return saved ? JSON.parse(saved) : [];
     } catch { return []; }
+  });
+  const [nutriBudget, setNutriBudget] = useState(() => {
+    try {
+      const saved = localStorage.getItem("voltra-nutri-budget");
+      return saved ? JSON.parse(saved) : 60;
+    } catch { return 60; }
+  });
+  const [nutriShoppingChecked, setNutriShoppingChecked] = useState(() => {
+    try {
+      const saved = localStorage.getItem("voltra-nutri-shopping-checked");
+      return saved ? JSON.parse(saved) : {};
+    } catch { return {}; }
+  });
+  const [nutriSundayPrep, setNutriSundayPrep] = useState(() => {
+    try {
+      const saved = localStorage.getItem("voltra-nutri-sunday-prep");
+      return saved ? JSON.parse(saved) : {};
+    } catch { return {}; }
   });
 
   const startTimer = useCallback((ex) => {
@@ -2240,7 +2429,9 @@ export default function App() {
         {view==="luca" ? (
           <LucaView done={lucaDone} setDone={setLucaDone}/>
         ) : view==="nutri" ? (
-          <NutriView profile={nutriProfile} setProfile={setNutriProfile} logs={nutriLogs} setLogs={setNutriLogs} burnedKcalToday={burnedKcalToday} nutriCompletedDates={nutriCompletedDates} setNutriCompletedDates={setNutriCompletedDates}/>
+          <NutriView profile={nutriProfile} setProfile={setNutriProfile} logs={nutriLogs} setLogs={setNutriLogs} burnedKcalToday={burnedKcalToday} nutriCompletedDates={nutriCompletedDates} setNutriCompletedDates={setNutriCompletedDates}
+            budget={nutriBudget} setBudget={setNutriBudget} shoppingChecked={nutriShoppingChecked} setShoppingChecked={setNutriShoppingChecked}
+            sundayPrep={nutriSundayPrep} setSundayPrep={setNutriSundayPrep}/>
         ) : (
         <div className="jay-shell">
 
