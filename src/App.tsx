@@ -713,6 +713,27 @@ function WeightInput({ storeKey, defaultWeight, value, onChange, isDone }) {
   );
 }
 
+// Editable "actual minutes done" field for FitXR blocks — defaults to the
+// programmed duration until overridden, and that override is what the
+// burned-kcal estimate uses instead of the nominal plan duration.
+function MinutesInput({ storeKey, defaultMinutes, value, onChange, isDone }) {
+  return (
+    <input
+      type="number" min={0} inputMode="numeric"
+      value={value ?? defaultMinutes}
+      onClick={e => e.stopPropagation()}
+      onChange={e => onChange(storeKey, e.target.value === "" ? null : Math.max(0, parseInt(e.target.value) || 0))}
+      style={{
+        width:44, fontFamily:"'DM Mono',monospace", fontSize:10, fontWeight:600,
+        color: isDone ? "#4b5563" : "#9ca3af",
+        background: isDone ? "transparent" : "rgba(255,255,255,0.05)",
+        border:"1px solid rgba(255,255,255,0.08)", borderRadius:5,
+        padding:"2px 4px", textAlign:"center",
+      }}
+    />
+  );
+}
+
 // Bigger tap target (44px) around the visual checkmark circle — sweaty hands
 // and gym gloves miss small hit areas.
 function CompleteCheckbox({ isDone, dot, onToggle }) {
@@ -845,7 +866,7 @@ function FloatingStopwatch({ info, onClose }) {
 // ─── Timeline View ────────────────────────────────────────────────────────────
 // Rounds are interleaved across muscle-group sections: SERIE 1 shows round 1
 // of every working section (e.g. Espalda + Bíceps) before moving to SERIE 2.
-function TimelineView({ day, wk, done, setDone, onStartTimer, weights, setWeight }) {
+function TimelineView({ day, wk, done, setDone, onStartTimer, weights, setWeight, fitxrMinutes, setFitxrMinutes }) {
   const sections = day.sections.filter(s => s.exercises.length > 0);
   const warmupIdx = [];
   const mainIdx = [];
@@ -881,11 +902,15 @@ function TimelineView({ day, wk, done, setDone, onStartTimer, weights, setWeight
             color: isDone ? "#4b5563" : "#f3f4f6",
             textDecoration: isDone ? "line-through" : "none",
           }}>{ex.name}</div>
-          <WeightInput storeKey={key} defaultWeight={ex.weight} value={weights[key]} onChange={setWeight} isDone={isDone}/>
+          {ex.info && ex.info.startsWith("fitxr") ? (
+            <MinutesInput storeKey={key} defaultMinutes={parseDurationMinutes(ex.sets)} value={fitxrMinutes[key]} onChange={setFitxrMinutes} isDone={isDone}/>
+          ) : (
+            <WeightInput storeKey={key} defaultWeight={ex.weight} value={weights[key]} onChange={setWeight} isDone={isDone}/>
+          )}
           <div style={{
             fontFamily:"'DM Mono',monospace", fontSize:12,
             color: isDone ? "#4b5563" : dot, fontWeight:600,
-          }}>{parseRepsLabel(ex.sets)}</div>
+          }}>{ex.info && ex.info.startsWith("fitxr") ? "min" : parseRepsLabel(ex.sets)}</div>
           <div style={{ display:"flex", alignItems:"center", gap:2 }}>
             {onStartTimer && <TimerButton ex={ex} dot={dot} onStart={onStartTimer}/>}
             <CompleteCheckbox isDone={isDone} dot={dot} onToggle={doToggle}/>
@@ -1757,14 +1782,17 @@ function parseDurationMinutes(str) {
 // over the day's nominal total duration times an overall completion %.
 // STRENGTH days have no per-exercise duration (they're rep-based), so they
 // still use the day's total nominal duration scaled by real completion.
-function estimateBurnedKcal(day, wk, done, weightKg) {
+function estimateBurnedKcal(day, wk, done, weightKg, fitxrMinutesOverride = {}) {
   if (day.type === "FITXR") {
     const sections = day.sections.filter(s => s.exercises.length > 0);
     let kcal = 0;
     sections.forEach((section, si) => {
       section.exercises.forEach((ex, ei) => {
-        const minutes = parseDurationMinutes(ex.sets);
-        if (!minutes || !done[`tl-w${wk}-${day.id}-${si}-${ei}-0`]) return;
+        const key = `tl-w${wk}-${day.id}-${si}-${ei}-0`;
+        if (!done[key]) return;
+        const override = fitxrMinutesOverride[key];
+        const minutes = override != null ? override : parseDurationMinutes(ex.sets);
+        if (!minutes) return;
         const met = FITXR_MET[ex.info] ?? FITXR_MET_DEFAULT;
         kcal += met * 3.5 * weightKg / 200 * minutes;
       });
@@ -2226,7 +2254,7 @@ const BACKUP_KEYS = [
   "luca-training-done", "voltra-luca-completed-dates", "voltra-luca-mission-choice", "voltra-luca-participants",
   "voltra-nutri-budget", "voltra-nutri-completed-dates", "voltra-nutri-logs", "voltra-nutri-profile",
   "voltra-nutri-protein", "voltra-nutri-shopping-checked", "voltra-nutri-sunday-prep", "voltra-reminder-settings",
-  "voltra-extra-workouts",
+  "voltra-extra-workouts", "voltra-fitxr-minutes",
 ];
 
 function BackupSection({ c }) {
@@ -2940,7 +2968,7 @@ function ContributionsCalendar({ workoutDates, nutriDates, lucaDates }) {
 
 function TodayOverview({ day, tc, total, doneN, streak, onOpenSession, plan, log, updateLog, targets, burnedKcal, nutriStreak, onOpenNutri, wk, done, setDone, startTimer, protein, weights, setWeight,
   onOpenLuca, lucaDone, setLucaDone, lucaMissionChoice, setLucaMissionChoice, lucaParticipants, setLucaParticipants, lucaStreak, workoutCompletedDates, nutriCompletedDates, lucaCompletedDates,
-  extraWorkouts, onAddExtraWorkout, onRemoveExtraWorkout, weightKg }) {
+  extraWorkouts, onAddExtraWorkout, onRemoveExtraWorkout, weightKg, fitxrMinutes, setFitxrMinutes }) {
   const pct = total > 0 ? Math.round(doneN / total * 100) : 0;
   const consumed = nutriMacrosForDay(plan, log);
   const adjustedTarget = targets.kcal + burnedKcal;
@@ -3034,7 +3062,7 @@ function TodayOverview({ day, tc, total, doneN, streak, onOpenSession, plan, log
               <span onClick={e => { e.stopPropagation(); onOpenSession(); }} style={{ color:tc.label, fontWeight:600, cursor:"pointer" }}>Detalle completo →</span>
             </div>
             {entrenoOpen && (
-              <TimelineView day={day} wk={wk} done={done} setDone={setDone} onStartTimer={startTimer} weights={weights} setWeight={setWeight}/>
+              <TimelineView day={day} wk={wk} done={done} setDone={setDone} onStartTimer={startTimer} weights={weights} setWeight={setWeight} fitxrMinutes={fitxrMinutes} setFitxrMinutes={setFitxrMinutes}/>
             )}
           </>
         ) : (
@@ -3151,6 +3179,7 @@ export default function App() {
   const [nutriSundayPrep, setNutriSundayPrep] = useState(() => loadLocal("voltra-nutri-sunday-prep", {}));
   const [reminderSettings, setReminderSettings] = useState(() => loadLocal("voltra-reminder-settings", { enabled: false, time: "18:00" }));
   const [extraWorkouts, setExtraWorkouts] = useState(() => loadLocal("voltra-extra-workouts", {}));
+  const [fitxrMinutes, setFitxrMinutesRaw] = useState(() => loadLocal("voltra-fitxr-minutes", {}));
   const [cloudSync, setCloudSync] = useState({ configured: false, authenticated: false });
 
   const applyRemoteData = useCallback((data) => {
@@ -3163,6 +3192,7 @@ export default function App() {
       "voltra-nutri-completed-dates": setNutriCompletedDates, "voltra-nutri-budget": setNutriBudget,
       "voltra-nutri-shopping-checked": setNutriShoppingChecked, "voltra-nutri-sunday-prep": setNutriSundayPrep,
       "voltra-reminder-settings": setReminderSettings, "voltra-extra-workouts": setExtraWorkouts,
+      "voltra-fitxr-minutes": setFitxrMinutesRaw,
     };
     Object.entries(data || {}).forEach(([key, value]) => {
       if (value === undefined || !setters[key]) return;
@@ -3210,6 +3240,14 @@ export default function App() {
     setWeights(p => {
       const next = { ...p, [key]: value };
       persist("jay-training-weights", next);
+      return next;
+    });
+  }, []);
+
+  const setFitxrMinutes = useCallback((key, value) => {
+    setFitxrMinutesRaw(p => {
+      const next = { ...p, [key]: value };
+      persist("voltra-fitxr-minutes", next);
       return next;
     });
   }, []);
@@ -3283,7 +3321,7 @@ export default function App() {
   const todayWorkoutPct = todayWorkoutTotal > 0 ? Math.round(todayWorkoutDoneN / todayWorkoutTotal * 100) : 0;
 
   const programmedBurnedKcalToday = todayWorkoutDay.type !== "REST"
-    ? estimateBurnedKcal(todayWorkoutDay, wk, done, nutriProfile.weightKg)
+    ? estimateBurnedKcal(todayWorkoutDay, wk, done, nutriProfile.weightKg, fitxrMinutes)
     : 0;
   const todayExtraWorkouts = extraWorkouts[isoDate(new Date())] || [];
   const extraBurnedKcalToday = todayExtraWorkouts.reduce((s, w) => s + extraBurnedKcal(w.type, w.minutes, nutriProfile.weightKg), 0);
@@ -3522,7 +3560,8 @@ export default function App() {
             onOpenLuca={()=>setView("luca")} lucaDone={lucaDone} setLucaDone={setLucaDone} lucaMissionChoice={lucaMissionChoice} setLucaMissionChoice={setLucaMissionChoice}
             lucaParticipants={lucaParticipants} setLucaParticipants={setLucaParticipants} lucaStreak={lucaStreak}
             workoutCompletedDates={completedDates} nutriCompletedDates={nutriCompletedDates} lucaCompletedDates={lucaCompletedDates}
-            extraWorkouts={todayExtraWorkouts} onAddExtraWorkout={addExtraWorkout} onRemoveExtraWorkout={removeExtraWorkout} weightKg={nutriProfile.weightKg}/>
+            extraWorkouts={todayExtraWorkouts} onAddExtraWorkout={addExtraWorkout} onRemoveExtraWorkout={removeExtraWorkout} weightKg={nutriProfile.weightKg}
+            fitxrMinutes={fitxrMinutes} setFitxrMinutes={setFitxrMinutes}/>
         ) : view==="luca" ? (
           <LucaView done={lucaDone} setDone={setLucaDone} missionChoice={lucaMissionChoice} setMissionChoice={setLucaMissionChoice}
             participants={lucaParticipants} setParticipants={setLucaParticipants}/>
@@ -3714,7 +3753,7 @@ export default function App() {
                 </div>
 
                 {tlView ? (
-                  <TimelineView day={day} wk={wk} done={done} setDone={setDone} onStartTimer={startTimer} weights={weights} setWeight={setWeight}/>
+                  <TimelineView day={day} wk={wk} done={done} setDone={setDone} onStartTimer={startTimer} weights={weights} setWeight={setWeight} fitxrMinutes={fitxrMinutes} setFitxrMinutes={setFitxrMinutes}/>
                 ) : null}
 
                 {!tlView && day.sections.map(section=>{
