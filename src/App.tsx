@@ -1647,22 +1647,43 @@ function NutriMacroBar({ label, value, target, color }) {
   );
 }
 
-function NutriMealRow({ name, note, kcal, isDone, onToggle, c }) {
+function NutriMealRow({ name, note, macros, overrideMacros, onOverrideChange, isDone, onToggle, c }) {
+  const [editing, setEditing] = useState(false);
+  const effective = overrideMacros || macros;
+  const [draft, setDraft] = useState(effective);
+
+  const openEdit = (e) => { e.stopPropagation(); setDraft(effective); setEditing(true); };
+  const save = (e) => { e.stopPropagation(); onOverrideChange(draft); setEditing(false); };
+  const reset = (e) => { e.stopPropagation(); onOverrideChange(null); setEditing(false); };
+
   return (
-    <div onClick={onToggle} style={{
-      display:"grid", gridTemplateColumns:"1fr auto auto", alignItems:"center", gap:10,
-      padding:"12px 14px", marginBottom:8, cursor:"pointer",
-      background: isDone ? "rgba(255,255,255,0.02)" : "rgba(255,255,255,0.04)",
-      border:`1px solid ${isDone ? "rgba(255,255,255,0.05)" : c+"30"}`,
-      borderLeft:`3px solid ${isDone ? "rgba(255,255,255,0.08)" : c}`,
-      borderRadius:10, opacity: isDone ? 0.5 : 1, transition:"all 0.15s",
-    }}>
-      <div>
-        <div style={{ fontSize:14, fontWeight:600, color: isDone ? "#6b7280" : "#f3f4f6", textDecoration: isDone ? "line-through" : "none" }}>{name}</div>
-        {note && <div style={{ fontSize:11, color:"#8a8f98", marginTop:2 }}>{note}</div>}
+    <div style={{ marginBottom:8 }}>
+      <div onClick={onToggle} style={{
+        display:"grid", gridTemplateColumns:"1fr auto auto auto", alignItems:"center", gap:8,
+        padding:"12px 14px", cursor:"pointer",
+        background: isDone ? "rgba(255,255,255,0.02)" : "rgba(255,255,255,0.04)",
+        border:`1px solid ${isDone ? "rgba(255,255,255,0.05)" : c+"30"}`,
+        borderLeft:`3px solid ${isDone ? "rgba(255,255,255,0.08)" : c}`,
+        borderRadius: editing ? "10px 10px 0 0" : 10, opacity: isDone ? 0.5 : 1, transition:"all 0.15s",
+      }}>
+        <div>
+          <div style={{ fontSize:14, fontWeight:600, color: isDone ? "#6b7280" : "#f3f4f6", textDecoration: isDone ? "line-through" : "none" }}>{name}{overrideMacros && <span style={{ fontSize:9, color:c, marginLeft:6, fontWeight:600 }}>editado</span>}</div>
+          {note && <div style={{ fontSize:11, color:"#8a8f98", marginTop:2 }}>{note}</div>}
+        </div>
+        <div style={{ fontFamily:"'DM Mono',monospace", fontSize:12, color: isDone ? "#4b5563" : c, fontWeight:700 }}>{effective.kcal} kcal</div>
+        {onOverrideChange && <span onClick={openEdit} title="Editar macros" style={{ cursor:"pointer", fontSize:13, color:"#6b7280", padding:4 }}>✎</span>}
+        <CompleteCheckbox isDone={isDone} dot={c} onToggle={onToggle}/>
       </div>
-      <div style={{ fontFamily:"'DM Mono',monospace", fontSize:12, color: isDone ? "#4b5563" : c, fontWeight:700 }}>{kcal} kcal</div>
-      <CompleteCheckbox isDone={isDone} dot={c} onToggle={onToggle}/>
+      {editing && (
+        <div onClick={e => e.stopPropagation()} style={{ background:"#0a0a0a", border:`1px solid ${c}30`, borderTop:"none", borderRadius:"0 0 10px 10px", padding:"10px 14px", display:"flex", gap:6, alignItems:"center", flexWrap:"wrap" }}>
+          {["kcal","protein","carbs","fat"].map(k => (
+            <input key={k} type="number" value={draft[k]} onChange={e => setDraft({ ...draft, [k]: parseFloat(e.target.value) || 0 })}
+              style={{ width:52, fontFamily:"'DM Mono',monospace", fontSize:10, color:"#e5e7eb", background:"rgba(255,255,255,0.05)", border:"1px solid rgba(255,255,255,0.1)", borderRadius:5, padding:"4px 5px", textAlign:"center" }}/>
+          ))}
+          <button onClick={save} style={{ padding:"5px 10px", borderRadius:6, fontSize:10, fontWeight:600, cursor:"pointer", background:`${c}18`, border:`1px solid ${c}50`, color:c }}>Guardar</button>
+          {overrideMacros && <button onClick={reset} style={{ padding:"5px 10px", borderRadius:6, fontSize:10, fontWeight:600, cursor:"pointer", background:"transparent", border:"1px solid rgba(255,255,255,0.15)", color:"#9ca3af" }}>Restablecer</button>}
+        </div>
+      )}
     </div>
   );
 }
@@ -1678,7 +1699,7 @@ function MomLunchLogger({ log, updateLog, c }) {
   const unmark = () => updateLog({ lunchEaten:false, momLunch:undefined });
 
   if (isDone) {
-    return <NutriMealRow name={`Almuerzo de mamá (${log.momLunch.portion})`} note="Toca para deshacer" kcal={log.momLunch.macros.kcal} isDone={true} onToggle={unmark} c={c}/>;
+    return <NutriMealRow name={`Almuerzo de mamá (${log.momLunch.portion})`} note="Toca para deshacer" macros={log.momLunch.macros} isDone={true} onToggle={unmark} c={c}/>;
   }
   return (
     <div style={{ padding:"12px 14px", marginBottom:8, borderRadius:10, background:"rgba(255,255,255,0.04)", border:`1px solid ${c}30`, borderLeft:`3px solid ${c}` }}>
@@ -1746,68 +1767,25 @@ function SnackLogger({ log, updateLog, c }) {
   );
 }
 
-function NutriView({ profile, setProfile, logs, setLogs, burnedKcalToday, nutriCompletedDates, setNutriCompletedDates }) {
-  const todayIso = isoDate(new Date());
-  const plan = nutriPlanForDate(new Date());
-  const log = logs[todayIso] || NUTRI_EMPTY_LOG;
-  const c = NUTRI_ACCENT;
-
-  const updateLog = useCallback((patch) => {
-    setLogs(prev => {
-      const nextLog = { ...(prev[todayIso] || NUTRI_EMPTY_LOG), ...patch };
-      const next = { ...prev, [todayIso]: nextLog };
-      try { localStorage.setItem("voltra-nutri-logs", JSON.stringify(next)); } catch {}
-      return next;
-    });
-  }, [setLogs, todayIso]);
-
-  const allMealsEaten = log.breakfastEaten && log.lunchEaten && log.dinnerEaten;
-  useEffect(() => {
-    if (!allMealsEaten) return;
-    setNutriCompletedDates(prev => {
-      if (prev.includes(todayIso)) return prev;
-      const next = [...prev, todayIso];
-      try { localStorage.setItem("voltra-nutri-completed-dates", JSON.stringify(next)); } catch {}
-      return next;
-    });
-  }, [allMealsEaten, todayIso, setNutriCompletedDates]);
-
-  const targets = calcNutriTargets(profile);
-  const adjustedKcalTarget = targets.kcal + burnedKcalToday;
+function NutriDayCard({ plan, log, updateLog, targets, burnedKcal, isToday, c }) {
+  const adjustedKcalTarget = targets.kcal + (burnedKcal || 0);
   const consumed = nutriMacrosForDay(plan, log);
   const remaining = Math.max(0, adjustedKcalTarget - consumed.kcal);
   const pct = adjustedKcalTarget > 0 ? Math.min(100, Math.round(consumed.kcal / adjustedKcalTarget * 100)) : 0;
   const reached = consumed.kcal >= adjustedKcalTarget;
-  const streak = computeSimpleStreak(new Set(nutriCompletedDates));
-
-  const setProfileField = (field) => (value) => {
-    setProfile(prev => {
-      const next = { ...prev, [field]: value };
-      try { localStorage.setItem("voltra-nutri-profile", JSON.stringify(next)); } catch {}
-      return next;
-    });
-  };
 
   return (
-    <div style={{ maxWidth:560, margin:"0 auto" }}>
+    <div>
       <div style={{ background:`${c}10`, border:`1px solid ${c}30`, borderRadius:14, padding:"18px 18px 16px", marginBottom:16 }}>
-        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:10 }}>
-          <div>
-            <div style={{ fontSize:9, fontWeight:700, letterSpacing:"0.12em", color:c }}>NUTRICIÓN · {plan.label.toUpperCase()}</div>
-            <div style={{ fontSize:20, fontWeight:700, color:"#f3f4f6", marginTop:3 }}>
-              {reached ? `${Math.round(consumed.kcal)} kcal hoy ✓` : `Faltan ${remaining} kcal`}
-            </div>
+        <div style={{ marginBottom:10 }}>
+          <div style={{ fontSize:9, fontWeight:700, letterSpacing:"0.12em", color:c }}>{plan.label.toUpperCase()}{isToday ? " · HOY" : ""}</div>
+          <div style={{ fontSize:20, fontWeight:700, color:"#f3f4f6", marginTop:3 }}>
+            {reached ? `${Math.round(consumed.kcal)} kcal ✓` : `Faltan ${remaining} kcal`}
           </div>
-          {streak > 0 && (
-            <div style={{ display:"flex", alignItems:"center", gap:4, background:`${c}15`, border:`1px solid ${c}40`, borderRadius:6, padding:"4px 9px" }}>
-              <span style={{ fontSize:12 }}>🥑</span>
-              <span style={{ fontFamily:"'DM Mono',monospace", fontSize:11, color:c, fontWeight:700 }}>{streak}</span>
-            </div>
-          )}
         </div>
-        {burnedKcalToday > 0 && (
+        {isToday && burnedKcal > 0 && (
           <div style={{ fontSize:11, color:"#9ca3af", marginBottom:10 }}>
-            + {burnedKcalToday} kcal quemadas hoy con tu entreno 🔥 — se suman a tu objetivo automáticamente.
+            + {burnedKcal} kcal quemadas hoy con tu entreno 🔥 — se suman a tu objetivo automáticamente.
           </div>
         )}
         <div style={{ height:6, background:"rgba(255,255,255,0.08)", borderRadius:99, overflow:"hidden", marginBottom:12 }}>
@@ -1820,33 +1798,19 @@ function NutriView({ profile, setProfile, logs, setLogs, burnedKcalToday, nutriC
         </div>
       </div>
 
-      <div style={{ fontSize:9, fontWeight:700, letterSpacing:"0.12em", color:"#6b7280", marginBottom:6, paddingLeft:2 }}>HOY</div>
-      <NutriMealRow name={plan.breakfast.name} note={`${plan.breakfast.prepMinutes} min`} kcal={(log.breakfastOverride || plan.breakfast.macros).kcal} isDone={log.breakfastEaten} onToggle={() => updateLog({ breakfastEaten: !log.breakfastEaten })} c={c}/>
+      <NutriMealRow name={plan.breakfast.name} note={`${plan.breakfast.prepMinutes} min`} macros={plan.breakfast.macros} overrideMacros={log.breakfastOverride} onOverrideChange={m => updateLog({ breakfastOverride: m || undefined })} isDone={log.breakfastEaten} onToggle={() => updateLog({ breakfastEaten: !log.breakfastEaten })} c={c}/>
       {plan.lunch.type === "mama" ? (
         <MomLunchLogger log={log} updateLog={updateLog} c={c}/>
       ) : (
-        <NutriMealRow name={plan.lunch.recipe.name} note={`${plan.lunch.recipe.prepMinutes} min`} kcal={(log.lunchOverride || plan.lunch.recipe.macros).kcal} isDone={log.lunchEaten} onToggle={() => updateLog({ lunchEaten: !log.lunchEaten })} c={c}/>
+        <NutriMealRow name={plan.lunch.recipe.name} note={`${plan.lunch.recipe.prepMinutes} min`} macros={plan.lunch.recipe.macros} overrideMacros={log.lunchOverride} onOverrideChange={m => updateLog({ lunchOverride: m || undefined })} isDone={log.lunchEaten} onToggle={() => updateLog({ lunchEaten: !log.lunchEaten })} c={c}/>
       )}
-      <NutriMealRow name={plan.dinner.name} note={`${plan.dinner.prepMinutes} min${plan.dinner.batchCook ? " · batch cooking" : ""}`} kcal={(log.dinnerOverride || plan.dinner.macros).kcal} isDone={log.dinnerEaten} onToggle={() => updateLog({ dinnerEaten: !log.dinnerEaten })} c={c}/>
+      <NutriMealRow name={plan.dinner.name} note={`${plan.dinner.prepMinutes} min${plan.dinner.batchCook ? " · batch cooking" : ""}`} macros={plan.dinner.macros} overrideMacros={log.dinnerOverride} onOverrideChange={m => updateLog({ dinnerOverride: m || undefined })} isDone={log.dinnerEaten} onToggle={() => updateLog({ dinnerEaten: !log.dinnerEaten })} c={c}/>
 
       <div style={{ fontSize:9, fontWeight:700, letterSpacing:"0.12em", color:"#6b7280", marginTop:14, marginBottom:6, paddingLeft:2 }}>EXTRAS</div>
       <SnackLogger log={log} updateLog={updateLog} c={c}/>
 
-      <div style={{ fontSize:9, fontWeight:700, letterSpacing:"0.12em", color:"#6b7280", marginTop:16, marginBottom:6, paddingLeft:2 }}>TU PERFIL</div>
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(3, 1fr)", gap:8, background:"rgba(255,255,255,0.02)", border:"1px solid rgba(255,255,255,0.07)", borderRadius:10, padding:12 }}>
-        <NutriProfileField label="PESO (KG)" value={profile.weightKg} onChange={setProfileField("weightKg")} step={0.5}/>
-        <NutriProfileField label="ALTURA (CM)" value={profile.heightCm} onChange={setProfileField("heightCm")}/>
-        <NutriProfileField label="EDAD" value={profile.age} onChange={setProfileField("age")}/>
-        <NutriProfileField label="DÍAS ENTRENO/SEM" value={profile.trainingDaysPerWeek} onChange={setProfileField("trainingDaysPerWeek")} min={0}/>
-        <NutriProfileField label="DÉFICIT %" value={profile.deficitPct} onChange={setProfileField("deficitPct")}/>
-        <div style={{ display:"flex", flexDirection:"column", justifyContent:"flex-end" }}>
-          <span style={{ fontSize:9, color:"#8a8f98" }}>OBJETIVO BASE</span>
-          <span style={{ fontFamily:"'DM Mono',monospace", fontSize:12, color:c, fontWeight:700 }}>{targets.kcal} kcal</span>
-        </div>
-      </div>
-
       {plan.lucaJoins && (
-        <div style={{ fontSize:10, color:"#6b7280", marginTop:12, textAlign:"center" }}>Hoy Luca se une a la cena, con porción infantil (~{Math.round(LUCA_PORTION_FACTOR*100)}%).</div>
+        <div style={{ fontSize:10, color:"#6b7280", marginTop:12, textAlign:"center" }}>{isToday ? "Hoy" : "Ese día"} Luca se une a la cena, con porción infantil (~{Math.round(LUCA_PORTION_FACTOR*100)}%).</div>
       )}
 
       {plan.day === "domingo" && (
@@ -1861,6 +1825,173 @@ function NutriView({ profile, setProfile, logs, setLogs, burnedKcalToday, nutriC
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+const NUTRI_WEEKDAY_SHORT = ["DOM","LUN","MAR","MIÉ","JUE","VIE","SÁB"];
+
+function WeeklyInsights({ logs, targets, c }) {
+  const [metric, setMetric] = useState("kcal");
+  const days = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date();
+    d.setDate(d.getDate() - (6 - i));
+    const iso = isoDate(d);
+    const plan = nutriPlanForDate(d);
+    const log = logs[iso] || NUTRI_EMPTY_LOG;
+    const consumed = nutriMacrosForDay(plan, log);
+    return { iso, label: NUTRI_WEEKDAY_SHORT[d.getDay()], value: consumed[metric], isToday: i === 6 };
+  });
+  const target = metric === "kcal" ? targets.kcal : targets.protein;
+  const max = Math.max(target, ...days.map(d => d.value), 1);
+  const avg = days.reduce((s, d) => s + d.value, 0) / 7;
+  const diff = Math.round(avg - target);
+  const unit = metric === "kcal" ? "kcal" : "g";
+
+  return (
+    <div>
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10 }}>
+        <div style={{ fontSize:9, fontWeight:700, letterSpacing:"0.12em", color:"#6b7280" }}>ÚLTIMOS 7 DÍAS</div>
+        <div style={{ display:"flex", gap:4 }}>
+          {[["kcal","Calorías"],["protein","Proteína"]].map(([m,label]) => (
+            <button key={m} onClick={() => setMetric(m)} style={{
+              padding:"4px 10px", borderRadius:6, fontSize:10, fontWeight:600, cursor:"pointer",
+              background: metric===m ? `${c}18` : "transparent",
+              border:`1px solid ${metric===m ? c+"50" : "rgba(255,255,255,0.1)"}`,
+              color: metric===m ? c : "#6b7280",
+            }}>{label}</button>
+          ))}
+        </div>
+      </div>
+      <div style={{ display:"flex", alignItems:"flex-end", gap:8, height:110, background:"rgba(255,255,255,0.02)", border:"1px solid rgba(255,255,255,0.07)", borderRadius:10, padding:"14px 12px 8px" }}>
+        {days.map(d => (
+          <div key={d.iso} style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", gap:4 }}>
+            <div style={{ width:"100%", height:80, display:"flex", alignItems:"flex-end" }}>
+              <div style={{ width:"100%", height:`${Math.max(2, Math.min(100, (d.value / max) * 100))}%`, background: d.isToday ? c : `${c}55`, borderRadius:"4px 4px 0 0", transition:"height 0.3s" }}/>
+            </div>
+            <span style={{ fontSize:8, color: d.isToday ? c : "#6b7280", fontWeight: d.isToday ? 700 : 400 }}>{d.label}</span>
+          </div>
+        ))}
+      </div>
+      <div style={{ fontSize:11, color:"#9ca3af", marginTop:10, lineHeight:1.6 }}>
+        {diff >= 0
+          ? `Vas ${diff} ${unit} por encima del objetivo diario en promedio esta semana.`
+          : `Vas ${Math.abs(diff)} ${unit} por debajo del objetivo diario en promedio esta semana.`}
+      </div>
+    </div>
+  );
+}
+
+function NutriView({ profile, setProfile, logs, setLogs, burnedKcalToday, nutriCompletedDates, setNutriCompletedDates }) {
+  const [tab, setTab] = useState("hoy");
+  const [selectedIdx, setSelectedIdx] = useState(() => todayDayIndex());
+  const todayIso = isoDate(new Date());
+  const todayPlan = nutriPlanForDate(new Date());
+  const todayLog = logs[todayIso] || NUTRI_EMPTY_LOG;
+  const c = NUTRI_ACCENT;
+
+  const updateLogFor = useCallback((iso) => (patch) => {
+    setLogs(prev => {
+      const nextLog = { ...(prev[iso] || NUTRI_EMPTY_LOG), ...patch };
+      const next = { ...prev, [iso]: nextLog };
+      try { localStorage.setItem("voltra-nutri-logs", JSON.stringify(next)); } catch {}
+      return next;
+    });
+  }, [setLogs]);
+
+  const allMealsEatenToday = todayLog.breakfastEaten && todayLog.lunchEaten && todayLog.dinnerEaten;
+  useEffect(() => {
+    if (!allMealsEatenToday) return;
+    setNutriCompletedDates(prev => {
+      if (prev.includes(todayIso)) return prev;
+      const next = [...prev, todayIso];
+      try { localStorage.setItem("voltra-nutri-completed-dates", JSON.stringify(next)); } catch {}
+      return next;
+    });
+  }, [allMealsEatenToday, todayIso, setNutriCompletedDates]);
+
+  const targets = calcNutriTargets(profile);
+  const streak = computeSimpleStreak(new Set(nutriCompletedDates));
+
+  const setProfileField = (field) => (value) => {
+    setProfile(prev => {
+      const next = { ...prev, [field]: value };
+      try { localStorage.setItem("voltra-nutri-profile", JSON.stringify(next)); } catch {}
+      return next;
+    });
+  };
+
+  const selectedIso = isoDateForWeekdayIndex(selectedIdx);
+  const selectedPlan = WEEK_PLAN[selectedIdx];
+  const selectedLog = logs[selectedIso] || NUTRI_EMPTY_LOG;
+  const isSelectedToday = selectedIdx === todayDayIndex();
+
+  return (
+    <div style={{ maxWidth:560, margin:"0 auto" }}>
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:14, flexWrap:"wrap", gap:8 }}>
+        <div style={{ display:"flex", gap:4, background:"rgba(255,255,255,0.04)", borderRadius:7, padding:3 }}>
+          {[["hoy","Hoy"],["semana","Semana"],["insights","Insights"]].map(([v,label]) => (
+            <button key={v} onClick={() => setTab(v)} style={{
+              padding:"5px 12px", borderRadius:5, fontSize:11, fontWeight:600, cursor:"pointer",
+              background: tab===v ? `${c}18` : "transparent",
+              color: tab===v ? c : "#6b7280",
+              border: tab===v ? `1px solid ${c}40` : "1px solid transparent",
+              fontFamily:"'DM Sans',sans-serif", transition:"all 0.15s",
+            }}>{label}</button>
+          ))}
+        </div>
+        {streak > 0 && (
+          <div style={{ display:"flex", alignItems:"center", gap:4, background:`${c}15`, border:`1px solid ${c}40`, borderRadius:6, padding:"4px 9px" }}>
+            <span style={{ fontSize:12 }}>🥑</span>
+            <span style={{ fontFamily:"'DM Mono',monospace", fontSize:11, color:c, fontWeight:700 }}>{streak}</span>
+          </div>
+        )}
+      </div>
+
+      {tab === "hoy" && (
+        <NutriDayCard plan={todayPlan} log={todayLog} updateLog={updateLogFor(todayIso)} targets={targets} burnedKcal={burnedKcalToday} isToday={true} c={c}/>
+      )}
+
+      {tab === "semana" && (
+        <div>
+          <div style={{ display:"grid", gridTemplateColumns:"repeat(7, 1fr)", gap:4, marginBottom:14 }}>
+            {WEEK_PLAN.map((p, i) => {
+              const iso = isoDateForWeekdayIndex(i);
+              const dLog = logs[iso] || NUTRI_EMPTY_LOG;
+              const done3 = dLog.breakfastEaten && dLog.lunchEaten && dLog.dinnerEaten;
+              const isA = i === selectedIdx;
+              return (
+                <button key={p.day} onClick={() => setSelectedIdx(i)} style={{
+                  background: isA ? `${c}14` : "rgba(255,255,255,0.02)",
+                  border:`1px solid ${isA ? c+"55" : "rgba(255,255,255,0.07)"}`,
+                  borderRadius:7, padding:"7px 3px", cursor:"pointer", textAlign:"center",
+                }}>
+                  <div style={{ fontFamily:"'DM Mono',monospace", fontSize:9, color: isA ? c : "#71717a", fontWeight:600 }}>{p.label.slice(0,3).toUpperCase()}</div>
+                  <div style={{ width:4, height:4, borderRadius:"50%", margin:"4px auto 0", background: done3 ? "#39ff88" : isA ? c : "rgba(255,255,255,0.1)" }}/>
+                </button>
+              );
+            })}
+          </div>
+          <NutriDayCard plan={selectedPlan} log={selectedLog} updateLog={updateLogFor(selectedIso)} targets={targets} burnedKcal={isSelectedToday ? burnedKcalToday : 0} isToday={isSelectedToday} c={c}/>
+        </div>
+      )}
+
+      {tab === "insights" && (
+        <WeeklyInsights logs={logs} targets={targets} c={c}/>
+      )}
+
+      <div style={{ fontSize:9, fontWeight:700, letterSpacing:"0.12em", color:"#6b7280", marginTop:20, marginBottom:6, paddingLeft:2 }}>TU PERFIL</div>
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(3, 1fr)", gap:8, background:"rgba(255,255,255,0.02)", border:"1px solid rgba(255,255,255,0.07)", borderRadius:10, padding:12 }}>
+        <NutriProfileField label="PESO (KG)" value={profile.weightKg} onChange={setProfileField("weightKg")} step={0.5}/>
+        <NutriProfileField label="ALTURA (CM)" value={profile.heightCm} onChange={setProfileField("heightCm")}/>
+        <NutriProfileField label="EDAD" value={profile.age} onChange={setProfileField("age")}/>
+        <NutriProfileField label="DÍAS ENTRENO/SEM" value={profile.trainingDaysPerWeek} onChange={setProfileField("trainingDaysPerWeek")} min={0}/>
+        <NutriProfileField label="DÉFICIT %" value={profile.deficitPct} onChange={setProfileField("deficitPct")}/>
+        <div style={{ display:"flex", flexDirection:"column", justifyContent:"flex-end" }}>
+          <span style={{ fontSize:9, color:"#8a8f98" }}>OBJETIVO BASE</span>
+          <span style={{ fontFamily:"'DM Mono',monospace", fontSize:12, color:c, fontWeight:700 }}>{targets.kcal} kcal</span>
+        </div>
+      </div>
     </div>
   );
 }
