@@ -1,0 +1,13 @@
+{
+  "name": "Voltra · Plan Jay",
+  "short_name": "Voltra",
+  "description": "Entrenamiento en kettlebell, nutrición y circuito de Luca",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#000000",
+  "theme_color": "#000000",
+  "icons": [
+    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}
