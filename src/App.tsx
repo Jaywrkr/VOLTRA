@@ -1699,16 +1699,22 @@ function sumMacros(list) {
 }
 
 // Mifflin-St Jeor, igual que JAYNUTRI.
-function calcNutriTargets(profile) {
+// burnedKcal (optional) widens today's effective budget — protein stays tied
+// to body size regardless of activity, but the extra kcal earned by exercise
+// goes to carbs/fat so the day's targets reflect what was actually burned.
+// The returned kcal itself stays the base target either way — callers that
+// display "base + burned" (e.g. today's card) add burnedKcal separately.
+function calcNutriTargets(profile, burnedKcal = 0) {
   const { weightKg, heightCm, age, trainingDaysPerWeek, deficitPct } = profile;
   const bmr = 10 * weightKg + 6.25 * heightCm - 5 * age + 5;
   const activityFactor = trainingDaysPerWeek >= 6 ? 1.725 : trainingDaysPerWeek >= 3 ? 1.55 : 1.375;
   const tdee = bmr * activityFactor;
-  const kcal = tdee * (1 - deficitPct / 100);
+  const baseKcal = tdee * (1 - deficitPct / 100);
+  const effectiveKcal = baseKcal + burnedKcal;
   const protein = 2.0 * weightKg;
-  const fat = (kcal * 0.25) / 9;
-  const carbs = Math.max(0, (kcal - protein * 4 - fat * 9) / 4);
-  return { kcal: Math.round(kcal), protein: Math.round(protein), carbs: Math.round(carbs), fat: Math.round(fat) };
+  const fat = (effectiveKcal * 0.25) / 9;
+  const carbs = Math.max(0, (effectiveKcal - protein * 4 - fat * 9) / 4);
+  return { kcal: Math.round(baseKcal), protein: Math.round(protein), carbs: Math.round(carbs), fat: Math.round(fat) };
 }
 
 function nutriMacrosForDay(plan, log) {
@@ -1736,6 +1742,12 @@ function estimateBurnedKcal(day, pct, weightKg) {
   if (!met) return 0;
   const minutes = parseDurationMinutes(day.duration) * (pct / 100);
   return Math.round(met * 3.5 * weightKg / 200 * minutes);
+}
+
+// Ad-hoc FitXR sessions logged outside the programmed plan (same MET model).
+const FITXR_EXTRA_TYPES = ["fitxrBox", "fitxrCombat", "fitxrHiit", "fitxrFlow"];
+function extraBurnedKcal(minutes, weightKg) {
+  return Math.round(TRAINING_MET.FITXR * 3.5 * weightKg / 200 * minutes);
 }
 
 const DEFAULT_NUTRI_PROFILE = { weightKg:70, heightCm:170, age:35, trainingDaysPerWeek:5, deficitPct:15 };
@@ -2178,6 +2190,7 @@ const BACKUP_KEYS = [
   "luca-training-done", "voltra-luca-completed-dates", "voltra-luca-mission-choice", "voltra-luca-participants",
   "voltra-nutri-budget", "voltra-nutri-completed-dates", "voltra-nutri-logs", "voltra-nutri-profile",
   "voltra-nutri-protein", "voltra-nutri-shopping-checked", "voltra-nutri-sunday-prep", "voltra-reminder-settings",
+  "voltra-extra-workouts",
 ];
 
 function BackupSection({ c }) {
@@ -2808,6 +2821,48 @@ function MacroMini({ label, value, target, color }) {
   );
 }
 
+// Ad-hoc FitXR sessions logged outside the programmed plan — count toward
+// today's burned-kcal budget the same way the scheduled session does.
+function ExtraFitxrSection({ items, onAdd, onRemove, weightKg, dot }) {
+  const [type, setType] = useState(FITXR_EXTRA_TYPES[0]);
+  const [minutes, setMinutes] = useState(20);
+  const totalKcal = items.reduce((s, w) => s + extraBurnedKcal(w.minutes, weightKg), 0);
+
+  return (
+    <div style={{ marginTop:12, paddingTop:12, borderTop:"1px solid rgba(255,255,255,0.06)" }}>
+      <div style={{ fontSize:9, fontWeight:700, letterSpacing:"0.1em", color:"#6b7280", marginBottom:6 }}>
+        FITXR EXTRA{items.length > 0 ? ` · +${totalKcal} kcal` : ""}
+      </div>
+      {items.map(w => (
+        <div key={w.id} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"5px 0", fontSize:11 }}>
+          <span style={{ color:"#d1d5db" }}>{EX_NAME(w.type)} · {w.minutes} min</span>
+          <span style={{ display:"flex", alignItems:"center", gap:8 }}>
+            <span style={{ color:dot, fontFamily:"'DM Mono',monospace", fontSize:10, fontWeight:700 }}>+{extraBurnedKcal(w.minutes, weightKg)} kcal</span>
+            <span onClick={() => onRemove(w.id)} style={{ cursor:"pointer", color:"#6b7280", fontSize:13, lineHeight:1 }}>✕</span>
+          </span>
+        </div>
+      ))}
+      <div style={{ display:"flex", gap:6, marginTop:8, flexWrap:"wrap", alignItems:"center" }}>
+        <select value={type} onChange={e => setType(e.target.value)} style={{
+          fontSize:11, background:"rgba(255,255,255,0.05)", border:"1px solid rgba(255,255,255,0.1)",
+          borderRadius:6, color:"#f3f4f6", padding:"6px 8px",
+        }}>
+          {FITXR_EXTRA_TYPES.map(t => <option key={t} value={t}>{EX_NAME(t)}</option>)}
+        </select>
+        <input type="number" min={5} step={5} value={minutes} onChange={e => setMinutes(parseInt(e.target.value) || 0)} style={{
+          width:56, fontSize:11, background:"rgba(255,255,255,0.05)", border:"1px solid rgba(255,255,255,0.1)",
+          borderRadius:6, color:"#f3f4f6", padding:"6px 8px",
+        }}/>
+        <span style={{ fontSize:10, color:"#6b7280" }}>min</span>
+        <button onClick={() => minutes > 0 && onAdd(type, minutes)} style={{
+          padding:"6px 10px", borderRadius:6, fontSize:11, fontWeight:600, cursor:"pointer",
+          background:`${dot}18`, border:`1px solid ${dot}50`, color:dot,
+        }}>+ Agregar</button>
+      </div>
+    </div>
+  );
+}
+
 // GitHub-contributions-style heatmap: one cell per day, shaded by how many of
 // the 3 daily tracks (entreno/nutrición/Luca) were completed that day.
 const CONTRIB_WEEKS = 9;
@@ -2848,7 +2903,8 @@ function ContributionsCalendar({ workoutDates, nutriDates, lucaDates }) {
 }
 
 function TodayOverview({ day, tc, total, doneN, streak, onOpenSession, plan, log, updateLog, targets, burnedKcal, nutriStreak, onOpenNutri, wk, done, setDone, startTimer, protein, weights, setWeight,
-  onOpenLuca, lucaDone, setLucaDone, lucaMissionChoice, setLucaMissionChoice, lucaParticipants, setLucaParticipants, lucaStreak, workoutCompletedDates, nutriCompletedDates, lucaCompletedDates }) {
+  onOpenLuca, lucaDone, setLucaDone, lucaMissionChoice, setLucaMissionChoice, lucaParticipants, setLucaParticipants, lucaStreak, workoutCompletedDates, nutriCompletedDates, lucaCompletedDates,
+  extraWorkouts, onAddExtraWorkout, onRemoveExtraWorkout, weightKg }) {
   const pct = total > 0 ? Math.round(doneN / total * 100) : 0;
   const consumed = nutriMacrosForDay(plan, log);
   const adjustedTarget = targets.kcal + burnedKcal;
@@ -2856,6 +2912,17 @@ function TodayOverview({ day, tc, total, doneN, streak, onOpenSession, plan, log
   const kcalPct = adjustedTarget > 0 ? Math.min(100, Math.round(consumed.kcal / adjustedTarget * 100)) : 0;
   const reached = consumed.kcal >= adjustedTarget;
   const nc = NUTRI_ACCENT;
+
+  // Deficit goal: protein is a floor (missing it is bad), kcal/carbs/fat are
+  // ceilings (going over them is bad) — colors reflect that asymmetry rather
+  // than a flat "more is green" reading.
+  const kcalOverBudget = consumed.kcal > adjustedTarget;
+  const proteinOk = consumed.protein >= targets.protein;
+  const carbsOverBudget = consumed.carbs > targets.carbs;
+  const fatOverBudget = consumed.fat > targets.fat;
+  const allMealsLogged = !!(log.breakfastEaten && log.lunchEaten && log.dinnerEaten);
+  const perfectDay = allMealsLogged && proteinOk && !kcalOverBudget && !carbsOverBudget && !fatOverBudget;
+  const good = "#39ff88", bad = "#f87171";
 
   const [entrenoOpen, setEntrenoOpen] = useState(false);
   const [nutriOpen, setNutriOpen] = useState(false);
@@ -2936,6 +3003,7 @@ function TodayOverview({ day, tc, total, doneN, streak, onOpenSession, plan, log
         ) : (
           <div style={{ fontSize:11, color:"#9ca3af", marginTop:8 }}>Descanso — el músculo crece hoy.</div>
         )}
+        <ExtraFitxrSection items={extraWorkouts} onAdd={onAddExtraWorkout} onRemove={onRemoveExtraWorkout} weightKg={weightKg} dot={tc.accent}/>
       </div>
 
       <div style={{ background:`${nc}10`, border:`1px solid ${nc}30`, borderRadius:12, padding:"14px 16px" }}>
@@ -2949,14 +3017,21 @@ function TodayOverview({ day, tc, total, doneN, streak, onOpenSession, plan, log
             <CollapseChevron open={nutriOpen}/>
           </div>
         </div>
+
+        {perfectDay && (
+          <div style={{ marginTop:10, padding:"7px 10px", borderRadius:8, background:`${good}18`, border:`1px solid ${good}50`, fontSize:11, color:good, fontWeight:700, textAlign:"center" }}>
+            🎯 ¡Rango perfecto! Proteína cumplida y dentro de tu presupuesto de hoy.
+          </div>
+        )}
+
         <div style={{ height:5, background:"rgba(255,255,255,0.08)", borderRadius:99, overflow:"hidden", marginTop:10 }}>
-          <div style={{ height:"100%", width:`${kcalPct}%`, background: reached ? "#39ff88" : nc, borderRadius:99, transition:"width 0.3s" }}/>
+          <div style={{ height:"100%", width:`${kcalPct}%`, background: kcalOverBudget ? bad : good, borderRadius:99, transition:"width 0.3s" }}/>
         </div>
 
         <div style={{ display:"grid", gridTemplateColumns:"repeat(3, 1fr)", gap:8, marginTop:10, marginBottom: nutriOpen ? 12 : 0 }}>
-          <MacroMini label="PROT" value={consumed.protein} target={targets.protein} color="#39ff88"/>
-          <MacroMini label="CARB" value={consumed.carbs} target={targets.carbs} color="#a78bfa"/>
-          <MacroMini label="GRASA" value={consumed.fat} target={targets.fat} color="#fb923c"/>
+          <MacroMini label="PROT" value={consumed.protein} target={targets.protein} color={proteinOk ? good : bad}/>
+          <MacroMini label="CARB" value={consumed.carbs} target={targets.carbs} color={carbsOverBudget ? bad : good}/>
+          <MacroMini label="GRASA" value={consumed.fat} target={targets.fat} color={fatOverBudget ? bad : good}/>
         </div>
 
         {nutriOpen && (
@@ -3037,6 +3112,7 @@ export default function App() {
   const [nutriShoppingChecked, setNutriShoppingChecked] = useState(() => loadLocal("voltra-nutri-shopping-checked", {}));
   const [nutriSundayPrep, setNutriSundayPrep] = useState(() => loadLocal("voltra-nutri-sunday-prep", {}));
   const [reminderSettings, setReminderSettings] = useState(() => loadLocal("voltra-reminder-settings", { enabled: false, time: "18:00" }));
+  const [extraWorkouts, setExtraWorkouts] = useState(() => loadLocal("voltra-extra-workouts", {}));
   const [cloudSync, setCloudSync] = useState({ configured: false, authenticated: false });
 
   const applyRemoteData = useCallback((data) => {
@@ -3048,7 +3124,7 @@ export default function App() {
       "voltra-nutri-protein": setNutriProtein, "voltra-nutri-logs": setNutriLogs,
       "voltra-nutri-completed-dates": setNutriCompletedDates, "voltra-nutri-budget": setNutriBudget,
       "voltra-nutri-shopping-checked": setNutriShoppingChecked, "voltra-nutri-sunday-prep": setNutriSundayPrep,
-      "voltra-reminder-settings": setReminderSettings,
+      "voltra-reminder-settings": setReminderSettings, "voltra-extra-workouts": setExtraWorkouts,
     };
     Object.entries(data || {}).forEach(([key, value]) => {
       if (value === undefined || !setters[key]) return;
@@ -3096,6 +3172,26 @@ export default function App() {
     setWeights(p => {
       const next = { ...p, [key]: value };
       persist("jay-training-weights", next);
+      return next;
+    });
+  }, []);
+
+  const addExtraWorkout = useCallback((type, minutes) => {
+    const iso = isoDate(new Date());
+    setExtraWorkouts(prev => {
+      const dayList = prev[iso] || [];
+      const entry = { id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, type, minutes };
+      const next = { ...prev, [iso]: [...dayList, entry] };
+      persist("voltra-extra-workouts", next);
+      return next;
+    });
+  }, []);
+
+  const removeExtraWorkout = useCallback((id) => {
+    const iso = isoDate(new Date());
+    setExtraWorkouts(prev => {
+      const next = { ...prev, [iso]: (prev[iso] || []).filter(w => w.id !== id) };
+      persist("voltra-extra-workouts", next);
       return next;
     });
   }, []);
@@ -3148,14 +3244,17 @@ export default function App() {
   const { total: todayWorkoutTotal, doneN: todayWorkoutDoneN } = timelineTotals(todayWorkoutDay, wk, done);
   const todayWorkoutPct = todayWorkoutTotal > 0 ? Math.round(todayWorkoutDoneN / todayWorkoutTotal * 100) : 0;
 
-  const burnedKcalToday = todayWorkoutDay.type !== "REST"
+  const programmedBurnedKcalToday = todayWorkoutDay.type !== "REST"
     ? estimateBurnedKcal(todayWorkoutDay, todayWorkoutPct, nutriProfile.weightKg)
     : 0;
+  const todayExtraWorkouts = extraWorkouts[isoDate(new Date())] || [];
+  const extraBurnedKcalToday = todayExtraWorkouts.reduce((s, w) => s + extraBurnedKcal(w.minutes, nutriProfile.weightKg), 0);
+  const burnedKcalToday = programmedBurnedKcalToday + extraBurnedKcalToday;
 
   const todayNutriIso = isoDate(new Date());
   const todayNutriPlan = nutriPlanForDate(new Date());
   const todayNutriLog = nutriLogs[todayNutriIso] || NUTRI_EMPTY_LOG;
-  const nutriTargets = calcNutriTargets(nutriProfile);
+  const nutriTargets = calcNutriTargets(nutriProfile, burnedKcalToday);
   const nutriStreak = computeSimpleStreak(new Set(nutriCompletedDates));
   const lucaStreak = computeSimpleStreak(new Set(lucaCompletedDates));
 
@@ -3370,7 +3469,8 @@ export default function App() {
             wk={wk} done={done} setDone={setDone} startTimer={startTimer} protein={nutriProtein} weights={weights} setWeight={setWeight}
             onOpenLuca={()=>setView("luca")} lucaDone={lucaDone} setLucaDone={setLucaDone} lucaMissionChoice={lucaMissionChoice} setLucaMissionChoice={setLucaMissionChoice}
             lucaParticipants={lucaParticipants} setLucaParticipants={setLucaParticipants} lucaStreak={lucaStreak}
-            workoutCompletedDates={completedDates} nutriCompletedDates={nutriCompletedDates} lucaCompletedDates={lucaCompletedDates}/>
+            workoutCompletedDates={completedDates} nutriCompletedDates={nutriCompletedDates} lucaCompletedDates={lucaCompletedDates}
+            extraWorkouts={todayExtraWorkouts} onAddExtraWorkout={addExtraWorkout} onRemoveExtraWorkout={removeExtraWorkout} weightKg={nutriProfile.weightKg}/>
         ) : view==="luca" ? (
           <LucaView done={lucaDone} setDone={setLucaDone} missionChoice={lucaMissionChoice} setMissionChoice={setLucaMissionChoice}
             participants={lucaParticipants} setParticipants={setLucaParticipants}/>
