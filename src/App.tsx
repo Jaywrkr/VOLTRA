@@ -1705,6 +1705,8 @@ const FOOD_DB = [
   { id:"helado", name:"Helado de vainilla", aliases:[], unit:"1 bola", macros:{ kcal:137, protein:2, carbs:16, fat:7 } },
   { id:"chocolate", name:"Chocolate con leche", aliases:[], unit:"1 barra (43 g)", macros:{ kcal:235, protein:3, carbs:26, fat:13 } },
   { id:"galletas", name:"Galletas dulces", aliases:[], unit:"4 unidades", macros:{ kcal:130, protein:2, carbs:21, fat:4 } },
+  { id:"esparragos", name:"Espárragos cocidos", aliases:[], unit:"5 lanzas (100 g)", macros:{ kcal:20, protein:2, carbs:4, fat:0 } },
+  { id:"pan-pita", name:"Pan pita", aliases:["pita"], unit:"1 unidad (60 g)", macros:{ kcal:165, protein:5, carbs:33, fat:1 } },
 ];
 
 function normalizeFoodQuery(s) {
@@ -1725,6 +1727,92 @@ function searchFoods(query, limit = 6) {
   }).filter(s => s.score > 0);
   scored.sort((a, b) => b.score - a.score);
   return scored.slice(0, limit).map(s => s.food);
+}
+
+// ─── Despensa / merienda sugerida ───────────────────────────────────────────────
+// Not fixed recipes — a suggested combo of whatever's in the pantry list,
+// portioned to close whatever's left of today's macros at the moment it's
+// added (not a static plan), so it adapts to however the day actually went.
+const DEFAULT_PANTRY = [
+  "atun", "pescado", "tallarin", "arroz-integral", "pan-integral", "pan-pita",
+  "esparragos", "brocoli", "zanahoria", "yogur",
+  "manzana", "pera", "platano", "sandia", "kiwi",
+];
+const PANTRY_ROLE = {
+  atun:"protein", pescado:"protein", yogur:"protein",
+  tallarin:"carb", "arroz-integral":"carb", "pan-integral":"carb", "pan-pita":"carb",
+  esparragos:"veg", brocoli:"veg", zanahoria:"veg",
+  manzana:"fruit", pera:"fruit", platano:"fruit", sandia:"fruit", kiwi:"fruit",
+};
+
+function pantryItemsByRole(pantryIds, role) {
+  return pantryIds.filter(id => PANTRY_ROLE[id] === role).map(id => FOOD_DB.find(f => f.id === id)).filter(Boolean);
+}
+
+// Scales a food's base unit up/down in friendly halves (0.5x-3x) to roughly
+// hit a target amount of some macro, rather than an arbitrary gram figure.
+function scaleToTarget(food, macroKey, targetAmount) {
+  const base = food.macros[macroKey] || 0;
+  if (base <= 0) return 1;
+  const raw = targetAmount / base;
+  return Math.min(2, Math.max(0.5, Math.round(raw * 2) / 2));
+}
+
+function scaleMacros(macros, mult) {
+  return { kcal: Math.round(macros.kcal * mult), protein: Math.round(macros.protein * mult * 10) / 10, carbs: Math.round(macros.carbs * mult), fat: Math.round(macros.fat * mult) };
+}
+
+function qtyLabel(unit, mult) {
+  if (mult === 1) return unit;
+  return `${mult}× ${unit}`;
+}
+
+// Picks one protein + one carb (sized against the remaining gap) + one veg
+// (fixed, low-impact) + a fruit if there's still room — rotating which
+// specific items by day-of-year/seed so it's not the same combo every time.
+// A merienda is a snack, not a meal replacement — even when the day's whole
+// remaining gap is huge (nothing else logged yet), it shouldn't try to close
+// all of it in one sitting. These caps keep portions snack-sized regardless
+// of how much is technically still "missing"; dinner still covers the rest.
+const MERIENDA_CEIL = { protein: 30, carbs: 40 };
+
+function suggestMerienda(pantryIds, remaining, seed = 0) {
+  const proteins = pantryItemsByRole(pantryIds, "protein");
+  const carbs = pantryItemsByRole(pantryIds, "carb");
+  const vegs = pantryItemsByRole(pantryIds, "veg");
+  const fruits = pantryItemsByRole(pantryIds, "fruit");
+  if (proteins.length === 0 && carbs.length === 0) return null;
+
+  const items = [];
+  let runningKcal = 0;
+
+  if (proteins.length > 0) {
+    const food = proteins[seed % proteins.length];
+    const proteinTarget = Math.min(Math.max(0, remaining.protein), MERIENDA_CEIL.protein);
+    const mult = scaleToTarget(food, "protein", proteinTarget);
+    const macros = scaleMacros(food.macros, mult);
+    items.push({ name: food.name, qty: qtyLabel(food.unit, mult), macros });
+    runningKcal += macros.kcal;
+  }
+  if (carbs.length > 0) {
+    const food = carbs[(seed + 1) % carbs.length];
+    const carbTarget = Math.min(Math.max(0, remaining.carbs) * 0.5, MERIENDA_CEIL.carbs);
+    const mult = scaleToTarget(food, "carbs", carbTarget);
+    const macros = scaleMacros(food.macros, mult);
+    items.push({ name: food.name, qty: qtyLabel(food.unit, mult), macros });
+    runningKcal += macros.kcal;
+  }
+  if (vegs.length > 0) {
+    const food = vegs[(seed + 2) % vegs.length];
+    items.push({ name: food.name, qty: qtyLabel(food.unit, 1), macros: food.macros });
+    runningKcal += food.macros.kcal;
+  }
+  if (fruits.length > 0 && runningKcal < Math.max(0, remaining.kcal)) {
+    const food = fruits[(seed + 3) % fruits.length];
+    items.push({ name: food.name, qty: qtyLabel(food.unit, 1), macros: food.macros });
+  }
+
+  return { items, macros: sumMacros(items.map(i => i.macros)) };
 }
 
 const MOM_LUNCH_DEFAULTS = {
@@ -1773,6 +1861,7 @@ function nutriMacrosForDay(plan, log) {
     else if (plan.lunch.type === "recipe") parts.push(log.lunchOverride || plan.lunch.recipe.macros);
   }
   if (log.dinnerEaten) parts.push(log.dinnerOverride || plan.dinner.macros);
+  if (log.snackEaten && log.snack) parts.push(log.snack.macros);
   (log.extras || []).forEach(e => parts.push(e.macros));
   return sumMacros(parts);
 }
@@ -1877,7 +1966,7 @@ function extraBurnedKcal(type, minutes, weightKg) {
 
 const DEFAULT_NUTRI_PROFILE = { weightKg:70, heightCm:170, age:35, trainingDaysPerWeek:5, deficitPct:15 };
 const NUTRI_ACCENT = "#fbbf24";
-const NUTRI_EMPTY_LOG = { breakfastEaten:false, lunchEaten:false, dinnerEaten:false, extras:[] };
+const NUTRI_EMPTY_LOG = { breakfastEaten:false, lunchEaten:false, dinnerEaten:false, snackEaten:false, extras:[] };
 
 // Applied Nutrition Critical Whey (vainilla) — real macros del envase, por 1 scoop
 // (16.5 g, la mitad de la porción de 2 scoops/33 g que indica la etiqueta).
@@ -2011,6 +2100,64 @@ function MacroInline({ m, color }) {
   );
 }
 
+// Merienda: not a fixed recipe — a suggested combo from the pantry list,
+// portioned against whatever's still left of today's macros at the moment
+// it's generated. "🔄 otra" cycles to a different pick from the same pantry.
+function MeriendaSection({ plan, log, updateLog, targets, adjustedTarget, pantry, c }) {
+  const [seed, setSeed] = useState(() => new Date().getDate());
+  const isDone = !!log.snackEaten && !!log.snack;
+
+  if (isDone) {
+    const editMacros = (m) => updateLog({ snack: { ...log.snack, macros: m } });
+    const unmark = () => updateLog({ snackEaten: false });
+    return (
+      <NutriMealRow name={`Merienda: ${log.snack.items.map(i => i.name).join(" + ")}`} note="Toca para deshacer"
+        macros={log.snack.macros} onOverrideChange={editMacros} isDone={true} onToggle={unmark} c={c}/>
+    );
+  }
+
+  const consumedBefore = nutriMacrosForDay(plan, { ...log, snackEaten: false });
+  const remaining = {
+    kcal: Math.max(0, adjustedTarget - consumedBefore.kcal),
+    protein: Math.max(0, targets.protein - consumedBefore.protein),
+    carbs: Math.max(0, targets.carbs - consumedBefore.carbs),
+    fat: Math.max(0, targets.fat - consumedBefore.fat),
+  };
+  const suggestion = suggestMerienda(pantry || [], remaining, seed);
+
+  if (!suggestion) {
+    return (
+      <div style={{ padding:"12px 14px", marginBottom:8, borderRadius:10, background:"rgba(255,255,255,0.03)", border:"1px dashed rgba(255,255,255,0.15)" }}>
+        <div style={{ fontSize:12, color:"#9ca3af" }}>Agrega ingredientes a tu despensa en Perfil para que te sugiera una merienda.</div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ padding:"12px 14px", marginBottom:8, borderRadius:10, background:"rgba(255,255,255,0.04)", border:`1px solid ${c}30`, borderLeft:`3px solid ${c}` }}>
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:8 }}>
+        <div style={{ fontSize:14, fontWeight:600, color:"#f3f4f6" }}>🍽️ Merienda sugerida</div>
+        <span onClick={() => setSeed(s => s + 1)} style={{ cursor:"pointer", fontSize:11, color:c, fontWeight:600, flexShrink:0 }}>🔄 otra</span>
+      </div>
+      <div style={{ display:"flex", flexDirection:"column", gap:5, marginBottom:8 }}>
+        {suggestion.items.map((it, i) => (
+          <div key={i} style={{ display:"flex", justifyContent:"space-between", gap:8, fontSize:12 }}>
+            <span style={{ color:"#d1d5db" }}>{it.name} <span style={{ color:"#6b7280" }}>· {it.qty}</span></span>
+            <MacroInline m={it.macros} color={c}/>
+          </div>
+        ))}
+      </div>
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", paddingTop:8, borderTop:"1px solid rgba(255,255,255,0.06)", gap:8 }}>
+        <MacroInline m={suggestion.macros} color={c}/>
+        <button onClick={() => updateLog({ snackEaten: true, snack: suggestion })} style={{
+          padding:"6px 12px", borderRadius:7, fontSize:11, fontWeight:600, cursor:"pointer",
+          background:`${c}18`, border:`1px solid ${c}50`, color:c, flexShrink:0,
+        }}>Usar esta merienda</button>
+      </div>
+    </div>
+  );
+}
+
 // Search + one-tap add for anything eaten outside the plan — every FOOD_DB
 // entry carries full macros (not just kcal), shown inline so it's visible
 // that protein/carbs/fat get tracked too, not only calories.
@@ -2094,7 +2241,7 @@ function ProteinShakeQuickLog({ protein, updateLog, c }) {
   );
 }
 
-function NutriDayCard({ plan, log, updateLog, targets, burnedKcal, isToday, c, protein }) {
+function NutriDayCard({ plan, log, updateLog, targets, burnedKcal, isToday, c, protein, pantry }) {
   const adjustedKcalTarget = targets.kcal + (burnedKcal || 0);
   const consumed = nutriMacrosForDay(plan, log);
   const remaining = Math.max(0, adjustedKcalTarget - consumed.kcal);
@@ -2133,6 +2280,7 @@ function NutriDayCard({ plan, log, updateLog, targets, burnedKcal, isToday, c, p
         <NutriMealRow name={plan.lunch.recipe.name} note={`${plan.lunch.recipe.prepMinutes} min`} macros={plan.lunch.recipe.macros} overrideMacros={log.lunchOverride} onOverrideChange={m => updateLog({ lunchOverride: m || undefined })} isDone={log.lunchEaten} onToggle={() => updateLog({ lunchEaten: !log.lunchEaten })} c={c}/>
       )}
       <NutriMealRow name={plan.dinner.name} note={`${plan.dinner.prepMinutes} min${plan.dinner.batchCook ? " · batch cooking" : ""}`} macros={plan.dinner.macros} overrideMacros={log.dinnerOverride} onOverrideChange={m => updateLog({ dinnerOverride: m || undefined })} isDone={log.dinnerEaten} onToggle={() => updateLog({ dinnerEaten: !log.dinnerEaten })} c={c}/>
+      <MeriendaSection plan={plan} log={log} updateLog={updateLog} targets={targets} adjustedTarget={adjustedKcalTarget} pantry={pantry} c={c}/>
 
       <div style={{ fontSize:9, fontWeight:700, letterSpacing:"0.12em", color:"#6b7280", marginTop:14, marginBottom:6, paddingLeft:2 }}>EXTRAS</div>
       <SnackLogger log={log} updateLog={updateLog} c={c}/>
@@ -2326,7 +2474,7 @@ const BACKUP_KEYS = [
   "luca-training-done", "voltra-luca-completed-dates", "voltra-luca-mission-choice", "voltra-luca-participants",
   "voltra-nutri-budget", "voltra-nutri-completed-dates", "voltra-nutri-logs", "voltra-nutri-profile",
   "voltra-nutri-protein", "voltra-nutri-shopping-checked", "voltra-nutri-sunday-prep", "voltra-reminder-settings",
-  "voltra-extra-workouts", "voltra-fitxr-minutes",
+  "voltra-extra-workouts", "voltra-fitxr-minutes", "voltra-pantry",
 ];
 
 function BackupSection({ c }) {
@@ -2503,7 +2651,63 @@ function SyncSection({ cloudSync, connectSync, disconnectSync, c }) {
   );
 }
 
-function PerfilView({ profile, setProfile, targets, c, protein, setProtein, reminderSettings, setReminderSettings, cloudSync, connectSync, disconnectSync }) {
+// Editable pantry list — feeds the "merienda sugerida" combo generator.
+// Add anything from the food DB, remove what you don't actually keep stocked.
+function PantrySection({ pantry, setPantry, c }) {
+  const [query, setQuery] = useState("");
+  const results = query.trim() ? searchFoods(query).filter(f => !pantry.includes(f.id)) : [];
+
+  const add = (id) => {
+    const next = [...pantry, id];
+    setPantry(next);
+    persist("voltra-pantry", next);
+    setQuery("");
+  };
+  const remove = (id) => {
+    const next = pantry.filter(p => p !== id);
+    setPantry(next);
+    persist("voltra-pantry", next);
+  };
+
+  return (
+    <div>
+      <div style={{ fontSize:9, fontWeight:700, letterSpacing:"0.12em", color:"#6b7280", marginBottom:6, paddingLeft:2 }}>MI DESPENSA</div>
+      <div style={{ background:"rgba(255,255,255,0.02)", border:"1px solid rgba(255,255,255,0.07)", borderRadius:10, padding:14 }}>
+        <div style={{ fontSize:11, color:"#9ca3af", lineHeight:1.6, marginBottom:12 }}>
+          Lo que casi siempre tienes en casa — con esto arma la "merienda sugerida", ajustando cantidades según lo que te falte ese día.
+        </div>
+        <div style={{ display:"flex", flexWrap:"wrap", gap:6, marginBottom:12 }}>
+          {pantry.length === 0 && <span style={{ fontSize:11, color:"#6b7280" }}>Todavía no agregas nada.</span>}
+          {pantry.map(id => {
+            const food = FOOD_DB.find(f => f.id === id);
+            if (!food) return null;
+            return (
+              <div key={id} style={{ display:"flex", alignItems:"center", gap:6, padding:"5px 10px", borderRadius:7, background:`${c}12`, border:`1px solid ${c}35` }}>
+                <span style={{ fontSize:11, color:"#e5e7eb" }}>{food.name}</span>
+                <span onClick={() => remove(id)} style={{ cursor:"pointer", color:"#6b7280", fontSize:12 }}>✕</span>
+              </div>
+            );
+          })}
+        </div>
+        <div style={{ position:"relative" }}>
+          <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Buscar un ingrediente para agregar…"
+            style={{ width:"100%", fontSize:13, color:"#f3f4f6", background:"rgba(255,255,255,0.05)", border:`1px solid ${c}30`, borderRadius:8, padding:"9px 12px", boxSizing:"border-box" }}/>
+          {results.length > 0 && (
+            <div style={{ position:"absolute", top:"100%", left:0, right:0, marginTop:4, background:"#0a0a0a", border:"1px solid rgba(255,255,255,0.1)", borderRadius:8, zIndex:10, overflow:"hidden" }}>
+              {results.map(food => (
+                <div key={food.id} onClick={() => add(food.id)} style={{ padding:"8px 12px", cursor:"pointer", fontSize:12, color:"#e5e7eb", borderBottom:"1px solid rgba(255,255,255,0.05)" }}>
+                  {food.name} <span style={{ color:"#6b7280" }}>· {food.unit}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function PerfilView({ profile, setProfile, targets, c, protein, setProtein, reminderSettings, setReminderSettings, cloudSync, connectSync, disconnectSync, pantry, setPantry }) {
   const setField = (field) => (value) => {
     setProfile(prev => {
       const next = { ...prev, [field]: value };
@@ -2558,6 +2762,10 @@ function PerfilView({ profile, setProfile, targets, c, protein, setProtein, remi
           peso corporal, la grasa en 25% de las calorías, y el resto son carbos. Este es tu piso
           base — los días que entrenás, Voltra suma las calorías quemadas encima automáticamente.
         </div>
+      </div>
+
+      <div style={{ marginTop:16 }}>
+        <PantrySection pantry={pantry} setPantry={setPantry} c={c}/>
       </div>
 
       <div style={{ marginTop:16 }}>
@@ -2624,7 +2832,7 @@ function SundayBanner({ sundayPrep, setSundayPrep, c }) {
   );
 }
 
-function NutriView({ profile, setProfile, logs, setLogs, burnedKcalToday, nutriCompletedDates, budget, setBudget, shoppingChecked, setShoppingChecked, sundayPrep, setSundayPrep, protein, setProtein, workoutCompletedDates, reminderSettings, setReminderSettings, cloudSync, connectSync, disconnectSync }) {
+function NutriView({ profile, setProfile, logs, setLogs, burnedKcalToday, nutriCompletedDates, budget, setBudget, shoppingChecked, setShoppingChecked, sundayPrep, setSundayPrep, protein, setProtein, workoutCompletedDates, reminderSettings, setReminderSettings, cloudSync, connectSync, disconnectSync, pantry, setPantry }) {
   const [tab, setTab] = useState("hoy");
   const [selectedIdx, setSelectedIdx] = useState(() => todayDayIndex());
   const todayIso = isoDate(new Date());
@@ -2675,7 +2883,7 @@ function NutriView({ profile, setProfile, logs, setLogs, burnedKcalToday, nutriC
       </div>
 
       {tab === "hoy" && (
-        <NutriDayCard plan={todayPlan} log={todayLog} updateLog={updateLogFor(todayIso)} targets={targets} burnedKcal={burnedKcalToday} isToday={true} c={c} protein={protein}/>
+        <NutriDayCard plan={todayPlan} log={todayLog} updateLog={updateLogFor(todayIso)} targets={targets} burnedKcal={burnedKcalToday} isToday={true} c={c} protein={protein} pantry={pantry}/>
       )}
 
       {tab === "semana" && (
@@ -2698,7 +2906,7 @@ function NutriView({ profile, setProfile, logs, setLogs, burnedKcalToday, nutriC
               );
             })}
           </div>
-          <NutriDayCard plan={selectedPlan} log={selectedLog} updateLog={updateLogFor(selectedIso)} targets={targets} burnedKcal={isSelectedToday ? burnedKcalToday : 0} isToday={isSelectedToday} c={c} protein={protein}/>
+          <NutriDayCard plan={selectedPlan} log={selectedLog} updateLog={updateLogFor(selectedIso)} targets={targets} burnedKcal={isSelectedToday ? burnedKcalToday : 0} isToday={isSelectedToday} c={c} protein={protein} pantry={pantry}/>
         </div>
       )}
 
@@ -2708,7 +2916,7 @@ function NutriView({ profile, setProfile, logs, setLogs, burnedKcalToday, nutriC
 
       {tab === "perfil" && (
         <PerfilView profile={profile} setProfile={setProfile} targets={targets} c={c} protein={protein} setProtein={setProtein} reminderSettings={reminderSettings} setReminderSettings={setReminderSettings}
-          cloudSync={cloudSync} connectSync={connectSync} disconnectSync={disconnectSync}/>
+          cloudSync={cloudSync} connectSync={connectSync} disconnectSync={disconnectSync} pantry={pantry} setPantry={setPantry}/>
       )}
 
       {tab === "insights" && (
@@ -3040,7 +3248,7 @@ function ContributionsCalendar({ workoutDates, nutriDates, lucaDates }) {
 
 function TodayOverview({ day, tc, total, doneN, streak, onOpenSession, plan, log, updateLog, targets, burnedKcal, nutriStreak, onOpenNutri, wk, done, setDone, startTimer, protein, weights, setWeight,
   onOpenLuca, lucaDone, setLucaDone, lucaMissionChoice, setLucaMissionChoice, lucaParticipants, setLucaParticipants, lucaStreak, workoutCompletedDates, nutriCompletedDates, lucaCompletedDates,
-  extraWorkouts, onAddExtraWorkout, onRemoveExtraWorkout, weightKg, fitxrMinutes, setFitxrMinutes }) {
+  extraWorkouts, onAddExtraWorkout, onRemoveExtraWorkout, weightKg, fitxrMinutes, setFitxrMinutes, pantry }) {
   const pct = total > 0 ? Math.round(doneN / total * 100) : 0;
   const consumed = nutriMacrosForDay(plan, log);
   const adjustedTarget = targets.kcal + burnedKcal;
@@ -3181,6 +3389,7 @@ function TodayOverview({ day, tc, total, doneN, streak, onOpenSession, plan, log
               <NutriMealRow name={plan.lunch.recipe.name} note={`${plan.lunch.recipe.prepMinutes} min`} macros={plan.lunch.recipe.macros} overrideMacros={log.lunchOverride} onOverrideChange={m => updateLog({ lunchOverride: m || undefined })} isDone={log.lunchEaten} onToggle={() => updateLog({ lunchEaten: !log.lunchEaten })} c={nc}/>
             )}
             <NutriMealRow name={plan.dinner.name} note={`${plan.dinner.prepMinutes} min${plan.dinner.batchCook ? " · batch cooking" : ""}`} macros={plan.dinner.macros} overrideMacros={log.dinnerOverride} onOverrideChange={m => updateLog({ dinnerOverride: m || undefined })} isDone={log.dinnerEaten} onToggle={() => updateLog({ dinnerEaten: !log.dinnerEaten })} c={nc}/>
+            <MeriendaSection plan={plan} log={log} updateLog={updateLog} targets={targets} adjustedTarget={adjustedTarget} pantry={pantry} c={nc}/>
 
             <div style={{ fontSize:9, fontWeight:700, letterSpacing:"0.12em", color:"#6b7280", marginTop:12, marginBottom:6, paddingLeft:2 }}>EXTRAS</div>
             <SnackLogger log={log} updateLog={updateLog} c={nc}/>
@@ -3255,6 +3464,7 @@ export default function App() {
   const [reminderSettings, setReminderSettings] = useState(() => loadLocal("voltra-reminder-settings", { enabled: false, time: "18:00" }));
   const [extraWorkouts, setExtraWorkouts] = useState(() => loadLocal("voltra-extra-workouts", {}));
   const [fitxrMinutes, setFitxrMinutesRaw] = useState(() => loadLocal("voltra-fitxr-minutes", {}));
+  const [pantry, setPantry] = useState(() => loadLocal("voltra-pantry", DEFAULT_PANTRY));
   const [cloudSync, setCloudSync] = useState({ configured: false, authenticated: false });
 
   const applyRemoteData = useCallback((data) => {
@@ -3267,7 +3477,7 @@ export default function App() {
       "voltra-nutri-completed-dates": setNutriCompletedDates, "voltra-nutri-budget": setNutriBudget,
       "voltra-nutri-shopping-checked": setNutriShoppingChecked, "voltra-nutri-sunday-prep": setNutriSundayPrep,
       "voltra-reminder-settings": setReminderSettings, "voltra-extra-workouts": setExtraWorkouts,
-      "voltra-fitxr-minutes": setFitxrMinutesRaw,
+      "voltra-fitxr-minutes": setFitxrMinutesRaw, "voltra-pantry": setPantry,
     };
     Object.entries(data || {}).forEach(([key, value]) => {
       if (value === undefined || !setters[key]) return;
@@ -3636,7 +3846,7 @@ export default function App() {
             lucaParticipants={lucaParticipants} setLucaParticipants={setLucaParticipants} lucaStreak={lucaStreak}
             workoutCompletedDates={completedDates} nutriCompletedDates={nutriCompletedDates} lucaCompletedDates={lucaCompletedDates}
             extraWorkouts={todayExtraWorkouts} onAddExtraWorkout={addExtraWorkout} onRemoveExtraWorkout={removeExtraWorkout} weightKg={nutriProfile.weightKg}
-            fitxrMinutes={fitxrMinutes} setFitxrMinutes={setFitxrMinutes}/>
+            fitxrMinutes={fitxrMinutes} setFitxrMinutes={setFitxrMinutes} pantry={pantry}/>
         ) : view==="luca" ? (
           <LucaView done={lucaDone} setDone={setLucaDone} missionChoice={lucaMissionChoice} setMissionChoice={setLucaMissionChoice}
             participants={lucaParticipants} setParticipants={setLucaParticipants}/>
@@ -3645,7 +3855,7 @@ export default function App() {
             budget={nutriBudget} setBudget={setNutriBudget} shoppingChecked={nutriShoppingChecked} setShoppingChecked={setNutriShoppingChecked}
             sundayPrep={nutriSundayPrep} setSundayPrep={setNutriSundayPrep} protein={nutriProtein} setProtein={setNutriProtein} workoutCompletedDates={completedDates}
             reminderSettings={reminderSettings} setReminderSettings={setReminderSettings}
-            cloudSync={cloudSync} connectSync={connectSync} disconnectSync={disconnectSync}/>
+            cloudSync={cloudSync} connectSync={connectSync} disconnectSync={disconnectSync} pantry={pantry} setPantry={setPantry}/>
         ) : (
         <div className="jay-shell">
 
