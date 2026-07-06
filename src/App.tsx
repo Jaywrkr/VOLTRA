@@ -1398,7 +1398,7 @@ function LucaMissionPanel({ done, setDone, missionChoice, setMissionChoice, part
         })}
       </div>
 
-      <div style={{ background:`${c}12`, border:`1px solid ${c}35`, borderRadius:14, padding:"18px 18px 14px", marginBottom:16, textAlign:"center" }}>
+      <div style={{ background:`${c}12`, border:`1px solid ${c}35`, borderRadius:12, padding:"16px 18px", marginBottom:16, textAlign:"center" }}>
         <div style={{ fontSize:34, marginBottom:4 }}>{mission.emoji}</div>
         <div style={{ fontSize:19, fontWeight:700, color:"#f3f4f6" }}>{mission.title}</div>
         <div style={{ fontSize:11, color:"#9ca3af", marginTop:4, fontStyle:"italic" }}>{mission.story}</div>
@@ -2250,7 +2250,7 @@ function NutriDayCard({ plan, log, updateLog, targets, burnedKcal, isToday, c, p
 
   return (
     <div>
-      <div style={{ background:`${c}10`, border:`1px solid ${c}30`, borderRadius:14, padding:"18px 18px 16px", marginBottom:16 }}>
+      <div style={{ background:`${c}10`, border:`1px solid ${c}30`, borderRadius:12, padding:"16px 18px", marginBottom:16 }}>
         <div style={{ marginBottom:10 }}>
           <div style={{ fontSize:9, fontWeight:700, letterSpacing:"0.12em", color:c }}>{plan.label.toUpperCase()}{isToday ? " · HOY" : ""}</div>
           <div style={{ fontSize:20, fontWeight:700, color:"#f3f4f6", marginTop:3 }}>
@@ -2415,7 +2415,7 @@ function ShoppingCartView({ budget, setBudget, checked, setChecked, c }) {
 
   return (
     <div>
-      <div style={{ background:`${c}10`, border:`1px solid ${c}30`, borderRadius:14, padding:"16px 18px", marginBottom:16 }}>
+      <div style={{ background:`${c}10`, border:`1px solid ${c}30`, borderRadius:12, padding:"16px 18px", marginBottom:16 }}>
         <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
           <div>
             <div style={{ fontSize:9, fontWeight:700, letterSpacing:"0.12em", color:c }}>CARRITO · SEMANA COMPLETA</div>
@@ -2518,7 +2518,7 @@ function BackupSection({ c }) {
   return (
     <div>
       <div style={{ fontSize:9, fontWeight:700, letterSpacing:"0.12em", color:"#6b7280", marginBottom:6, paddingLeft:2 }}>RESPALDO DE DATOS</div>
-      <div style={{ background:"rgba(255,255,255,0.02)", border:"1px solid rgba(255,255,255,0.07)", borderRadius:10, padding:14 }}>
+      <div style={{ background:"rgba(255,255,255,0.02)", border:"1px solid rgba(255,255,255,0.07)", borderRadius:12, padding:"16px 18px" }}>
         <div style={{ fontSize:11, color:"#9ca3af", lineHeight:1.6, marginBottom:12 }}>
           Todo se guarda solo en este navegador. Si cambiás de celular o borrás el caché, se pierde el historial —
           descarga un respaldo de vez en cuando y guárdalo donde quieras.
@@ -2566,7 +2566,7 @@ function ReminderSection({ reminderSettings, setReminderSettings, c }) {
   return (
     <div>
       <div style={{ fontSize:9, fontWeight:700, letterSpacing:"0.12em", color:"#6b7280", marginBottom:6, paddingLeft:2 }}>RECORDATORIO DIARIO</div>
-      <div style={{ background:"rgba(255,255,255,0.02)", border:"1px solid rgba(255,255,255,0.07)", borderRadius:10, padding:14 }}>
+      <div style={{ background:"rgba(255,255,255,0.02)", border:"1px solid rgba(255,255,255,0.07)", borderRadius:12, padding:"16px 18px" }}>
         <div style={{ fontSize:11, color:"#9ca3af", lineHeight:1.6, marginBottom:12 }}>
           Un aviso a la hora que elijas si todavía te falta entrenar, registrar comida o la misión de Luca.
           Solo funciona mientras Voltra esté abierta en el navegador (aunque sea en segundo plano).
@@ -2619,7 +2619,7 @@ function SyncSection({ cloudSync, connectSync, disconnectSync, c }) {
   return (
     <div>
       <div style={{ fontSize:9, fontWeight:700, letterSpacing:"0.12em", color:"#6b7280", marginBottom:6, paddingLeft:2 }}>SINCRONIZACIÓN EN LA NUBE</div>
-      <div style={{ background:"rgba(255,255,255,0.02)", border:"1px solid rgba(255,255,255,0.07)", borderRadius:10, padding:14 }}>
+      <div style={{ background:"rgba(255,255,255,0.02)", border:"1px solid rgba(255,255,255,0.07)", borderRadius:12, padding:"16px 18px" }}>
         <div style={{ fontSize:11, color:"#9ca3af", lineHeight:1.6, marginBottom:12 }}>
           Conecta este dispositivo para guardar tus datos también en la nube y verlos desde otro celular o navegador.
         </div>
@@ -2672,7 +2672,7 @@ function PantrySection({ pantry, setPantry, c }) {
   return (
     <div>
       <div style={{ fontSize:9, fontWeight:700, letterSpacing:"0.12em", color:"#6b7280", marginBottom:6, paddingLeft:2 }}>MI DESPENSA</div>
-      <div style={{ background:"rgba(255,255,255,0.02)", border:"1px solid rgba(255,255,255,0.07)", borderRadius:10, padding:14 }}>
+      <div style={{ background:"rgba(255,255,255,0.02)", border:"1px solid rgba(255,255,255,0.07)", borderRadius:12, padding:"16px 18px" }}>
         <div style={{ fontSize:11, color:"#9ca3af", lineHeight:1.6, marginBottom:12 }}>
           Lo que casi siempre tienes en casa — con esto arma la "merienda sugerida", ajustando cantidades según lo que te falte ese día.
         </div>
@@ -2725,7 +2725,7 @@ function PerfilView({ profile, setProfile, targets, c, protein, setProtein, remi
   return (
     <div>
       <div style={{ fontSize:9, fontWeight:700, letterSpacing:"0.12em", color:"#6b7280", marginBottom:6, paddingLeft:2 }}>TUS DATOS</div>
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(2, 1fr)", gap:8, background:"rgba(255,255,255,0.02)", border:"1px solid rgba(255,255,255,0.07)", borderRadius:10, padding:14, marginBottom:16 }}>
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(2, 1fr)", gap:8, background:"rgba(255,255,255,0.02)", border:"1px solid rgba(255,255,255,0.07)", borderRadius:12, padding:"16px 18px", marginBottom:16 }}>
         <NutriProfileField label="PESO (KG)" value={profile.weightKg} onChange={setField("weightKg")} step={0.5}/>
         <NutriProfileField label="ALTURA (CM)" value={profile.heightCm} onChange={setField("heightCm")}/>
         <NutriProfileField label="EDAD" value={profile.age} onChange={setField("age")}/>
@@ -2734,7 +2734,7 @@ function PerfilView({ profile, setProfile, targets, c, protein, setProtein, remi
       </div>
 
       <div style={{ fontSize:9, fontWeight:700, letterSpacing:"0.12em", color:"#6b7280", marginBottom:6, paddingLeft:2 }}>TU PROTEÍNA</div>
-      <div style={{ background:"rgba(255,255,255,0.02)", border:"1px solid rgba(255,255,255,0.07)", borderRadius:10, padding:14, marginBottom:16 }}>
+      <div style={{ background:"rgba(255,255,255,0.02)", border:"1px solid rgba(255,255,255,0.07)", borderRadius:12, padding:"16px 18px", marginBottom:16 }}>
         <div style={{ fontSize:9, color:"#8a8f98", marginBottom:4 }}>MARCA / SABOR</div>
         <input type="text" value={protein.name} onChange={e => setProteinField("name")(e.target.value)}
           style={{ width:"100%", fontSize:13, color:"#f3f4f6", background:"rgba(255,255,255,0.05)", border:"1px solid rgba(255,255,255,0.1)", borderRadius:7, padding:"8px 10px", boxSizing:"border-box", marginBottom:12 }}/>
@@ -3321,46 +3321,49 @@ function TodayOverview({ day, tc, total, doneN, streak, onOpenSession, plan, log
       </div>
 
       <div className="jay-hoy-cards">
-      <div style={{ background:tc.bg, border:`1px solid ${tc.accent}30`, borderRadius:12, padding:"14px 16px" }}>
+      <div style={{ background:tc.bg, border:`1px solid ${tc.accent}30`, borderRadius:12, padding:"16px 18px" }}>
         <div onClick={() => setEntrenoOpen(o => !o)} style={{ cursor:"pointer", display:"flex", justifyContent:"space-between", alignItems:"flex-start" }}>
           <div>
             <div style={{ fontSize:9, fontWeight:700, letterSpacing:"0.1em", color:tc.label }}>ENTRENO DE HOY</div>
             <div style={{ fontSize:16, fontWeight:700, color:"#f3f4f6", marginTop:2 }}>{day.focus}</div>
           </div>
-          <div style={{ display:"flex", alignItems:"center", gap:8, flexShrink:0 }}>
-            {streak > 0 && <span style={{ fontSize:11, color:"#fb923c", fontWeight:700 }}>🔥 {streak}</span>}
-            <CollapseChevron open={entrenoOpen}/>
-          </div>
+          <CollapseChevron open={entrenoOpen}/>
         </div>
         {day.type !== "REST" ? (
           <>
             <div style={{ height:5, background:"rgba(255,255,255,0.08)", borderRadius:99, overflow:"hidden", marginTop:10 }}>
               <div style={{ height:"100%", width:`${pct}%`, background:tc.accent, borderRadius:99, transition:"width 0.3s" }}/>
             </div>
-            <div style={{ display:"flex", justifyContent:"space-between", marginTop:5, marginBottom: entrenoOpen ? 10 : 0, fontSize:10, color:"#9ca3af" }}>
+            <div style={{ display:"flex", justifyContent:"space-between", marginTop:5, fontSize:10, color:"#9ca3af" }}>
               <span>{doneN}/{total} series</span>
               <span onClick={e => { e.stopPropagation(); onOpenSession(); }} style={{ color:tc.label, fontWeight:600, cursor:"pointer" }}>Detalle completo →</span>
             </div>
             {entrenoOpen && (
-              <TimelineView day={day} wk={wk} done={done} setDone={setDone} onStartTimer={startTimer} weights={weights} setWeight={setWeight} fitxrMinutes={fitxrMinutes} setFitxrMinutes={setFitxrMinutes}/>
+              <div style={{ marginTop:10 }}>
+                <TimelineView day={day} wk={wk} done={done} setDone={setDone} onStartTimer={startTimer} weights={weights} setWeight={setWeight} fitxrMinutes={fitxrMinutes} setFitxrMinutes={setFitxrMinutes}/>
+              </div>
             )}
           </>
         ) : (
           <div style={{ fontSize:11, color:"#9ca3af", marginTop:8 }}>Descanso — el músculo crece hoy.</div>
         )}
-        <ExtraFitxrSection items={extraWorkouts} onAdd={onAddExtraWorkout} onRemove={onRemoveExtraWorkout} weightKg={weightKg} dot={tc.accent}/>
+        {extraWorkouts.length > 0 && (
+          <div style={{ fontSize:10, color:tc.accent, marginTop: day.type !== "REST" ? 5 : 8 }}>
+            ⚡ +{extraWorkouts.reduce((s, w) => s + extraBurnedKcal(w.type, w.minutes, weightKg), 0)} kcal de FitXR extra hoy
+          </div>
+        )}
+        {entrenoOpen && (
+          <ExtraFitxrSection items={extraWorkouts} onAdd={onAddExtraWorkout} onRemove={onRemoveExtraWorkout} weightKg={weightKg} dot={tc.accent}/>
+        )}
       </div>
 
-      <div style={{ background:`${nc}10`, border:`1px solid ${nc}30`, borderRadius:12, padding:"14px 16px" }}>
+      <div style={{ background:`${nc}10`, border:`1px solid ${nc}30`, borderRadius:12, padding:"16px 18px" }}>
         <div onClick={() => setNutriOpen(o => !o)} style={{ cursor:"pointer", display:"flex", justifyContent:"space-between", alignItems:"flex-start" }}>
           <div>
             <div style={{ fontSize:9, fontWeight:700, letterSpacing:"0.1em", color:nc }}>NUTRICIÓN DE HOY</div>
             <div style={{ fontSize:16, fontWeight:700, color:"#f3f4f6", marginTop:2 }}>{reached ? `${Math.round(consumed.kcal)} kcal ✓` : `Faltan ${remaining} kcal`}</div>
           </div>
-          <div style={{ display:"flex", alignItems:"center", gap:8, flexShrink:0 }}>
-            {nutriStreak > 0 && <span style={{ fontSize:11, color:nc, fontWeight:700 }}>🥑 {nutriStreak}</span>}
-            <CollapseChevron open={nutriOpen}/>
-          </div>
+          <CollapseChevron open={nutriOpen}/>
         </div>
 
         {perfectDay && (
@@ -3399,16 +3402,13 @@ function TodayOverview({ day, tc, total, doneN, streak, onOpenSession, plan, log
         )}
       </div>
 
-      <div style={{ background:`${lc}10`, border:`1px solid ${lc}30`, borderRadius:12, padding:"14px 16px" }}>
+      <div style={{ background:`${lc}10`, border:`1px solid ${lc}30`, borderRadius:12, padding:"16px 18px" }}>
         <div onClick={() => setLucaOpen(o => !o)} style={{ cursor:"pointer", display:"flex", justifyContent:"space-between", alignItems:"flex-start" }}>
           <div>
             <div style={{ fontSize:9, fontWeight:700, letterSpacing:"0.1em", color:lc }}>MISIÓN DE LUCA</div>
             <div style={{ fontSize:16, fontWeight:700, color:"#f3f4f6", marginTop:2 }}>{lucaMission.emoji} {lucaMission.title}</div>
           </div>
-          <div style={{ display:"flex", alignItems:"center", gap:8, flexShrink:0 }}>
-            {lucaStreak > 0 && <span style={{ fontSize:11, color:lc, fontWeight:700 }}>🧒 {lucaStreak}</span>}
-            <CollapseChevron open={lucaOpen}/>
-          </div>
+          <CollapseChevron open={lucaOpen}/>
         </div>
         <div style={{ height:5, background:"rgba(255,255,255,0.08)", borderRadius:99, overflow:"hidden", marginTop:10 }}>
           <div style={{ height:"100%", width:`${lucaPct}%`, background:lc, borderRadius:99, transition:"width 0.3s" }}/>
