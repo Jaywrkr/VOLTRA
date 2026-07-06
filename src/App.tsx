@@ -1295,6 +1295,20 @@ const LUCA_MISSIONS = [
     rounds: 2,
     cooldown: "Aterrizaje suave: respira hondo 3 veces y estira los brazos. ¡Misión espacial cumplida! 🪐",
   },
+  {
+    title: "Misión Espadachín", emoji: "🗡️", color: "#94a3b8",
+    story: "El reino necesita un espadachín valiente. Con tu espada de espuma, entrena los movimientos que todo caballero necesita saber.",
+    warmup: { name: "Saludo de espadachín", note: "De pie, saluda al frente con tu espada y haz una reverencia lenta. Repite unas veces.", time: "1 min" },
+    exercises: [
+      { name: "Estocada de duelo", note: "Paso adelante en estocada, empuja la espada al frente. Alterna de pierna.", reps: "8 veces" },
+      { name: "Escudo y bloqueo", note: "Baja en sentadilla sosteniendo la espada como escudo frente a ti.", reps: "8 veces" },
+      { name: "Espadazos en el aire", note: "Cortes suaves de lado a lado, sin golpear nada ni a nadie.", time: "20s" },
+      { name: "Guardia del caballero", note: "Espalda en la pared, como sentado sin silla, espada lista.", time: "12s" },
+      { name: "Carrera hacia la torre", note: "Marcha rápido en tu lugar sosteniendo la espada en alto.", time: "20s" },
+    ],
+    rounds: 2,
+    cooldown: "Clava tu espada en el suelo (con cuidado) y haz una reverencia final. ¡Duelo ganado! 🏰",
+  },
 ];
 
 function lucaMissionForToday() {
@@ -3688,7 +3702,7 @@ export default function App() {
   }, [reminderSettings.enabled, reminderSettings.time, workoutPendingToday, nutriPendingToday, lucaPendingToday]);
 
   const gd = (i) => { setDi(i); setView("day"); setOpen(null); setShowMini(false); setTlView(false); };
-  const gw = (i) => { setWk(i); setDi(0); setView("week"); setOpen(null); setShowMini(false); setTlView(false); };
+  const gw = (i) => { setWk(i); setDi(0); setView("day"); setOpen(null); setShowMini(false); setTlView(false); };
 
   const SPLIT = [
     ["LUN","Piernas + Glúteos","#39ff88"],
@@ -3712,20 +3726,13 @@ export default function App() {
         .jay-shell { display: flex; flex-direction: column; gap: 14px; }
         .jay-sidebar { width: 100%; }
         .jay-main { width: 100%; min-width: 0; }
-        .jay-week-grid { display: flex; flex-direction: column; gap: 7px; }
         .jay-ex-grid { display: flex; flex-direction: column; gap: 4px; }
-
-        /* ── Tablet ≥ 768px ── */
-        @media (min-width: 768px) {
-          .jay-week-grid.is-week-view { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
-        }
 
         /* ── Desktop ≥ 1024px ── */
         @media (min-width: 1024px) {
           .jay-shell { flex-direction: row; align-items: start; gap: 28px; }
           .jay-sidebar { width: 300px; flex-shrink: 0; position: sticky; top: 80px; max-height: calc(100vh - 96px); overflow-y: auto; }
           .jay-main { flex: 1; min-width: 0; }
-          .jay-week-grid.is-week-view { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
           .jay-ex-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
           .jay-ex-grid-full { grid-column: 1 / -1; }
         }
@@ -3808,16 +3815,14 @@ export default function App() {
               fontFamily:"'DM Sans',sans-serif", fontWeight:600,
               transition:"all 0.15s",
             }}>Hoy</button>
-            {["week","day"].map(v=>(
-              <button key={v} onClick={()=>setView(v)} style={{
-                background:view===v?"rgba(57,255,136,0.1)":"transparent",
-                border:`1px solid ${view===v?"rgba(57,255,136,0.4)":"rgba(255,255,255,0.08)"}`,
-                color:view===v?"#39ff88":"#6b7280",
-                borderRadius:6, padding:"5px 12px", fontSize:11, cursor:"pointer",
-                fontFamily:"'DM Sans',sans-serif", fontWeight:600,
-                transition:"all 0.15s",
-              }}>{v==="week"?"Semana":"Sesión"}</button>
-            ))}
+            <button onClick={()=>setView("day")} style={{
+              background:view==="day"?"rgba(57,255,136,0.1)":"transparent",
+              border:`1px solid ${view==="day"?"rgba(57,255,136,0.4)":"rgba(255,255,255,0.08)"}`,
+              color:view==="day"?"#39ff88":"#6b7280",
+              borderRadius:6, padding:"5px 12px", fontSize:11, cursor:"pointer",
+              fontFamily:"'DM Sans',sans-serif", fontWeight:600,
+              transition:"all 0.15s",
+            }}>Sesión</button>
             <button onClick={()=>setView("luca")} title="Circuito de Luca" style={{
               background:view==="luca"?"rgba(56,189,248,0.12)":"transparent",
               border:`1px solid ${view==="luca"?"rgba(56,189,248,0.4)":"rgba(255,255,255,0.08)"}`,
@@ -3950,44 +3955,12 @@ export default function App() {
           </div>
         </div>
 
+        <MuscleBalancePanel days={DAYS}/>
         </div>
         {/* ── END SIDEBAR ── */}
 
         {/* ── MAIN CONTENT ── */}
         <div className="jay-main">
-
-        {/* ── WEEK VIEW ── */}
-        {view==="week" && (
-          <div className="jay-week-grid is-week-view" style={{ display:"flex", flexDirection:"column", gap:7 }}>
-            {DAYS.map((d,i)=>{
-              const tc2=TC[d.type]||TC.REST; const isA=i===di;
-              return (
-                <button key={d.id} onClick={()=>gd(i)} style={{
-                  background:isA?tc2.bg:"rgba(255,255,255,0.02)",
-                  border:`1px solid ${isA?tc2.accent:"rgba(255,255,255,0.07)"}`,
-                  borderRadius:9, padding:"11px 13px", cursor:"pointer", textAlign:"left",
-                  display:"flex", alignItems:"center", justifyContent:"space-between",
-                  boxShadow:isA?`0 0 14px ${tc2.glow}`:"none", transition:"all 0.15s", width:"100%", boxSizing:"border-box",
-                }}>
-                  <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-                    <div style={{ width:34, height:34, borderRadius:6, background:`${tc2.accent}12`, border:`1px solid ${tc2.accent}25`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
-                      <span style={{ fontFamily:"'DM Mono',monospace", fontSize:8, color:tc2.label, fontWeight:700 }}>{DAY_LABELS[d.id]}</span>
-                    </div>
-                    <div>
-                      <div style={{ fontSize:13, fontWeight:600, color:"#f3f4f6" }}>{d.focus}</div>
-                      <div style={{ fontSize:10, color:"#a1a1aa", marginTop:2 }}>{d.muscles}</div>
-                    </div>
-                  </div>
-                  <div style={{ textAlign:"right", flexShrink:0 }}>
-                    <div style={{ fontSize:9, fontWeight:600, padding:"2px 7px", borderRadius:5, background:`${tc2.accent}12`, color:tc2.label }}>{d.type}</div>
-                    <div style={{ fontSize:9, color:"#71717a", marginTop:3 }}>{d.duration}</div>
-                  </div>
-                </button>
-              );
-            })}
-            <MuscleBalancePanel days={DAYS}/>
-          </div>
-        )}
 
         {/* ── DAY VIEW ── */}
         {view==="day" && (
