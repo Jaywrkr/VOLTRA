@@ -1451,7 +1451,7 @@ function LucaMissionPanel({ done, setDone, missionChoice, setMissionChoice, part
 
 function LucaView({ done, setDone, missionChoice, setMissionChoice, participants, setParticipants }) {
   return (
-    <div style={{ maxWidth:560, margin:"0 auto" }}>
+    <div className="jay-wide-shell">
       <div style={{ fontSize:11, color:"#9ca3af", marginBottom:14, textAlign:"center" }}>Circuito para Luca — ¡mientras papá entrena, tú cumples tu misión!</div>
       <LucaMissionPanel done={done} setDone={setDone} missionChoice={missionChoice} setMissionChoice={setMissionChoice} participants={participants} setParticipants={setParticipants}/>
     </div>
@@ -2859,7 +2859,7 @@ function NutriView({ profile, setProfile, logs, setLogs, burnedKcalToday, nutriC
   const isSunday = new Date().getDay() === 0;
 
   return (
-    <div style={{ maxWidth:560, margin:"0 auto" }}>
+    <div className="jay-wide-shell">
       {isSunday && <SundayBanner sundayPrep={sundayPrep} setSundayPrep={setSundayPrep} c={c}/>}
 
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:14, gap:8 }}>
@@ -3767,6 +3767,17 @@ export default function App() {
         }
         @media (min-width: 1600px) {
           .jay-hoy-shell { max-width: 1440px; }
+        }
+
+        /* ── Luca / Nutrición: same idea as Hoy but single-column content
+           (mission panel, day card, shopping list) — just more breathing
+           room on wide screens instead of a fixed 3-col grid ── */
+        .jay-wide-shell { max-width: 560px; margin: 0 auto; }
+        @media (min-width: 1024px) {
+          .jay-wide-shell { max-width: 760px; }
+        }
+        @media (min-width: 1440px) {
+          .jay-wide-shell { max-width: 860px; }
         }
       `}</style>
 
