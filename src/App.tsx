@@ -1726,10 +1726,10 @@ const FOOD_DB = [
 function normalizeFoodQuery(s) {
   return s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
 }
-function searchFoods(query, limit = 6) {
+function searchFoods(query, extraFoods = [], limit = 6) {
   const q = normalizeFoodQuery(query);
   if (!q) return [];
-  const scored = FOOD_DB.map(food => {
+  const scored = [...FOOD_DB, ...extraFoods].map(food => {
     const haystacks = [normalizeFoodQuery(food.name), ...food.aliases.map(normalizeFoodQuery)];
     let score = -1;
     for (const h of haystacks) {
@@ -2175,9 +2175,9 @@ function MeriendaSection({ plan, log, updateLog, targets, adjustedTarget, pantry
 // Search + one-tap add for anything eaten outside the plan — every FOOD_DB
 // entry carries full macros (not just kcal), shown inline so it's visible
 // that protein/carbs/fat get tracked too, not only calories.
-function SnackLogger({ log, updateLog, c }) {
+function SnackLogger({ log, updateLog, c, customFoods }) {
   const [query, setQuery] = useState("");
-  const results = query.trim() ? searchFoods(query) : [];
+  const results = query.trim() ? searchFoods(query, customFoods) : [];
 
   const addExtra = (food) => {
     const entry = { id:`${food.id}-${Date.now()}`, name:food.name, qtyLabel:food.unit, macros:food.macros };
@@ -2255,7 +2255,7 @@ function ProteinShakeQuickLog({ protein, updateLog, c }) {
   );
 }
 
-function NutriDayCard({ plan, log, updateLog, targets, burnedKcal, isToday, c, protein, pantry }) {
+function NutriDayCard({ plan, log, updateLog, targets, burnedKcal, isToday, c, protein, pantry, customFoods }) {
   const adjustedKcalTarget = targets.kcal + (burnedKcal || 0);
   const consumed = nutriMacrosForDay(plan, log);
   const remaining = Math.max(0, adjustedKcalTarget - consumed.kcal);
@@ -2297,7 +2297,7 @@ function NutriDayCard({ plan, log, updateLog, targets, burnedKcal, isToday, c, p
       <MeriendaSection plan={plan} log={log} updateLog={updateLog} targets={targets} adjustedTarget={adjustedKcalTarget} pantry={pantry} c={c}/>
 
       <div style={{ fontSize:9, fontWeight:700, letterSpacing:"0.12em", color:"#6b7280", marginTop:14, marginBottom:6, paddingLeft:2 }}>EXTRAS</div>
-      <SnackLogger log={log} updateLog={updateLog} c={c}/>
+      <SnackLogger log={log} updateLog={updateLog} c={c} customFoods={customFoods}/>
 
       {plan.lucaJoins && (
         <div style={{ fontSize:10, color:"#6b7280", marginTop:12, textAlign:"center" }}>{isToday ? "Hoy" : "Ese día"} Luca se une a la cena, con porción infantil (~{Math.round(LUCA_PORTION_FACTOR*100)}%).</div>
@@ -2488,7 +2488,7 @@ const BACKUP_KEYS = [
   "luca-training-done", "voltra-luca-completed-dates", "voltra-luca-mission-choice", "voltra-luca-participants",
   "voltra-nutri-budget", "voltra-nutri-completed-dates", "voltra-nutri-logs", "voltra-nutri-profile",
   "voltra-nutri-protein", "voltra-nutri-shopping-checked", "voltra-nutri-sunday-prep", "voltra-reminder-settings",
-  "voltra-extra-workouts", "voltra-fitxr-minutes", "voltra-pantry",
+  "voltra-extra-workouts", "voltra-fitxr-minutes", "voltra-pantry", "voltra-custom-foods",
 ];
 
 function BackupSection({ c }) {
@@ -2667,9 +2667,9 @@ function SyncSection({ cloudSync, connectSync, disconnectSync, c }) {
 
 // Editable pantry list — feeds the "merienda sugerida" combo generator.
 // Add anything from the food DB, remove what you don't actually keep stocked.
-function PantrySection({ pantry, setPantry, c }) {
+function PantrySection({ pantry, setPantry, c, customFoods }) {
   const [query, setQuery] = useState("");
-  const results = query.trim() ? searchFoods(query).filter(f => !pantry.includes(f.id)) : [];
+  const results = query.trim() ? searchFoods(query, customFoods).filter(f => !pantry.includes(f.id)) : [];
 
   const add = (id) => {
     const next = [...pantry, id];
@@ -2693,7 +2693,7 @@ function PantrySection({ pantry, setPantry, c }) {
         <div style={{ display:"flex", flexWrap:"wrap", gap:6, marginBottom:12 }}>
           {pantry.length === 0 && <span style={{ fontSize:11, color:"#6b7280" }}>Todavía no agregas nada.</span>}
           {pantry.map(id => {
-            const food = FOOD_DB.find(f => f.id === id);
+            const food = FOOD_DB.find(f => f.id === id) || customFoods.find(f => f.id === id);
             if (!food) return null;
             return (
               <div key={id} style={{ display:"flex", alignItems:"center", gap:6, padding:"5px 10px", borderRadius:7, background:`${c}12`, border:`1px solid ${c}35` }}>
@@ -2721,7 +2721,7 @@ function PantrySection({ pantry, setPantry, c }) {
   );
 }
 
-function PerfilView({ profile, setProfile, targets, c, protein, setProtein, reminderSettings, setReminderSettings, cloudSync, connectSync, disconnectSync, pantry, setPantry }) {
+function PerfilView({ profile, setProfile, targets, c, protein, setProtein, reminderSettings, setReminderSettings, cloudSync, connectSync, disconnectSync, pantry, setPantry, customFoods }) {
   const setField = (field) => (value) => {
     setProfile(prev => {
       const next = { ...prev, [field]: value };
@@ -2779,7 +2779,7 @@ function PerfilView({ profile, setProfile, targets, c, protein, setProtein, remi
       </div>
 
       <div style={{ marginTop:16 }}>
-        <PantrySection pantry={pantry} setPantry={setPantry} c={c}/>
+        <PantrySection pantry={pantry} setPantry={setPantry} c={c} customFoods={customFoods}/>
       </div>
 
       <div style={{ marginTop:16 }}>
@@ -2846,7 +2846,7 @@ function SundayBanner({ sundayPrep, setSundayPrep, c }) {
   );
 }
 
-function NutriView({ profile, setProfile, logs, setLogs, burnedKcalToday, nutriCompletedDates, budget, setBudget, shoppingChecked, setShoppingChecked, sundayPrep, setSundayPrep, protein, setProtein, workoutCompletedDates, reminderSettings, setReminderSettings, cloudSync, connectSync, disconnectSync, pantry, setPantry }) {
+function NutriView({ profile, setProfile, logs, setLogs, burnedKcalToday, nutriCompletedDates, budget, setBudget, shoppingChecked, setShoppingChecked, sundayPrep, setSundayPrep, protein, setProtein, workoutCompletedDates, reminderSettings, setReminderSettings, cloudSync, connectSync, disconnectSync, pantry, setPantry, customFoods }) {
   const [tab, setTab] = useState("hoy");
   const [selectedIdx, setSelectedIdx] = useState(() => todayDayIndex());
   const todayIso = isoDate(new Date());
@@ -2897,7 +2897,7 @@ function NutriView({ profile, setProfile, logs, setLogs, burnedKcalToday, nutriC
       </div>
 
       {tab === "hoy" && (
-        <NutriDayCard plan={todayPlan} log={todayLog} updateLog={updateLogFor(todayIso)} targets={targets} burnedKcal={burnedKcalToday} isToday={true} c={c} protein={protein} pantry={pantry}/>
+        <NutriDayCard plan={todayPlan} log={todayLog} updateLog={updateLogFor(todayIso)} targets={targets} burnedKcal={burnedKcalToday} isToday={true} c={c} protein={protein} pantry={pantry} customFoods={customFoods}/>
       )}
 
       {tab === "semana" && (
@@ -2920,7 +2920,7 @@ function NutriView({ profile, setProfile, logs, setLogs, burnedKcalToday, nutriC
               );
             })}
           </div>
-          <NutriDayCard plan={selectedPlan} log={selectedLog} updateLog={updateLogFor(selectedIso)} targets={targets} burnedKcal={isSelectedToday ? burnedKcalToday : 0} isToday={isSelectedToday} c={c} protein={protein} pantry={pantry}/>
+          <NutriDayCard plan={selectedPlan} log={selectedLog} updateLog={updateLogFor(selectedIso)} targets={targets} burnedKcal={isSelectedToday ? burnedKcalToday : 0} isToday={isSelectedToday} c={c} protein={protein} pantry={pantry} customFoods={customFoods}/>
         </div>
       )}
 
@@ -2930,7 +2930,7 @@ function NutriView({ profile, setProfile, logs, setLogs, burnedKcalToday, nutriC
 
       {tab === "perfil" && (
         <PerfilView profile={profile} setProfile={setProfile} targets={targets} c={c} protein={protein} setProtein={setProtein} reminderSettings={reminderSettings} setReminderSettings={setReminderSettings}
-          cloudSync={cloudSync} connectSync={connectSync} disconnectSync={disconnectSync} pantry={pantry} setPantry={setPantry}/>
+          cloudSync={cloudSync} connectSync={connectSync} disconnectSync={disconnectSync} pantry={pantry} setPantry={setPantry} customFoods={customFoods}/>
       )}
 
       {tab === "insights" && (
@@ -3144,6 +3144,72 @@ function DayWrappedModal({ imageUrl, onClose }) {
   );
 }
 
+// Fastest possible path to logging something: name + 4 numbers, no search,
+// no categories. Saves it as a real food (searchable later in Extras/Mi
+// despensa) and logs it as an extra for today in the same tap.
+function QuickAddFoodModal({ onSave, onClose }) {
+  const [draft, setDraft] = useState({ name: "", kcal: 0, protein: 0, carbs: 0, fat: 0 });
+  const canSave = draft.name.trim().length > 0;
+
+  const field = (label, key) => (
+    <div style={{ flex:1, minWidth:70 }}>
+      <div style={{ fontSize:9, color:"#8a8f98", marginBottom:3 }}>{label}</div>
+      <input type="number" min={0} value={draft[key]} onChange={e => setDraft(d => ({ ...d, [key]: Math.max(0, parseFloat(e.target.value) || 0) }))}
+        style={{ width:"100%", fontFamily:"'DM Mono',monospace", fontSize:13, color:"#f3f4f6", background:"rgba(255,255,255,0.05)", border:"1px solid rgba(255,255,255,0.1)", borderRadius:7, padding:"8px 10px", boxSizing:"border-box" }}/>
+    </div>
+  );
+
+  return (
+    <div onClick={onClose} style={{
+      position:"fixed", inset:0, zIndex:300, background:"rgba(0,0,0,0.75)",
+      display:"flex", alignItems:"flex-end", justifyContent:"center",
+    }}>
+      <div onClick={e => e.stopPropagation()} style={{
+        width:"100%", maxWidth:440, background:"#0a0a0a", border:"1px solid rgba(255,255,255,0.12)",
+        borderRadius:"16px 16px 0 0", padding:"18px 18px 24px", boxSizing:"border-box",
+      }}>
+        <div style={{ fontSize:9, fontWeight:700, letterSpacing:"0.12em", color:"#6b7280", marginBottom:10 }}>AGREGAR ALIMENTO RÁPIDO</div>
+        <input value={draft.name} onChange={e => setDraft(d => ({ ...d, name: e.target.value }))} placeholder="Nombre (ej. Tortilla de la esquina)" autoFocus
+          style={{ width:"100%", fontSize:14, color:"#f3f4f6", background:"rgba(255,255,255,0.05)", border:"1px solid rgba(255,255,255,0.1)", borderRadius:8, padding:"10px 12px", boxSizing:"border-box", marginBottom:12 }}/>
+        <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginBottom:16 }}>
+          {field("KCAL", "kcal")}
+          {field("PROT G", "protein")}
+          {field("CARB G", "carbs")}
+          {field("GRASA G", "fat")}
+        </div>
+        <div style={{ display:"flex", gap:8 }}>
+          <button onClick={onClose} style={{
+            padding:"12px 16px", borderRadius:10, cursor:"pointer", fontSize:13, fontWeight:600,
+            background:"rgba(255,255,255,0.05)", border:"1px solid rgba(255,255,255,0.15)", color:"#9ca3af",
+          }}>Cancelar</button>
+          <button onClick={() => canSave && onSave({ name: draft.name.trim(), macros: { kcal: draft.kcal, protein: draft.protein, carbs: draft.carbs, fat: draft.fat } })} disabled={!canSave} style={{
+            flex:1, padding:"12px", borderRadius:10, cursor: canSave ? "pointer" : "default", fontSize:13, fontWeight:700,
+            background: canSave ? "rgba(57,255,136,0.15)" : "rgba(255,255,255,0.05)", border:`1px solid ${canSave ? "rgba(57,255,136,0.4)" : "rgba(255,255,255,0.1)"}`,
+            color: canSave ? "#39ff88" : "#6b7280", opacity: canSave ? 1 : 0.6,
+          }}>Guardar y registrar hoy</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function QuickAddFAB({ onSave, dodge }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <button onClick={() => setOpen(true)} title="Agregar alimento rápido" style={{
+        position:"fixed", right:16, bottom: dodge ? 140 : 16, zIndex:190,
+        width:52, height:52, borderRadius:"50%", cursor:"pointer",
+        background:"#39ff88", border:"none", color:"#04140a",
+        fontSize:26, fontWeight:700, lineHeight:1,
+        display:"flex", alignItems:"center", justifyContent:"center",
+        boxShadow:"0 6px 20px rgba(57,255,136,0.35)", transition:"bottom 0.15s",
+      }}>+</button>
+      {open && <QuickAddFoodModal onClose={() => setOpen(false)} onSave={(food) => { onSave(food); setOpen(false); }}/>}
+    </>
+  );
+}
+
 // ─── Hoy: vista compacta combinada (entreno + nutrición) ──────────────────────
 // Punto de entrada por defecto — un vistazo a ambos sin tener que elegir tab.
 function StatTile({ icon, value, label, color }) {
@@ -3262,7 +3328,7 @@ function ContributionsCalendar({ workoutDates, nutriDates, lucaDates }) {
 
 function TodayOverview({ day, tc, total, doneN, streak, onOpenSession, plan, log, updateLog, targets, burnedKcal, nutriStreak, onOpenNutri, wk, done, setDone, startTimer, protein, weights, setWeight,
   onOpenLuca, lucaDone, setLucaDone, lucaMissionChoice, setLucaMissionChoice, lucaParticipants, setLucaParticipants, lucaStreak, workoutCompletedDates, nutriCompletedDates, lucaCompletedDates,
-  extraWorkouts, onAddExtraWorkout, onRemoveExtraWorkout, weightKg, fitxrMinutes, setFitxrMinutes, pantry }) {
+  extraWorkouts, onAddExtraWorkout, onRemoveExtraWorkout, weightKg, fitxrMinutes, setFitxrMinutes, pantry, customFoods }) {
   const pct = total > 0 ? Math.round(doneN / total * 100) : 0;
   const consumed = nutriMacrosForDay(plan, log);
   const adjustedTarget = targets.kcal + burnedKcal;
@@ -3409,7 +3475,7 @@ function TodayOverview({ day, tc, total, doneN, streak, onOpenSession, plan, log
             <MeriendaSection plan={plan} log={log} updateLog={updateLog} targets={targets} adjustedTarget={adjustedTarget} pantry={pantry} c={nc}/>
 
             <div style={{ fontSize:9, fontWeight:700, letterSpacing:"0.12em", color:"#6b7280", marginTop:12, marginBottom:6, paddingLeft:2 }}>EXTRAS</div>
-            <SnackLogger log={log} updateLog={updateLog} c={nc}/>
+            <SnackLogger log={log} updateLog={updateLog} c={nc} customFoods={customFoods}/>
 
             <div onClick={onOpenNutri} style={{ textAlign:"right", marginTop:8, fontSize:10, color:nc, fontWeight:600, cursor:"pointer" }}>Carrito, perfil →</div>
           </>
@@ -3479,6 +3545,7 @@ export default function App() {
   const [extraWorkouts, setExtraWorkouts] = useState(() => loadLocal("voltra-extra-workouts", {}));
   const [fitxrMinutes, setFitxrMinutesRaw] = useState(() => loadLocal("voltra-fitxr-minutes", {}));
   const [pantry, setPantry] = useState(() => loadLocal("voltra-pantry", DEFAULT_PANTRY));
+  const [customFoods, setCustomFoods] = useState(() => loadLocal("voltra-custom-foods", []));
   const [cloudSync, setCloudSync] = useState({ configured: false, authenticated: false });
 
   const applyRemoteData = useCallback((data) => {
@@ -3491,7 +3558,7 @@ export default function App() {
       "voltra-nutri-completed-dates": setNutriCompletedDates, "voltra-nutri-budget": setNutriBudget,
       "voltra-nutri-shopping-checked": setNutriShoppingChecked, "voltra-nutri-sunday-prep": setNutriSundayPrep,
       "voltra-reminder-settings": setReminderSettings, "voltra-extra-workouts": setExtraWorkouts,
-      "voltra-fitxr-minutes": setFitxrMinutesRaw, "voltra-pantry": setPantry,
+      "voltra-fitxr-minutes": setFitxrMinutesRaw, "voltra-pantry": setPantry, "voltra-custom-foods": setCustomFoods,
     };
     Object.entries(data || {}).forEach(([key, value]) => {
       if (value === undefined || !setters[key]) return;
@@ -3641,6 +3708,27 @@ export default function App() {
       return next;
     });
   }, [setNutriLogs, todayNutriIso]);
+
+  // Quick-add: saves the food so it's searchable later (extras/despensa) and
+  // immediately logs it as an extra for today — the whole point of a fast
+  // macro-entry button is to not have to search for something that doesn't
+  // exist yet.
+  const addCustomFood = useCallback((food) => {
+    const entry = { id: `custom-${Date.now()}`, name: food.name, aliases: [], unit: "1 porción", macros: food.macros };
+    setCustomFoods(prev => {
+      const next = [...prev, entry];
+      persist("voltra-custom-foods", next);
+      return next;
+    });
+    setNutriLogs(prev => {
+      const prevLog = prev[todayNutriIso] || NUTRI_EMPTY_LOG;
+      const logEntry = { id: `${entry.id}-log`, name: entry.name, qtyLabel: entry.unit, macros: entry.macros };
+      const nextLog = { ...prevLog, extras: [...(prevLog.extras || []), logEntry] };
+      const next = { ...prev, [todayNutriIso]: nextLog };
+      persist("voltra-nutri-logs", next);
+      return next;
+    });
+  }, [todayNutriIso]);
 
   const allNutriMealsEatenToday = todayNutriLog.breakfastEaten && todayNutriLog.lunchEaten && todayNutriLog.dinnerEaten;
   useEffect(() => {
@@ -3862,7 +3950,7 @@ export default function App() {
             lucaParticipants={lucaParticipants} setLucaParticipants={setLucaParticipants} lucaStreak={lucaStreak}
             workoutCompletedDates={completedDates} nutriCompletedDates={nutriCompletedDates} lucaCompletedDates={lucaCompletedDates}
             extraWorkouts={todayExtraWorkouts} onAddExtraWorkout={addExtraWorkout} onRemoveExtraWorkout={removeExtraWorkout} weightKg={nutriProfile.weightKg}
-            fitxrMinutes={fitxrMinutes} setFitxrMinutes={setFitxrMinutes} pantry={pantry}/>
+            fitxrMinutes={fitxrMinutes} setFitxrMinutes={setFitxrMinutes} pantry={pantry} customFoods={customFoods}/>
         ) : view==="luca" ? (
           <LucaView done={lucaDone} setDone={setLucaDone} missionChoice={lucaMissionChoice} setMissionChoice={setLucaMissionChoice}
             participants={lucaParticipants} setParticipants={setLucaParticipants}/>
@@ -3871,7 +3959,7 @@ export default function App() {
             budget={nutriBudget} setBudget={setNutriBudget} shoppingChecked={nutriShoppingChecked} setShoppingChecked={setNutriShoppingChecked}
             sundayPrep={nutriSundayPrep} setSundayPrep={setNutriSundayPrep} protein={nutriProtein} setProtein={setNutriProtein} workoutCompletedDates={completedDates}
             reminderSettings={reminderSettings} setReminderSettings={setReminderSettings}
-            cloudSync={cloudSync} connectSync={connectSync} disconnectSync={disconnectSync} pantry={pantry} setPantry={setPantry}/>
+            cloudSync={cloudSync} connectSync={connectSync} disconnectSync={disconnectSync} pantry={pantry} setPantry={setPantry} customFoods={customFoods}/>
         ) : (
         <div className="jay-shell">
 
@@ -4117,6 +4205,7 @@ export default function App() {
         {/* ── END SHELL / LUCA ── */}
       </div>
       <FloatingStopwatch info={timer} onClose={()=>setTimer(null)}/>
+      {(view === "hoy" || view === "nutri") && <QuickAddFAB onSave={addCustomFood} dodge={!!timer}/>}
       <VersionBadge/>
     </div>
   );
