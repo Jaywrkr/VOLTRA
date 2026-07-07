@@ -933,10 +933,10 @@ function CompleteCheckbox({ isDone, dot, onToggle }) {
 }
 
 // Swipe right to complete a set — faster than aiming for a small circle
-// mid-set. Falls through to a normal tap/click when there's no drag.
-// Holding a row for LONG_PRESS_MS instead shows how to do the exercise
-// (onLongPress) — cancelled the moment the finger/cursor moves, so it never
-// fires mid-swipe or mid-scroll.
+// mid-set. Swipe left instead to see how to do the exercise (onLongPress) —
+// same modal is also reachable by holding the row for LONG_PRESS_MS, kept as
+// a fallback for anyone who discovers that first. Both gestures are
+// cancelled the moment they'd conflict with the other or with a page scroll.
 function SwipeRow({ dot, onToggle, onLongPress, children }) {
   const [dx, setDx] = useState(0);
   const [pressPct, setPressPct] = useState(0);
@@ -985,13 +985,14 @@ function SwipeRow({ dot, onToggle, onLongPress, children }) {
     const delta = e.touches[0].clientX - startXRef.current;
     const deltaY = e.touches[0].clientY - startYRef.current;
     if (Math.abs(delta) > MOVE_CANCEL_PX || Math.abs(deltaY) > MOVE_CANCEL_PX) clearLongPress();
-    setDx(Math.max(0, Math.min(delta, 100)));
+    setDx(Math.max(-100, Math.min(delta, 100)));
   };
   const onTouchEnd = () => {
     draggingRef.current = false;
     clearLongPress();
     if (longPressFiredRef.current) { setDx(0); return; }
     if (dx > THRESHOLD) { haptic([10, 30, 12]); onToggle(); }
+    else if (dx < -THRESHOLD && onLongPress) { haptic([15, 45, 15]); onLongPress(); }
     setDx(0);
   };
   const onMouseDown = () => startLongPress();
@@ -1014,6 +1015,14 @@ function SwipeRow({ dot, onToggle, onLongPress, children }) {
           background:`${dot}25`,
         }}>
           <span style={{ fontSize:14, color:dot, fontWeight:700, opacity:Math.min(dx / THRESHOLD, 1) }}>✓ Completar</span>
+        </div>
+      )}
+      {dx < -4 && onLongPress && (
+        <div style={{
+          position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"flex-end", paddingRight:16,
+          background:"rgba(251,191,36,0.15)",
+        }}>
+          <span style={{ fontSize:14, color:"#fbbf24", fontWeight:700, opacity:Math.min(-dx / THRESHOLD, 1) }}>Ver ejercicio ℹ️</span>
         </div>
       )}
       {pressPct > 0 && (
