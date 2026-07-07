@@ -3419,8 +3419,8 @@ function SundayBanner({ sundayPrep, setSundayPrep, c }) {
   );
 }
 
-function NutriView({ profile, setProfile, logs, setLogs, burnedKcalToday, nutriCompletedDates, budget, setBudget, shoppingChecked, setShoppingChecked, sundayPrep, setSundayPrep, protein, setProtein, workoutCompletedDates, reminderSettings, setReminderSettings, cloudSync, connectSync, disconnectSync, pantry, setPantry, customFoods }) {
-  const [tab, setTab] = useState("hoy");
+function NutriView({ profile, setProfile, logs, setLogs, burnedKcalToday, nutriCompletedDates, budget, setBudget, shoppingChecked, setShoppingChecked, sundayPrep, setSundayPrep, protein, setProtein, workoutCompletedDates, reminderSettings, setReminderSettings, cloudSync, connectSync, disconnectSync, pantry, setPantry, customFoods, initialTab }) {
+  const [tab, setTab] = useState(initialTab || "hoy");
   const [selectedIdx, setSelectedIdx] = useState(() => todayDayIndex());
   const todayIso = isoDate(new Date());
   const todayPlan = nutriPlanForDate(new Date());
@@ -4176,6 +4176,8 @@ export default function App() {
   const [wk, setWk]       = useState(initWeek());
   const [di, setDi]       = useState(() => todayDayIndex());
   const [view, setView]   = useState("hoy");
+  const [nutriInitialTab, setNutriInitialTab] = useState("hoy");
+  const openPerfil = () => { setNutriInitialTab("perfil"); setView("nutri"); };
   const [done, setDone] = useState(() => loadLocal("jay-training-done", {}));
   const [weights, setWeights] = useState(() => loadLocal("jay-training-weights", {}));
   const [open, setOpen]   = useState(null);
@@ -4634,6 +4636,14 @@ export default function App() {
               fontFamily:"'DM Sans',sans-serif", fontWeight:600,
               transition:"all 0.15s",
             }}>🧒 Luca</button>
+            <button onClick={openPerfil} title="Perfil, nutrición y sincronización" style={{
+              background:"transparent",
+              border:"1px solid rgba(255,255,255,0.08)",
+              color:"#6b7280",
+              borderRadius:6, padding:"5px 10px", fontSize:11, cursor:"pointer",
+              fontFamily:"'DM Sans',sans-serif", fontWeight:600,
+              transition:"all 0.15s",
+            }}>👤 Perfil</button>
           </div>
         </div>
         {view==="day" && day.type!=="REST" && total>0 && (
@@ -4667,7 +4677,8 @@ export default function App() {
             budget={nutriBudget} setBudget={setNutriBudget} shoppingChecked={nutriShoppingChecked} setShoppingChecked={setNutriShoppingChecked}
             sundayPrep={nutriSundayPrep} setSundayPrep={setNutriSundayPrep} protein={nutriProtein} setProtein={setNutriProtein} workoutCompletedDates={completedDates}
             reminderSettings={reminderSettings} setReminderSettings={setReminderSettings}
-            cloudSync={cloudSync} connectSync={connectSync} disconnectSync={disconnectSync} pantry={pantry} setPantry={setPantry} customFoods={customFoods}/>
+            cloudSync={cloudSync} connectSync={connectSync} disconnectSync={disconnectSync} pantry={pantry} setPantry={setPantry} customFoods={customFoods}
+            initialTab={nutriInitialTab}/>
         ) : (
         <div className="jay-shell">
 
