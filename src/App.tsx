@@ -36,6 +36,24 @@ function haptic(pattern = 12) {
   try { navigator.vibrate?.(pattern); } catch {}
 }
 
+// Tracks the real visible height (window.visualViewport, not window.innerHeight)
+// so bottom-sheet modals can size themselves to it instead of `inset:0`. Without
+// this, opening the keyboard on a field inside the sheet doesn't move anything —
+// the sheet is still positioned against the full (unshrunk) layout viewport, so
+// its lower fields/buttons end up hidden underneath the keyboard.
+function useVisibleHeight() {
+  const [h, setH] = useState(() => (typeof window !== "undefined" ? (window.visualViewport?.height || window.innerHeight) : 0));
+  useEffect(() => {
+    const vv = window.visualViewport;
+    const update = () => setH(vv ? vv.height : window.innerHeight);
+    update();
+    vv?.addEventListener("resize", update);
+    window.addEventListener("resize", update);
+    return () => { vv?.removeEventListener("resize", update); window.removeEventListener("resize", update); };
+  }, []);
+  return h;
+}
+
 // Equipment: 10kg | 6.8kg (15lbs) | 4.5kg (10lbs) | BW
 // NO exercises using two of the same KB weight simultaneously
 // NO supersets, NO arrows
@@ -3780,6 +3798,7 @@ function QuickAddFoodModal({ onSave, onClose }) {
   const [draft, setDraft] = useState({ name: "", kcal: 0, protein: 0, carbs: 0, fat: 0 });
   const [closing, setClosing] = useState(false);
   const canSave = draft.name.trim().length > 0;
+  const visibleH = useVisibleHeight();
 
   const dismiss = () => { setClosing(true); setTimeout(onClose, 160); };
   const save = () => {
@@ -3790,12 +3809,12 @@ function QuickAddFoodModal({ onSave, onClose }) {
 
   return (
     <div onClick={dismiss} style={{
-      position:"fixed", inset:0, zIndex:300, background:"rgba(0,0,0,0.7)", backdropFilter:"blur(2px)",
+      position:"fixed", top:0, left:0, right:0, height:visibleH, zIndex:300, background:"rgba(0,0,0,0.7)", backdropFilter:"blur(2px)",
       display:"flex", alignItems:"flex-end", justifyContent:"center",
       animation: closing ? "jayFadeOut 0.16s ease forwards" : "jayFadeIn 0.18s ease",
     }}>
       <div onClick={e => e.stopPropagation()} style={{
-        width:"100%", maxWidth:440, background:"#0b0c0e",
+        width:"100%", maxWidth:440, maxHeight:visibleH - 20, overflowY:"auto", background:"#0b0c0e",
         border:"1px solid rgba(255,255,255,0.1)", borderBottom:"none",
         borderRadius:"20px 20px 0 0", padding:"10px 20px 26px", boxSizing:"border-box",
         boxShadow:"0 -8px 40px rgba(0,0,0,0.5)",
