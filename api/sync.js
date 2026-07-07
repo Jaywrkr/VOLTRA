@@ -9,10 +9,11 @@ function unauthorized() {
 export async function GET(request) {
   if (!isConfigured() || !isAuthenticated(request)) return unauthorized();
   await ensureSchema();
-  const rows = await sql`SELECT key, value FROM voltra_data`;
+  const rows = await sql`SELECT key, value, updated_at FROM voltra_data`;
   const data = {};
-  for (const row of rows) data[row.key] = row.value;
-  return Response.json({ data });
+  const updatedAt = {};
+  for (const row of rows) { data[row.key] = row.value; updatedAt[row.key] = row.updated_at; }
+  return Response.json({ data, updatedAt });
 }
 
 export async function POST(request) {

@@ -18,6 +18,27 @@ export function queueSync(key, value) {
   flushTimer = setTimeout(flush, 1000);
 }
 
+// Best-effort synchronous-ish flush for when the tab is closing or going to
+// background — sendBeacon keeps working as the page is torn down, unlike
+// fetch(), which browsers can and do cancel mid-flight on unload. Without
+// this, a save made right before closing the tab could still be sitting in
+// `pending` when the debounced flush() never gets to run, so the next time
+// the app opens and pulls from the cloud, that change looks like it never
+// happened.
+export function flushNow() {
+  if (!syncEnabled || Object.keys(pending).length === 0) return;
+  if (flushTimer) { clearTimeout(flushTimer); flushTimer = null; }
+  const batch = pending;
+  pending = {};
+  try {
+    const blob = new Blob([JSON.stringify({ data: batch })], { type: "application/json" });
+    const sent = navigator.sendBeacon && navigator.sendBeacon("/api/sync", blob);
+    if (!sent) pending = { ...batch, ...pending };
+  } catch {
+    pending = { ...batch, ...pending };
+  }
+}
+
 async function flush() {
   flushTimer = null;
   const batch = pending;
@@ -31,8 +52,10 @@ async function flush() {
       body: JSON.stringify({ data: batch }),
     });
   } catch {
-    // Offline or backend unavailable — the next successful write re-sends
-    // current state, so nothing is permanently lost.
+    // Offline or backend unavailable — put it back instead of silently
+    // dropping it, so the next queued write (or the next flush) retries it.
+    pending = { ...batch, ...pending };
+    if (!flushTimer) flushTimer = setTimeout(flush, 4000);
   }
 }
 
