@@ -37,6 +37,7 @@ const EX = {
   bicepCurl:        { steps:["De pie, KB de 6.8kg en una mano, brazo extendido al costado. El codo es el único punto que se mueve.","Curla el KB hacia el hombro. Pausa 1 segundo arriba. Baja en 3 segundos — esa bajada es el 70% del trabajo."], cue:"3 segundos bajando siempre. Si no los cuentas, dejas músculo sin trabajar." },
   hammerCurl:       { steps:["Igual que el curl pero con agarre neutral — como sostener un martillo. KB de 6.8kg al costado.","Curla hacia el hombro con el agarre lateral. Este agarre trabaja más el braquial y el antebrazo además del bíceps."], cue:"El hammer curl construye el grosor del brazo más que el curl estándar." },
   concentrationCurl:{ steps:["Sentado, codo de la mano con el KB apoyado en la parte interna del muslo. KB de 6.8kg colgando.","Curla lentamente hacia el hombro. El codo no se despega del muslo. Baja en 4 segundos. Movimiento puro de bíceps."], cue:"El mejor aislamiento del bíceps disponible sin máquinas. Lento siempre — sin impulso." },
+  dragCurl:         { steps:["De pie, KB de 6.8kg en una mano pegado al cuerpo. En vez de curlar hacia el frente, arrástralo verticalmente rozando el torso.","Los codos van hacia atrás mientras el KB sube pegado al cuerpo. Contrae fuerte arriba. Baja en 3 segundos sin despegar el KB del torso."], cue:"El drag curl aísla el pico del bíceps al eliminar la ayuda del hombro que sí existe en el curl normal." },
   // HOMBROS
   kbPress:          { steps:["KB de 6.8kg en una mano al nivel del hombro. Codo debajo de la muñeca. Core activado — no arquees la espalda.","Presiona hacia arriba a extensión completa. El bícep queda junto a la oreja arriba. Baja en 3 segundos."], cue:"Si arqueas la espalda para empujar, el peso es demasiado. El core sostiene todo." },
   lateralRaise:     { steps:["KB de 4.5kg en una mano al costado del cuerpo. Codo ligeramente doblado y fijo durante todo el movimiento.","Sube lateralmente hasta la altura del hombro — no más arriba. Baja en 4 segundos. Ahí crece el deltoides lateral."], cue:"4 segundos bajando siempre. Si usas impulso del cuerpo para subir, reduce el peso." },
@@ -49,6 +50,7 @@ const EX = {
   tricepExt:        { steps:["De pie o sentado, KB de 6.8kg sostenido con ambas manos detrás de la cabeza. Codos apuntando al techo — son el eje fijo.","Extiende los brazos hacia arriba a extensión completa. Baja en 3 segundos. Los codos NO se mueven durante todo el ejercicio."], cue:"Si los codos se mueven, no estás trabajando el tríceps — estás compensando con los hombros." },
   tricepKickback:   { steps:["Inclinado hacia adelante ~45°. KB de 4.5kg en una mano. Codo pegado al cuerpo, brazo doblado a 90°.","Extiende el brazo hacia atrás hasta quedar completamente recto. Sostén 1 segundo. Baja en 3 segundos. El codo no se mueve."], cue:"La pausa al llegar arriba es donde el tríceps trabaja al máximo. No te la saltes." },
   diamondPushup:    { steps:["Manos en el suelo formando un triángulo con pulgares e índices tocándose, debajo del pecho. Cuerpo recto.","Baja hasta casi tocar las manos. Los codos apuntan hacia atrás. Sube. Mucho más difícil que el push-up normal."], cue:"Ejercicio principal de tríceps con peso corporal. 8 reps lentas superan a 20 rápidas." },
+  kbSkullCrusher:   { steps:["Boca arriba, KB de 6.8kg sostenido con ambas manos sobre el pecho, brazos extendidos hacia el techo.","Dobla solo los codos bajando el KB hacia la frente. Los brazos superiores no se mueven — son el eje fijo. Extiende de vuelta en 3 segundos."], cue:"Si los codos se abren hacia afuera al bajar, el peso es demasiado — mantenlos apuntando al techo siempre." },
   // PIERNAS
   gobletSquat:      { steps:["KB de 10kg al pecho con ambas manos. Pies a la anchura de los hombros o un poco más, puntas ligeramente afuera. Core activado.","Baja en 3 segundos empujando las rodillas hacia afuera. Caderas por debajo de las rodillas. Sube empujando el suelo con los pies."], cue:"Las rodillas siguen los pies — nunca colapsen hacia adentro." },
   splitSquat:       { steps:["Un pie adelante, otro atrás. KB de 10kg en ambas manos (uno en cada mano) o colgando de una mano. Distancia larga entre pies.","Baja la rodilla trasera hacia el suelo sin tocarlo — en 3 segundos. Rodilla delantera no pasa la punta del pie. Sube empujando con el talón delantero."], cue:"El peso va en el pie de adelante — el de atrás solo equilibra." },
@@ -58,6 +60,8 @@ const EX = {
   gluteBridge:      { steps:["Boca arriba, rodillas dobladas, pies cerca de los glúteos. KB de 10kg apoyado sobre las caderas — sostenlo con las manos.","Empuja las caderas hacia el techo apretando los glúteos con fuerza. Pausa 2 segundos arriba. Baja lentamente."], cue:"Pausa 2 segundos arriba siempre — sin esa pausa no activas el glúteo al máximo." },
   lateralLunge:     { steps:["De pie, pies juntos. KB de 10kg colgando en una mano o al pecho. Da un paso amplio hacia un lado.","El pie que aterriza queda completamente plano en el suelo. Dobla esa rodilla hasta muslo paralelo. La otra pierna queda estirada. Regresa empujando con el talón."], cue:"La rodilla sigue el pie — nunca colapse hacia adentro." },
   gobletHold:       { steps:["KB de 4.5kg al pecho. Baja a posición de sentadilla profunda, caderas por debajo de las rodillas.","Usa los codos para empujar las rodillas afuera suavemente. Respira profundo. El peso te lleva más abajo con cada exhalación."], cue:"No fuerces. El stretch de cadera mejora con la respiración, no con la fuerza bruta." },
+  kbStepUp:         { steps:["Un pie completo sobre un banco o silla firme, KB de 10kg en ambas manos al pecho. La pierna de atrás no ayuda a subir.","Empuja con el talón de arriba hasta quedar de pie sobre el banco. Baja controlado en 3 segundos sin dejar caer el peso en la rodilla de atrás."], cue:"Todo el trabajo lo hace la pierna de arriba — la de atrás solo toca el suelo para equilibrio." },
+  curtsyLunge:      { steps:["De pie, KB de 10kg sostenido al pecho. Da un paso hacia atrás y cruzado, como una reverencia — la rodilla trasera pasa por detrás de la pierna de apoyo.","Baja hasta que la rodilla trasera casi toque el suelo. Empuja con el talón delantero para regresar de pie. Alterna piernas."], cue:"El cruce activa el glúteo medio de forma distinta a la lunge lateral — se siente en la parte externa del glúteo." },
   // PECHO
   floorPress:       { steps:["Boca arriba. KB de 10kg en una mano al nivel del pecho. Codo apoyado en el suelo a 45° del cuerpo.","Presiona hacia el techo a extensión completa. Baja en 3 segundos hasta que el codo toque el suelo. Pausa 1 segundo antes de subir."], cue:"3 segundos bajando. El suelo protege el hombro — más seguro que el press estándar." },
   floorFly:         { steps:["Boca arriba. KB de 6.8kg en una mano, brazo extendido hacia el lado. Ligera flexión en el codo.","Sube el KB hacia el centro del pecho como si abrazaras. Baja en 4 segundos. Una mano a la vez. El pecho hace todo el trabajo."], cue:"El único ejercicio que estira y contrae el pecho simultáneamente. No lo saltes." },
@@ -127,6 +131,7 @@ function buildAllWeeks() {
     const isIntA   = wi === 3;
     const isVolA   = wi === 1;
     const isVarA   = wi === 2;
+    const isBaseA  = wi === 0;
     const isBaseB  = wi === 5;
     const isVolB   = wi === 6;
 
@@ -163,6 +168,12 @@ function buildAllWeeks() {
           { name:"KB Goblet Squat", note:"3s — forma perfecta", sets:"3 × 10", weight:"10 kg", info:"gobletSquat" },
           { name:"KB Sumo Squat", note:"Pausa 2s abajo", sets:"3 × 10", weight:"10 kg", info:"sumoSquat" },
           { name:"KB Glute Bridge", note:"Pausa 2s arriba", sets:"3 × 12", weight:"10 kg", info:"gluteBridge" },
+        ] : isBaseA ? [
+          { name:"KB Goblet Squat", note:e, sets:`${ms} × ${mr}`, weight:"10 kg", info:"gobletSquat" },
+          { name:"KB Step-up", note:`${e} — usa un banco firme`, sets:`${ms} × ${mr}/leg`, weight:"10 kg", info:"kbStepUp" },
+          { name:"KB Sumo Squat", note:"Pausa 2s abajo", sets:`${ms} × ${mr}`, weight:"10 kg", info:"sumoSquat" },
+          { name:"KB Glute Bridge", note:"Pausa 2s arriba", sets:`${ms} × ${mr+3}`, weight:"10 kg", info:"gluteBridge" },
+          { name:"Curtsy Lunge", note:`${e} — glúteo medio`, sets:`${ms} × ${mr}/leg`, weight:"10 kg", info:"curtsyLunge" },
         ] : [
           { name:"KB Goblet Squat", note:`${e}${isIntA||isPeak?" + 2s pausa abajo":""}`, sets:`${ms} × ${mr}`, weight:"10 kg", info:"gobletSquat" },
           { name:"KB Split Squat", note:e, sets:`${ms} × ${mr}/leg`, weight:"10 kg", info:"splitSquat" },
@@ -177,7 +188,13 @@ function buildAllWeeks() {
           { name:"KB Romanian Deadlift", note:`${e}${isIntA||isPeak?" + pausa 2s en estiramiento":""}`, sets:`${ms} × ${mr}`, weight:"10 kg", info:"rdl" },
           { name:"KB Single-leg Deadlift", note:`${e} — equilibrio`, sets:`${is_} × ${ir}/leg`, weight:"10 kg", info:"singleLegDL" },
         ]},
-        { name:"Core", exercises:[
+        { name:"Core", exercises: isBaseA ? [
+          { name:"KB Plank Drag", note:"Core anti-rotación — caderas quietas", sets:`${cs} × ${cDb}/lado`, weight:"4.5 kg", info:"plankDrag" },
+          { name:"Toe Touches", note:"Piernas al techo — sin impulso", sets:`${cs} × ${cTt}`, weight:"BW", info:"toeTouches" },
+          { name:"Dead Bug", note:"Exhala completamente cada rep", sets:`${cs} × ${cDb}`, weight:"BW", info:"deadbug" },
+          { name:"Hollow Body Hold", note:"Piernas a 30°", sets:`${cs} × ${cHt}s`, weight:"BW", info:"hollowHold" },
+          { name:"Bicycle crunches", note:"Lento — rotación de torso", sets:`${cs} × ${cBc}`, weight:"BW", info:"bicycle" },
+        ] : [
           { name:"Plank Shoulder Tap", note:"Caderas sin rotar", sets:`${cs} × ${cTw} taps`, weight:"BW", info:"plankShoulder" },
           { name:"Leg Raise", note:"4s bajando siempre", sets:`${cs} × ${cLr}`, weight:"BW", info:"legRaise" },
           { name:"Dead Bug", note:"Exhala completamente cada rep", sets:`${cs} × ${cDb}`, weight:"BW", info:"deadbug" },
@@ -195,6 +212,11 @@ function buildAllWeeks() {
       { name:"KB Floor Press", note:"3s — forma perfecta", sets:"3 × 10/arm", weight:"10 kg", info:"floorPress" },
       { name:"Push-up", note:"3s — deload", sets:"3 × 10", weight:"BW", info:"pushup" },
       { name:"KB Floor Fly", note:"4s bajando", sets:"3 × 8/arm", weight:"6.8 kg", info:"floorFly" },
+    ] : isBaseA ? [
+      { name:"KB Floor Press", note:e, sets:`${ms} × ${mr}/arm`, weight:"10 kg", info:"floorPress" },
+      { name:"Push-up Close Grip", note:e+" — pecho interno", sets:`${ms} × ${mr}`, weight:"BW", info:"pushupClose" },
+      { name:"KB Floor Fly", note:"4s bajando — estira el pecho", sets:`${ms} × ${mr}/arm`, weight:"6.8 kg", info:"floorFly" },
+      { name:"Push-up Archer", note:`${e} — pecho unilateral`, sets:`${is_} × ${ir}/lado`, weight:"BW", info:"pushupArcher" },
     ] : isVarA ? [
       { name:"KB Floor Press", note:`${e} + pausa 1s abajo`, sets:`${ms} × ${mr}/arm`, weight:"10 kg", info:"floorPress" },
       { name:"Push-up Archer", note:`${e} — pecho unilateral`, sets:`${ms} × ${mr}/lado`, weight:"BW", info:"pushupArcher" },
@@ -234,7 +256,13 @@ function buildAllWeeks() {
         ]},
         { name:"Pecho", exercises: marPecho },
         { name:"Tríceps", exercises: marTriceps },
-        { name:"Core", exercises:[
+        { name:"Core", exercises: isBaseA ? [
+          { name:"Hollow Body Hold", note:"Piernas a 28°", sets:`${cs} × ${cHt}s`, weight:"BW", info:"hollowHold" },
+          { name:"Crunches", note:"Pequeño y controlado", sets:`${cs} × ${cTt+4}`, weight:"BW", info:"crunches" },
+          { name:"Toe Touches", note:"Piernas al techo — sin impulso", sets:`${cs} × ${cTt}`, weight:"BW", info:"toeTouches" },
+          { name:"KB Plank Drag", note:"Core anti-rotación — caderas quietas", sets:`${cs} × ${cDb}/lado`, weight:"4.5 kg", info:"plankDrag" },
+          { name:"Bicycle crunches", note:"Lento — rotación de torso", sets:`${cs} × ${cBc}`, weight:"BW", info:"bicycle" },
+        ] : [
           { name:"Hollow Body Hold", note:isPeak?"Piernas a 22°":isIntA?"Piernas a 25°":isDeload?"Piernas a 35°":"Piernas a 28°", sets:`${cs} × ${cHt}s`, weight:"BW", info:"hollowHold" },
           { name:"Mountain Climbers", note:"Caderas completamente quietas", sets:`${cs} × ${cMc}`, weight:"BW", info:"mountainClimber" },
           { name:"Leg Raise", note:"4s bajando siempre", sets:`${cs} × ${cLr}`, weight:"BW", info:"legRaise" },
@@ -257,6 +285,9 @@ function buildAllWeeks() {
         ]},
         { name:"FitXR", exercises: isDeload ? [
           { name:"FitXR — Flow", note:"Pace moderado — deload", sets:"20 min", weight:"—", info:"fitxrFlow" },
+        ] : isBaseA ? [
+          { name:"FitXR — Box", note:"3 rounds, máximo esfuerzo", sets:"20 min", weight:"—", info:"fitxrBox" },
+          { name:"FitXR — Combat", note:"2 rounds, footwork activo", sets:"15 min", weight:"—", info:"fitxrCombat" },
         ] : isBaseB ? [
           { name:"FitXR — Box", note:"3 rounds, máximo esfuerzo", sets:"20 min", weight:"—", info:"fitxrBox" },
           { name:"FitXR — Combat", note:"2 rounds, footwork activo", sets:"15 min", weight:"—", info:"fitxrCombat" },
@@ -264,7 +295,17 @@ function buildAllWeeks() {
           { name:"FitXR — Box", note:`${isPeak||isIntA?"4":"3"} rounds, máximo esfuerzo`, sets:isPeak||isIntA?"25 min":"20 min", weight:"—", info:"fitxrBox" },
           { name:"FitXR — HIIT", note:isPeak?"Peak cardio — 100% esfuerzo":"Máximo esfuerzo", sets:isPeak?"20 min":"15 min", weight:"—", info:"fitxrHiit" },
         ]},
-        { name:"Abdomen", exercises:[
+        { name:"Abdomen", exercises: isBaseA ? [
+          { name:"Russian Twist", note:"Rota completamente cada lado", sets:`${cs} × ${cTw}`, weight:"4.5 kg", info:"russianTwist" },
+          { name:"Bicycle crunches", note:"Lento — rotación de torso", sets:`${cs} × ${cBc}`, weight:"BW", info:"bicycle" },
+          { name:"Leg Raise", note:"4s bajando siempre", sets:`${cs} × ${cLr}`, weight:"BW", info:"legRaise" },
+          { name:"Hollow Body Hold", note:"Piernas a 28°", sets:`${cs} × ${cHt}s`, weight:"BW", info:"hollowHold" },
+          { name:"Plank hold", note:"Abs + glúteos apretados", sets:`${cs} × ${cMc}`, weight:"BW", info:"plank" },
+          { name:"Mountain Climbers", note:"Full effort — caderas quietas", sets:`${cs} × ${cMc}`, weight:"BW", info:"mountainClimber" },
+          { name:"Plank Shoulder Tap", note:"Caderas sin rotar", sets:`${cs} × ${cTw} taps`, weight:"BW", info:"plankShoulder" },
+          { name:"Crunches", note:"Pequeño y controlado", sets:`${cs} × ${cTt+4}`, weight:"BW", info:"crunches" },
+          { name:"Dead Bug", note:"Exhala completamente", sets:`${cs} × ${cDb}`, weight:"BW", info:"deadbug" },
+        ] : [
           { name:"Russian Twist Heavy", note:"Rota completamente — toca el suelo", sets:`${cs} × ${cTw}`, weight:"6.8 kg", info:"russianHeavy" },
           { name:"Bicycle crunches", note:"Lento — rotación de torso", sets:`${cs} × ${cBc}`, weight:"BW", info:"bicycle" },
           { name:"Leg Raise", note:"4s bajando siempre", sets:`${cs} × ${cLr}`, weight:"BW", info:"legRaise" },
@@ -287,6 +328,12 @@ function buildAllWeeks() {
       { name:"KB Swing (2 manos)", note:"3s — forma perfecta", sets:"3 × 10", weight:"10 kg", info:"kbSwing" },
       { name:"KB Bent-over Row", note:"3s — deload", sets:"3 × 10", weight:"10 kg", info:"bentOverRow" },
       { name:"KB Pullover", note:"3s — estira el dorsal", sets:"3 × 8", weight:"10 kg", info:"pulloverKb" },
+    ] : isBaseA ? [
+      { name:"KB Single-arm Swing", note:`${e} — anti-rotación`, sets:`${ms} × ${mr}/arm`, weight:"10 kg", info:"kbSwingSingle" },
+      { name:"KB Row con pausa 2s", note:e, sets:`${ms} × ${mr}`, weight:"10 kg", info:"bentOverRowPause" },
+      { name:"KB Deadlift", note:`${e} — bisagra de cadera`, sets:`${ms} × ${mr}`, weight:"10 kg", info:"deadlift" },
+      { name:"KB Suitcase Carry", note:"Core anti-lateral — hombros nivelados", sets:`${cs} × 30m`, weight:"10 kg", info:"suitcaseCarry" },
+      { name:"KB Pullover", note:`${e} — estira el dorsal`, sets:`${is_} × ${ir}`, weight:"10 kg", info:"pulloverKb" },
     ] : (isVarA || isIntA || isBaseB || isVolB || isPeak) ? [
       { name:"KB Single-arm Swing", note:`${e} — anti-rotación`, sets:`${ms} × ${mr}/arm`, weight:"10 kg", info:"kbSwingSingle" },
       { name:`KB Row con pausa ${isIntA||isPeak?"3":"2"}s`, note:e, sets:`${ms} × ${mr}`, weight:"10 kg", info:"bentOverRowPause" },
@@ -318,7 +365,13 @@ function buildAllWeeks() {
         ]},
         { name:"Espalda", exercises: jueEspalda },
         { name:"Bíceps", exercises: jueBiceps },
-        { name:"Core", exercises:[
+        { name:"Core", exercises: isBaseA ? [
+          { name:"Plank Shoulder Tap", note:"Caderas sin rotar", sets:`${cs} × ${cTw} taps`, weight:"BW", info:"plankShoulder" },
+          { name:"Mountain Climbers", note:"Caderas completamente quietas", sets:`${cs} × ${cMc}`, weight:"BW", info:"mountainClimber" },
+          { name:"Toe Touches", note:"Piernas al techo — sin impulso", sets:`${cs} × ${cTt}`, weight:"BW", info:"toeTouches" },
+          { name:"Hollow Body Hold", note:"Piernas a 30°", sets:`${cs} × ${cHt}s`, weight:"BW", info:"hollowHold" },
+          { name:"Crunches", note:"Pequeño y controlado", sets:`${cs} × ${cTt+4}`, weight:"BW", info:"crunches" },
+        ] : [
           { name:"Dead Bug", note:"Exhala completamente cada rep", sets:`${cs} × ${cDb}`, weight:"BW", info:"deadbug" },
           { name:"Russian Twist", note:"Rota completamente cada lado", sets:`${cs} × ${cTw}`, weight:wi >= 3 ? "6.8 kg" : "4.5 kg", info:wi >= 3 ? "russianHeavy" : "russianTwist" },
           { name:"Leg Raise", note:"4s bajando siempre", sets:`${cs} × ${cLr}`, weight:"BW", info:"legRaise" },
@@ -345,6 +398,11 @@ function buildAllWeeks() {
           { name:"KB Single-arm Press", note:"3s — deload", sets:"2 × 10/arm", weight:"6.8 kg", info:"kbPress" },
           { name:"KB Lateral Raise", note:"4s — deload", sets:"2 × 12/arm", weight:"4.5 kg", info:"lateralRaise" },
           { name:"KB Front Raise", note:"3s — deload", sets:"2 × 12/arm", weight:"4.5 kg", info:"frontRaise" },
+        ] : isBaseA ? [
+          { name:"KB Clean + Press", note:e+" — potencia + empuje", sets:`${ms} × ${mr}/arm`, weight:"6.8 kg", info:"cleanPress" },
+          { name:"KB Lateral Raise", note:"4s bajando — deltoides lateral", sets:`${is_} × 12/arm`, weight:"4.5 kg", info:"lateralRaise" },
+          { name:"KB Front Raise", note:"3s bajando — deltoides anterior", sets:`${is_} × 12/arm`, weight:"4.5 kg", info:"frontRaise" },
+          { name:"KB Windmill", note:e+" — core lateral + hombro", sets:`${is_} × 8/lado`, weight:"6.8 kg", info:"kbWindmill" },
         ] : (wi < 3 || isVarA) ? [
           { name:"KB Single-arm Press", note:e, sets:`${ms} × ${mr}/arm`, weight:"6.8 kg", info:"kbPress" },
           { name:"KB Lateral Raise", note:"4s bajando — deltoides lateral", sets:`${is_} × 12/arm`, weight:"4.5 kg", info:"lateralRaise" },
@@ -382,6 +440,12 @@ function buildAllWeeks() {
         { name:"Brazos", exercises: wi === 4 ? [
           { name:"KB Bicep Curl", note:"3s — deload", sets:"2 × 10/arm", weight:"6.8 kg", info:"bicepCurl" },
           { name:"KB Tricep Extension", note:"3s — deload", sets:"2 × 12", weight:"6.8 kg", info:"tricepExt" },
+        ] : isBaseA ? [
+          { name:"KB Drag Curl", note:e, sets:`${is_} × ${ir}/arm`, weight:"6.8 kg", info:"dragCurl" },
+          { name:"KB Tricep Extension", note:e, sets:`${is_} × ${ir}`, weight:"6.8 kg", info:"tricepExt" },
+          { name:"KB Hammer Curl", note:e, sets:`${is_} × ${ir}/arm`, weight:"6.8 kg", info:"hammerCurl" },
+          { name:"KB Skull Crusher", note:e+" — codos fijos", sets:`${is_} × ${ir}/arm`, weight:"6.8 kg", info:"kbSkullCrusher" },
+          { name:"Diamond Push-up", note:"Al fallo controlado", sets:`${is_} × max`, weight:"BW", info:"diamondPushup" },
         ] : (wi < 3 || isVarA) ? [
           { name:"KB Bicep Curl", note:e, sets:`${is_} × ${ir}/arm`, weight:"6.8 kg", info:"bicepCurl" },
           { name:"KB Tricep Extension", note:e, sets:`${is_} × ${ir}`, weight:"6.8 kg", info:"tricepExt" },
@@ -419,7 +483,13 @@ function buildAllWeeks() {
           { name:"KB Tricep Kickback", note:"5s — cierra el tríceps", sets:"4 × 8/arm", weight:"4.5 kg", info:"tricepKickback" },
           { name:"Diamond Push-up", note:"Al fallo — cierra el ciclo", sets:"5 × max", weight:"BW", info:"diamondPushup" },
         ]},
-        { name:"Finisher + Core", exercises:[
+        { name:"Finisher + Core", exercises: isBaseA ? [
+          { name:"KB Farmer Carry", note:"Grip + postura + core", sets:`${cs} × 40m`, weight:"10 kg + 6.8 kg", info:"farmerCarry" },
+          { name:"Hollow Body Hold", note:"Piernas a 30°", sets:`3 × ${25+wi*3}s`, weight:"BW", info:"hollowHold" },
+          { name:"Crunches", note:"Pequeño y controlado", sets:`3 × ${14+wi}`, weight:"BW", info:"crunches" },
+          { name:"Plank Shoulder Tap", note:"Caderas sin rotar", sets:`3 × ${10+wi} taps`, weight:"BW", info:"plankShoulder" },
+          { name:"Bicycle crunches", note:"Lento — rotación de torso", sets:`3 × ${25+wi*3}`, weight:"BW", info:"bicycle" },
+        ] : [
           { name:"KB Farmer Carry", note:"Grip + postura + core", sets:wi===4?"2 × 40m":`${cs} × 40m`, weight:"10 kg + 6.8 kg", info:"farmerCarry" },
           { name:"Hollow Body Hold", note:wi < 4 ? "Piernas a 30°" : wi === 4 ? "Piernas a 35° — deload" : wi < 8 ? "Piernas a 28°" : "Piernas a 22°", sets:wi===4?"2 × 25s":`3 × ${25+wi*3}s`, weight:"BW", info:"hollowHold" },
           { name:"Russian Twist", note:"Rota completamente cada lado", sets:wi===4?"2 × 14":`3 × ${14+wi}`, weight:wi < 7 ? "4.5 kg" : "6.8 kg", info:wi < 7 ? "russianTwist" : "russianHeavy" },
@@ -446,7 +516,15 @@ function buildAllWeeks() {
             sets: sundayLevel < 2 ? "15 min" : sundayLevel < 5 ? "18 min" : "20 min", weight:"—", info:"fitxrBox" },
           ...(sundayLevel >= 4 ? [{ name:"FitXR — Combat", note:"1 round, footwork", sets:"8 min", weight:"—", info:"fitxrCombat" }] : []),
         ]},
-        { name:"Abdomen", exercises:[
+        { name:"Abdomen", exercises: isBaseA ? [
+          { name:"Russian Twist", note:"Rota completamente cada lado", sets:`3 × ${16 + sundayLevel}`, weight:"4.5 kg", info:"russianTwist" },
+          { name:"Bicycle crunches", note:"Lento — rotación de torso", sets:`3 × ${18 + sundayLevel}`, weight:"BW", info:"bicycle" },
+          { name:"Hollow Body Hold", note:"Piernas a 30°", sets:`3 × ${28 + sundayLevel*2}s`, weight:"BW", info:"hollowHold" },
+          { name:"Plank hold", note:"Abs + glúteos apretados", sets:`3 × ${38 + sundayLevel*2}s`, weight:"BW", info:"plank" },
+          { name:"Dead Bug", note:"Exhala completamente cada rep", sets:`3 × ${10+sundayLevel}`, weight:"BW", info:"deadbug" },
+          { name:"Crunches", note:"Pequeño y controlado", sets:`3 × ${16+sundayLevel}`, weight:"BW", info:"crunches" },
+          { name:"Plank Shoulder Tap", note:"Caderas sin rotar", sets:`3 × ${35+sundayLevel*3} taps`, weight:"BW", info:"plankShoulder" },
+        ] : [
           { name:"Russian Twist", note:"Rota completamente cada lado", sets:`3 × ${16 + sundayLevel}`, weight: sundayLevel < 3 ? "4.5 kg" : "6.8 kg", info: sundayLevel < 3 ? "russianTwist" : "russianHeavy" },
           { name:"Bicycle crunches", note:"Lento — rotación de torso", sets:`3 × ${18 + sundayLevel}`, weight:"BW", info:"bicycle" },
           { name:"Hollow Body Hold", note: sundayLevel < 4 ? "Piernas a 30°" : "Piernas a 25°", sets:`3 × ${28 + sundayLevel*2}s`, weight:"BW", info:"hollowHold" },
@@ -481,13 +559,14 @@ const DISPLAY_META = WEEK_META.slice(0).map((w, i) => ({
 const MUSCLE_OF = {
   gobletSquat:"Piernas", splitSquat:"Piernas", sumoSquat:"Piernas", rdl:"Piernas",
   singleLegDL:"Piernas", gluteBridge:"Piernas", lateralLunge:"Piernas", gobletHold:"Piernas",
+  kbStepUp:"Piernas", curtsyLunge:"Piernas",
   bentOverRow:"Espalda", bentOverRowPause:"Espalda", renegadeRow:"Espalda", kbSwing:"Espalda",
   kbSwingSingle:"Espalda", deadlift:"Espalda", pulloverKb:"Espalda", kbRowLight:"Espalda",
   farmerCarry:"Espalda", suitcaseCarry:"Espalda",
-  bicepCurl:"Bíceps", hammerCurl:"Bíceps", concentrationCurl:"Bíceps",
+  bicepCurl:"Bíceps", hammerCurl:"Bíceps", concentrationCurl:"Bíceps", dragCurl:"Bíceps",
   kbPress:"Hombros", lateralRaise:"Hombros", frontRaise:"Hombros", uprightRow:"Hombros",
   kbHalo:"Hombros", cleanPress:"Hombros", kbWindmill:"Hombros",
-  tricepExt:"Tríceps", tricepKickback:"Tríceps", diamondPushup:"Tríceps", pushupLight:"Tríceps",
+  tricepExt:"Tríceps", tricepKickback:"Tríceps", diamondPushup:"Tríceps", pushupLight:"Tríceps", kbSkullCrusher:"Tríceps",
   floorPress:"Pecho", floorFly:"Pecho", pushup:"Pecho", pushupArcher:"Pecho", pushupClose:"Pecho",
   plank:"Core", plankShoulder:"Core", plankDrag:"Core", deadbug:"Core", legRaise:"Core",
   hollowHold:"Core", hollowRock:"Core", russianTwist:"Core", russianHeavy:"Core",
@@ -543,13 +622,14 @@ function EX_NAME(infoKey) {
   const names = {
     gobletSquat:"KB Goblet Squat", splitSquat:"KB Split Squat", sumoSquat:"KB Sumo Squat", rdl:"KB Romanian Deadlift",
     singleLegDL:"KB Single-leg Deadlift", gluteBridge:"KB Glute Bridge", lateralLunge:"KB Lateral Lunge", gobletHold:"Goblet Squat Hold",
+    kbStepUp:"KB Step-up", curtsyLunge:"Curtsy Lunge",
     bentOverRow:"KB Bent-over Row", bentOverRowPause:"KB Row con pausa", renegadeRow:"KB Renegade Row", kbSwing:"KB Swing",
     kbSwingSingle:"KB Single-arm Swing", deadlift:"KB Deadlift", pulloverKb:"KB Pullover", kbRowLight:"KB Row liviano",
     farmerCarry:"KB Farmer Carry", suitcaseCarry:"KB Suitcase Carry",
-    bicepCurl:"KB Bicep Curl", hammerCurl:"KB Hammer Curl", concentrationCurl:"Concentration Curl",
+    bicepCurl:"KB Bicep Curl", hammerCurl:"KB Hammer Curl", concentrationCurl:"Concentration Curl", dragCurl:"KB Drag Curl",
     kbPress:"KB Single-arm Press", lateralRaise:"KB Lateral Raise", frontRaise:"KB Front Raise", uprightRow:"KB Upright Row",
     kbHalo:"KB Halos", cleanPress:"KB Clean + Press", kbWindmill:"KB Windmill",
-    tricepExt:"KB Tricep Extension", tricepKickback:"KB Tricep Kickback", diamondPushup:"Diamond Push-up", pushupLight:"Push-up de activación",
+    tricepExt:"KB Tricep Extension", tricepKickback:"KB Tricep Kickback", diamondPushup:"Diamond Push-up", pushupLight:"Push-up de activación", kbSkullCrusher:"KB Skull Crusher",
     floorPress:"KB Floor Press", floorFly:"KB Floor Fly", pushup:"Push-up", pushupArcher:"Push-up Archer", pushupClose:"Push-up Close Grip",
     plank:"Plank hold", plankShoulder:"Plank Shoulder Tap", plankDrag:"KB Plank Drag", deadbug:"Dead Bug", legRaise:"Leg Raise",
     hollowHold:"Hollow Body Hold", hollowRock:"Hollow Body Rock", russianTwist:"Russian Twist", russianHeavy:"Russian Twist Heavy",
