@@ -3145,6 +3145,55 @@ function timeAgo(ms) {
   return `hace ${Math.floor(m / 60)} h`;
 }
 
+// Pinned header shortcut — same forceSync() the "Guardar ahora" button in
+// Perfil → Sincronización uses, but one tap from anywhere instead of two
+// screens deep. Only rendered once a device is actually connected.
+function SyncQuickButton() {
+  const [meta, setMeta] = useState(() => getSyncMeta());
+  const [saving, setSaving] = useState(false);
+  const [justSaved, setJustSaved] = useState(false);
+
+  useEffect(() => {
+    const id = setInterval(() => setMeta(getSyncMeta()), 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  const saveNow = async () => {
+    setSaving(true);
+    const result = await forceSync();
+    setSaving(false);
+    setMeta(getSyncMeta());
+    if (result.ok) {
+      haptic(10);
+      setJustSaved(true);
+      setTimeout(() => setJustSaved(false), 1600);
+    }
+  };
+
+  const pending = meta.pendingCount > 0;
+  const dotColor = saving ? "#fbbf24" : justSaved ? "#39ff88" : pending ? "#fbbf24" : "#39ff88";
+  const label = saving ? "Guardando…" : justSaved ? "✓ Guardado" : pending ? `${meta.pendingCount} sin enviar — toca para guardar` : "Todo guardado — toca para forzar guardado";
+
+  return (
+    <button onClick={saveNow} disabled={saving} title={label} style={{
+      position:"absolute", top:12, right:56, zIndex:21,
+      width:34, height:34, borderRadius:"50%", cursor: saving ? "default" : "pointer",
+      background:"rgba(255,255,255,0.06)", border:"1px solid rgba(255,255,255,0.12)",
+      color:"#d1d5db", fontSize:14,
+      display:"flex", alignItems:"center", justifyContent:"center",
+      opacity: saving ? 0.7 : 1,
+    }}>
+      ☁️
+      {(pending || justSaved) && !saving && (
+        <span style={{
+          position:"absolute", top:-2, right:-2, width:9, height:9, borderRadius:"50%",
+          background:dotColor, border:"2px solid #000",
+        }}/>
+      )}
+    </button>
+  );
+}
+
 function SyncSection({ cloudSync, connectSync, disconnectSync, c }) {
   const [pin, setPin] = useState("");
   const [error, setError] = useState(null);
@@ -4599,6 +4648,7 @@ export default function App() {
         {/* Pinned to the header's own corner (not the scrollable nav row) so
             it's always one tap away regardless of scroll position or how
             many pills the nav row is currently showing. */}
+        {cloudSync.authenticated && <SyncQuickButton/>}
         <button onClick={openPerfil} title="Perfil, nutrición y sincronización" style={{
           position:"absolute", top:12, right:16, zIndex:21,
           width:34, height:34, borderRadius:"50%", cursor:"pointer",
