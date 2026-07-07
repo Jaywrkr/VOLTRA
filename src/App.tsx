@@ -18,6 +18,12 @@ function persist(key, value) {
   queueSync(key, value);
 }
 
+// Tiny vibration on real completions (checkboxes, swipes, saves) — a no-op
+// on devices/browsers without the Vibration API (iOS Safari, desktop).
+function haptic(pattern = 12) {
+  try { navigator.vibrate?.(pattern); } catch {}
+}
+
 // Equipment: 10kg | 6.8kg (15lbs) | 4.5kg (10lbs) | BW
 // NO exercises using two of the same KB weight simultaneously
 // NO supersets, NO arrows
@@ -819,7 +825,7 @@ function MinutesInput({ storeKey, defaultMinutes, value, onChange, isDone }) {
 function CompleteCheckbox({ isDone, dot, onToggle }) {
   return (
     <button
-      onClick={e => { e.stopPropagation(); onToggle(); }}
+      onClick={e => { e.stopPropagation(); haptic(isDone ? 8 : 14); onToggle(); }}
       style={{
         width:44, height:44, borderRadius:"50%", flexShrink:0, cursor:"pointer",
         background:"transparent", border:"none", padding:0,
@@ -858,7 +864,7 @@ function SwipeRow({ dot, onToggle, children }) {
   };
   const onTouchEnd = () => {
     draggingRef.current = false;
-    if (dx > THRESHOLD) onToggle();
+    if (dx > THRESHOLD) { haptic([10, 30, 12]); onToggle(); }
     setDx(0);
   };
 
@@ -3227,48 +3233,108 @@ function DayWrappedModal({ imageUrl, onClose }) {
 // Fastest possible path to logging something: name + 4 numbers, no search,
 // no categories. Saves it as a real food (searchable later in Extras/Mi
 // despensa) and logs it as an extra for today in the same tap.
+const MACRO_FIELD = {
+  kcal:    { label:"Kcal",     unit:"",  color:"#fbbf24", icon:"🔥" },
+  protein: { label:"Proteína", unit:"g", color:"#39ff88", icon:"🥩" },
+  carbs:   { label:"Carbos",   unit:"g", color:"#a78bfa", icon:"🍞" },
+  fat:     { label:"Grasa",    unit:"g", color:"#fb923c", icon:"🥑" },
+};
+
 function QuickAddFoodModal({ onSave, onClose }) {
   const [draft, setDraft] = useState({ name: "", kcal: 0, protein: 0, carbs: 0, fat: 0 });
+  const [closing, setClosing] = useState(false);
   const canSave = draft.name.trim().length > 0;
 
-  const field = (label, key) => (
-    <div style={{ flex:1, minWidth:70 }}>
-      <div style={{ fontSize:9, color:"#8a8f98", marginBottom:3 }}>{label}</div>
-      <input type="number" min={0} value={draft[key]} onChange={e => setDraft(d => ({ ...d, [key]: Math.max(0, parseFloat(e.target.value) || 0) }))}
-        style={{ width:"100%", fontFamily:"'DM Mono',monospace", fontSize:13, color:"#f3f4f6", background:"rgba(255,255,255,0.05)", border:"1px solid rgba(255,255,255,0.1)", borderRadius:7, padding:"8px 10px", boxSizing:"border-box" }}/>
-    </div>
-  );
+  const dismiss = () => { setClosing(true); setTimeout(onClose, 160); };
+  const save = () => {
+    if (!canSave) return;
+    haptic([10, 40, 12]);
+    onSave({ name: draft.name.trim(), macros: { kcal: draft.kcal, protein: draft.protein, carbs: draft.carbs, fat: draft.fat } });
+  };
 
   return (
-    <div onClick={onClose} style={{
-      position:"fixed", inset:0, zIndex:300, background:"rgba(0,0,0,0.75)",
+    <div onClick={dismiss} style={{
+      position:"fixed", inset:0, zIndex:300, background:"rgba(0,0,0,0.7)", backdropFilter:"blur(2px)",
       display:"flex", alignItems:"flex-end", justifyContent:"center",
+      animation: closing ? "jayFadeOut 0.16s ease forwards" : "jayFadeIn 0.18s ease",
     }}>
       <div onClick={e => e.stopPropagation()} style={{
-        width:"100%", maxWidth:440, background:"#0a0a0a", border:"1px solid rgba(255,255,255,0.12)",
-        borderRadius:"16px 16px 0 0", padding:"18px 18px 24px", boxSizing:"border-box",
+        width:"100%", maxWidth:440, background:"#0b0c0e",
+        border:"1px solid rgba(255,255,255,0.1)", borderBottom:"none",
+        borderRadius:"20px 20px 0 0", padding:"10px 20px 26px", boxSizing:"border-box",
+        boxShadow:"0 -8px 40px rgba(0,0,0,0.5)",
+        animation: closing ? "jaySheetDown 0.16s ease forwards" : "jaySheetUp 0.22s cubic-bezier(0.16,1,0.3,1)",
       }}>
-        <div style={{ fontSize:9, fontWeight:700, letterSpacing:"0.12em", color:"#6b7280", marginBottom:10 }}>AGREGAR ALIMENTO RÁPIDO</div>
-        <input value={draft.name} onChange={e => setDraft(d => ({ ...d, name: e.target.value }))} placeholder="Nombre (ej. Tortilla de la esquina)" autoFocus
-          style={{ width:"100%", fontSize:14, color:"#f3f4f6", background:"rgba(255,255,255,0.05)", border:"1px solid rgba(255,255,255,0.1)", borderRadius:8, padding:"10px 12px", boxSizing:"border-box", marginBottom:12 }}/>
-        <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginBottom:16 }}>
-          {field("KCAL", "kcal")}
-          {field("PROT G", "protein")}
-          {field("CARB G", "carbs")}
-          {field("GRASA G", "fat")}
+        <div style={{ width:36, height:4, borderRadius:99, background:"rgba(255,255,255,0.15)", margin:"4px auto 14px" }}/>
+
+        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:16 }}>
+          <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+            <span style={{
+              width:30, height:30, borderRadius:9, background:"rgba(57,255,136,0.12)",
+              display:"flex", alignItems:"center", justifyContent:"center", fontSize:15,
+            }}>🍽️</span>
+            <div style={{ fontSize:14, fontWeight:700, color:"#f3f4f6" }}>Agregar alimento</div>
+          </div>
+          <button onClick={dismiss} style={{
+            width:28, height:28, borderRadius:"50%", cursor:"pointer",
+            background:"rgba(255,255,255,0.06)", border:"none", color:"#9ca3af",
+            fontSize:14, display:"flex", alignItems:"center", justifyContent:"center",
+          }}>✕</button>
         </div>
+
+        <input value={draft.name} onChange={e => setDraft(d => ({ ...d, name: e.target.value }))} placeholder="Nombre (ej. Tortilla de la esquina)" autoFocus
+          style={{
+            width:"100%", fontSize:14, color:"#f3f4f6", background:"rgba(255,255,255,0.05)",
+            border:"1px solid rgba(255,255,255,0.1)", borderRadius:12, padding:"12px 14px",
+            boxSizing:"border-box", marginBottom:14,
+          }}/>
+
+        <div style={{ display:"grid", gridTemplateColumns:"repeat(2, 1fr)", gap:8, marginBottom:20 }}>
+          {Object.keys(MACRO_FIELD).map(key => {
+            const m = MACRO_FIELD[key];
+            return (
+              <div key={key} style={{
+                background:`${m.color}0c`, border:`1px solid ${m.color}25`, borderRadius:12, padding:"9px 11px",
+              }}>
+                <div style={{ display:"flex", alignItems:"center", gap:5, marginBottom:5 }}>
+                  <span style={{ fontSize:11 }}>{m.icon}</span>
+                  <span style={{ fontSize:9, fontWeight:700, letterSpacing:"0.06em", color:m.color }}>{m.label.toUpperCase()}</span>
+                </div>
+                <div style={{ display:"flex", alignItems:"baseline", gap:4 }}>
+                  <input type="number" min={0} value={draft[key]}
+                    onChange={e => setDraft(d => ({ ...d, [key]: Math.max(0, parseFloat(e.target.value) || 0) }))}
+                    style={{
+                      width:"100%", fontFamily:"'DM Mono',monospace", fontSize:17, fontWeight:700, color:"#f3f4f6",
+                      background:"transparent", border:"none", padding:0, outline:"none",
+                    }}/>
+                  {m.unit && <span style={{ fontSize:11, color:"#6b7280" }}>{m.unit}</span>}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
         <div style={{ display:"flex", gap:8 }}>
-          <button onClick={onClose} style={{
-            padding:"12px 16px", borderRadius:10, cursor:"pointer", fontSize:13, fontWeight:600,
-            background:"rgba(255,255,255,0.05)", border:"1px solid rgba(255,255,255,0.15)", color:"#9ca3af",
+          <button onClick={dismiss} style={{
+            padding:"13px 18px", borderRadius:12, cursor:"pointer", fontSize:13, fontWeight:600,
+            background:"rgba(255,255,255,0.05)", border:"1px solid rgba(255,255,255,0.12)", color:"#9ca3af",
           }}>Cancelar</button>
-          <button onClick={() => canSave && onSave({ name: draft.name.trim(), macros: { kcal: draft.kcal, protein: draft.protein, carbs: draft.carbs, fat: draft.fat } })} disabled={!canSave} style={{
-            flex:1, padding:"12px", borderRadius:10, cursor: canSave ? "pointer" : "default", fontSize:13, fontWeight:700,
-            background: canSave ? "rgba(57,255,136,0.15)" : "rgba(255,255,255,0.05)", border:`1px solid ${canSave ? "rgba(57,255,136,0.4)" : "rgba(255,255,255,0.1)"}`,
-            color: canSave ? "#39ff88" : "#6b7280", opacity: canSave ? 1 : 0.6,
+          <button onClick={save} disabled={!canSave} style={{
+            flex:1, padding:"13px", borderRadius:12, cursor: canSave ? "pointer" : "default", fontSize:13, fontWeight:700,
+            background: canSave ? "#39ff88" : "rgba(255,255,255,0.05)", border:"none",
+            color: canSave ? "#04140a" : "#6b7280", opacity: canSave ? 1 : 0.6,
+            boxShadow: canSave ? "0 4px 16px rgba(57,255,136,0.3)" : "none",
+            transition:"all 0.15s",
           }}>Guardar y registrar hoy</button>
         </div>
       </div>
+
+      <style>{`
+        @keyframes jayFadeIn { from { opacity:0; } to { opacity:1; } }
+        @keyframes jayFadeOut { from { opacity:1; } to { opacity:0; } }
+        @keyframes jaySheetUp { from { transform:translateY(24px); opacity:0.6; } to { transform:translateY(0); opacity:1; } }
+        @keyframes jaySheetDown { from { transform:translateY(0); opacity:1; } to { transform:translateY(24px); opacity:0; } }
+      `}</style>
     </div>
   );
 }
@@ -3277,13 +3343,13 @@ function QuickAddFAB({ onSave, dodge }) {
   const [open, setOpen] = useState(false);
   return (
     <>
-      <button onClick={() => setOpen(true)} title="Agregar alimento rápido" style={{
+      <button onClick={() => { haptic(10); setOpen(true); }} title="Agregar alimento rápido" style={{
         position:"fixed", right:16, bottom: dodge ? 140 : 16, zIndex:190,
         width:52, height:52, borderRadius:"50%", cursor:"pointer",
         background:"#39ff88", border:"none", color:"#04140a",
         fontSize:26, fontWeight:700, lineHeight:1,
         display:"flex", alignItems:"center", justifyContent:"center",
-        boxShadow:"0 6px 20px rgba(57,255,136,0.35)", transition:"bottom 0.15s",
+        boxShadow:"0 6px 20px rgba(57,255,136,0.35)", transition:"bottom 0.15s, transform 0.1s",
       }}>+</button>
       {open && <QuickAddFoodModal onClose={() => setOpen(false)} onSave={(food) => { onSave(food); setOpen(false); }}/>}
     </>
@@ -3661,6 +3727,21 @@ export default function App() {
     })();
   }, [applyRemoteData]);
 
+  // Measures the real, live header height (it changes with viewport width —
+  // stacked on mobile, single row on desktop) so anything that sticks below
+  // it (Hoy's stats bar) can line up exactly via a CSS var, instead of a
+  // guessed pixel offset that drifts out of sync on resize.
+  const headerRef = useRef(null);
+  useEffect(() => {
+    const el = headerRef.current;
+    if (!el) return;
+    const update = () => document.documentElement.style.setProperty("--jay-header-h", `${el.offsetHeight}px`);
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
   const connectSync = useCallback(async (pin) => {
     const result = await authLogin(pin);
     if (result.ok) {
@@ -3933,11 +4014,17 @@ export default function App() {
         /* ── Hoy: single column on mobile, dashboard grid on desktop so the
            cards fill the width instead of staying a stretched narrow strip ── */
         .jay-hoy-shell { max-width: 560px; margin: 0 auto; display: flex; flex-direction: column; gap: 10px; }
-        .jay-hoy-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+        .jay-hoy-stats {
+          display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px;
+          position: sticky; top: var(--jay-header-h, 64px); z-index: 15;
+          background: rgba(0,0,0,0.92); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+          padding: 8px 0; margin: 0 -2px; border-bottom: 1px solid rgba(255,255,255,0.06);
+          transition: border-color 0.15s;
+        }
         .jay-hoy-cards { display: flex; flex-direction: column; gap: 10px; }
         @media (min-width: 1024px) {
           .jay-hoy-shell { max-width: 1280px; }
-          .jay-hoy-stats { grid-template-columns: repeat(6, 1fr); }
+          .jay-hoy-stats { grid-template-columns: repeat(6, 1fr); position: static; background: none; backdrop-filter: none; -webkit-backdrop-filter: none; border-bottom: none; padding: 0; margin: 0; }
           .jay-hoy-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; align-items: start; }
         }
         @media (min-width: 1600px) {
@@ -3958,7 +4045,7 @@ export default function App() {
 
       {/* Header — includes a compact progress row in day view so it stays
           visible while scrolling a long session, regardless of header height */}
-      <div style={{ background:"#000000", borderBottom:"1px solid rgba(57,255,136,0.12)", padding:"14px 0 12px", position:"sticky", top:0, zIndex:20 }}>
+      <div ref={headerRef} style={{ background:"#000000", borderBottom:"1px solid rgba(57,255,136,0.12)", padding:"14px 0 12px", position:"sticky", top:0, zIndex:20 }}>
         <div style={{ width:"100%", maxWidth:1440, margin:"0 auto", padding:"0 20px", boxSizing:"border-box" }} className="jay-header-inner">
           <div>
             <div style={{ fontFamily:"'DM Mono',monospace", fontSize:9, color:"#39ff88", letterSpacing:"0.22em", fontWeight:600 }}>JAY · HIPERTROFIA · 8 SEMANAS</div>
