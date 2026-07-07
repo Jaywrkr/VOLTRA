@@ -88,6 +88,11 @@ const EX = {
   toeTouches:       { steps:["Boca arriba. Piernas extendidas hacia el techo, perpendiculares al suelo.","Sube las manos hacia los pies contrayendo el abdomen. Los hombros se despegan del suelo. Baja lentamente."], cue:"Las piernas apuntan al techo todo el tiempo. No dejes que caigan hacia adelante." },
   crunches:         { steps:["Boca arriba, rodillas dobladas, pies apoyados en el suelo. Manos detrás de la cabeza sin jalar.","Contrae el abdomen y sube los hombros del suelo. Movimiento pequeño y controlado. Baja lentamente."], cue:"El movimiento es pequeño. Si jalas el cuello, cruza los brazos al pecho en su lugar." },
   mountainClimber:  { steps:["Posición de plancha con brazos rectos. Core activado.","Lleva una rodilla al pecho rápidamente, regresa y alterna. Las caderas no suben ni bajan — se quedan completamente quietas."], cue:"Si las caderas se mueven, ve más lento hasta controlar el movimiento." },
+  flutterKicks:     { steps:["Boca arriba, manos bajo los glúteos, piernas rectas levantadas unos centímetros del suelo.","Patea alternando piernas en tijera pequeña y rápida. La espalda baja no se despega del suelo."], cue:"Rango pequeño y rápido — si sientes la espalda baja levantarse, sube más las piernas." },
+  reverseCrunch:    { steps:["Boca arriba, brazos a los lados, rodillas dobladas a 90° en el aire.","Lleva las rodillas hacia el pecho levantando la cadera del suelo. Baja controlado sin usar impulso."], cue:"El movimiento lo hace la cadera, no las piernas pateando — sube lento y controla la bajada." },
+  sidePlank:        { steps:["De lado, apoyado en el antebrazo, cuerpo en línea recta de cabeza a pies.","Sube la cadera del suelo y sostén. Cambia de lado al terminar la serie."], cue:"Si la cadera cae, el oblicuo deja de trabajar — mantenla arriba toda la serie." },
+  vUp:              { steps:["Boca arriba, brazos extendidos atrás de la cabeza, piernas rectas en el suelo.","Sube brazos y piernas al mismo tiempo formando una V, tocando los pies con las manos si puedes. Baja controlado."], cue:"Más avanzado que el crunch — si no llegas a la V completa, sube lo que puedas con buena forma." },
+  scissorKicks:     { steps:["Boca arriba, manos bajo los glúteos, piernas rectas levantadas a 45°.","Cruza una pierna sobre la otra alternando, como tijeras, sin bajarlas al suelo."], cue:"Piernas siempre arriba — si bajan, el abdomen bajo deja de trabajar." },
   farmerCarry:      { steps:["KB de 10kg en una mano y KB de 6.8kg en la otra. Postura completamente erguida, hombros atrás y abajo.","Camina con pasos normales. No te inclines hacia ningún lado. Si te inclinas, el peso es demasiado."], cue:"Imagina que llevas una copa de agua en la cabeza — ese nivel de control." },
   suitcaseCarry:    { steps:["Solo el KB de 10kg en una mano. Postura erguida. El peso te jalará hacia ese lado — resiste activamente con el core.","Camina manteniendo los hombros completamente nivelados. Cambia de mano al regresar."], cue:"Entrena el core anti-lateral — uno de los movimientos más funcionales del plan." },
   hipCircles:       { steps:["De pie, manos en las caderas. Dibuja círculos grandes con las caderas — 10 hacia cada lado lentamente.","Leg swings: apoyado de una pared, balancea una pierna adelante y atrás con control. 10 reps por pierna. Luego lateral."], cue:"El rango de movimiento aumenta solo al calentarse. No fuerces." },
@@ -194,18 +199,30 @@ function buildAllWeeks() {
           { name:"KB Romanian Deadlift", note:`${e}${isIntA||isPeak?" + pausa 2s en estiramiento":""}`, sets:`${ms} × ${mr}`, weight:"10 kg", info:"rdl" },
           { name:"KB Single-leg Deadlift", note:`${e} — equilibrio`, sets:`${is_} × ${ir}/leg`, weight:"10 kg", info:"singleLegDL" },
         ]},
-        { name:"Core", exercises: isBaseA ? [
+        { name:"Core", exercises: (isBaseA || isVolA) ? [
           { name:"KB Plank Drag", note:"Core anti-rotación — caderas quietas", sets:`${cs} × ${cDb}/lado`, weight:"4.5 kg", info:"plankDrag" },
           { name:"Toe Touches", note:"Piernas al techo — sin impulso", sets:`${cs} × ${cTt}`, weight:"BW", info:"toeTouches" },
           { name:"Dead Bug", note:"Exhala completamente cada rep", sets:`${cs} × ${cDb}`, weight:"BW", info:"deadbug" },
           { name:"Hollow Body Hold", note:"Piernas a 30°", sets:`${cs} × ${cHt}s`, weight:"BW", info:"hollowHold" },
           { name:"Bicycle crunches", note:"Lento — rotación de torso", sets:`${cs} × ${cBc}`, weight:"BW", info:"bicycle" },
-        ] : [
+        ] : (isVarA || isIntA) ? [
+          { name:"Side Plank", note:"Cadera arriba todo el tiempo — cambia de lado", sets:`${cs} × ${cHt-10}s/lado`, weight:"BW", info:"sidePlank" },
+          { name:"V-Up", note:"Sube brazos y piernas juntos", sets:`${cs} × ${cTt}`, weight:"BW", info:"vUp" },
+          { name:"Reverse Crunch", note:"La cadera sube — no patees con las piernas", sets:`${cs} × ${cLr}`, weight:"BW", info:"reverseCrunch" },
+          { name:"Hollow Body Hold", note:isIntA?"Piernas a 25°":"Piernas a 28°", sets:`${cs} × ${cHt}s`, weight:"BW", info:"hollowHold" },
+          { name:"Russian Twist Heavy", note:"Rota completamente — toca el suelo", sets:`${cs} × ${cTw}`, weight:"6.8 kg", info:"russianHeavy" },
+        ] : isDeload ? [
           { name:"Plank Shoulder Tap", note:"Caderas sin rotar", sets:`${cs} × ${cTw} taps`, weight:"BW", info:"plankShoulder" },
           { name:"Leg Raise", note:"4s bajando siempre", sets:`${cs} × ${cLr}`, weight:"BW", info:"legRaise" },
           { name:"Dead Bug", note:"Exhala completamente cada rep", sets:`${cs} × ${cDb}`, weight:"BW", info:"deadbug" },
-          { name:"Hollow Body Hold", note:isPeak?"Piernas a 22°":isIntA?"Piernas a 25°":"Piernas a 30°", sets:`${cs} × ${cHt}s`, weight:"BW", info:"hollowHold" },
-          { name:"Russian Twist", note:"Rota completamente cada lado", sets:`${cs} × ${cTw}`, weight:wi >= 3 ? "6.8 kg" : "4.5 kg", info:wi >= 3 ? "russianHeavy" : "russianTwist" },
+          { name:"Hollow Body Hold", note:"Piernas a 30°", sets:`${cs} × ${cHt}s`, weight:"BW", info:"hollowHold" },
+          { name:"Russian Twist", note:"Rota completamente cada lado", sets:`${cs} × ${cTw}`, weight:"4.5 kg", info:"russianTwist" },
+        ] : [
+          { name:"Flutter Kicks", note:"Rápido y pequeño — espalda baja pegada al suelo", sets:`${cs} × ${cMc}`, weight:"BW", info:"flutterKicks" },
+          { name:"Scissor Kicks", note:"Piernas siempre arriba, nunca tocan el suelo", sets:`${cs} × ${cBc}`, weight:"BW", info:"scissorKicks" },
+          { name:"Mountain Climbers", note:"Caderas completamente quietas", sets:`${cs} × ${cMc}`, weight:"BW", info:"mountainClimber" },
+          { name:"Crunches", note:"Pequeño y controlado", sets:`${cs} × ${cTt+4}`, weight:"BW", info:"crunches" },
+          { name:"Hollow Body Hold", note:isPeak?"Piernas a 22°":"Piernas a 26°", sets:`${cs} × ${cHt}s`, weight:"BW", info:"hollowHold" },
         ]},
       ],
       isDeload ? "Deload de piernas. 3×10 — los isquios y glúteos se consolidan en la recuperación activa."
@@ -262,18 +279,30 @@ function buildAllWeeks() {
         ]},
         { name:"Pecho", exercises: marPecho },
         { name:"Tríceps", exercises: marTriceps },
-        { name:"Core", exercises: isBaseA ? [
+        { name:"Core", exercises: (isBaseA || isVolA) ? [
           { name:"Hollow Body Hold", note:"Piernas a 28°", sets:`${cs} × ${cHt}s`, weight:"BW", info:"hollowHold" },
           { name:"Crunches", note:"Pequeño y controlado", sets:`${cs} × ${cTt+4}`, weight:"BW", info:"crunches" },
           { name:"Toe Touches", note:"Piernas al techo — sin impulso", sets:`${cs} × ${cTt}`, weight:"BW", info:"toeTouches" },
           { name:"KB Plank Drag", note:"Core anti-rotación — caderas quietas", sets:`${cs} × ${cDb}/lado`, weight:"4.5 kg", info:"plankDrag" },
           { name:"Bicycle crunches", note:"Lento — rotación de torso", sets:`${cs} × ${cBc}`, weight:"BW", info:"bicycle" },
-        ] : [
-          { name:"Hollow Body Hold", note:isPeak?"Piernas a 22°":isIntA?"Piernas a 25°":isDeload?"Piernas a 35°":"Piernas a 28°", sets:`${cs} × ${cHt}s`, weight:"BW", info:"hollowHold" },
+        ] : (isVarA || isIntA) ? [
+          { name:"Side Plank", note:"Cadera arriba — cambia de lado", sets:`${cs} × ${cHt-10}s/lado`, weight:"BW", info:"sidePlank" },
+          { name:"V-Up", note:"Sube brazos y piernas juntos", sets:`${cs} × ${cTt}`, weight:"BW", info:"vUp" },
+          { name:"Mountain Climbers", note:"Caderas completamente quietas", sets:`${cs} × ${cMc}`, weight:"BW", info:"mountainClimber" },
+          { name:"Reverse Crunch", note:"La cadera sube — no patees", sets:`${cs} × ${cLr}`, weight:"BW", info:"reverseCrunch" },
+          { name:"Russian Twist Heavy", note:"Rota completamente", sets:`${cs} × ${cTw}`, weight:"6.8 kg", info:"russianHeavy" },
+        ] : isDeload ? [
+          { name:"Hollow Body Hold", note:"Piernas a 35°", sets:`${cs} × ${cHt}s`, weight:"BW", info:"hollowHold" },
           { name:"Mountain Climbers", note:"Caderas completamente quietas", sets:`${cs} × ${cMc}`, weight:"BW", info:"mountainClimber" },
           { name:"Leg Raise", note:"4s bajando siempre", sets:`${cs} × ${cLr}`, weight:"BW", info:"legRaise" },
           { name:"Dead Bug", note:"Exhala completamente cada rep", sets:`${cs} × ${cDb}`, weight:"BW", info:"deadbug" },
-          { name:"Russian Twist", note:"Rota completamente", sets:`${cs} × ${cTw}`, weight:wi >= 3 ? "6.8 kg" : "4.5 kg", info:wi >= 3 ? "russianHeavy" : "russianTwist" },
+          { name:"Russian Twist", note:"Rota completamente", sets:`${cs} × ${cTw}`, weight:"4.5 kg", info:"russianTwist" },
+        ] : [
+          { name:"Flutter Kicks", note:"Rápido y pequeño", sets:`${cs} × ${cMc}`, weight:"BW", info:"flutterKicks" },
+          { name:"Scissor Kicks", note:"Piernas siempre arriba", sets:`${cs} × ${cBc}`, weight:"BW", info:"scissorKicks" },
+          { name:"Leg Raise", note:"4s bajando siempre", sets:`${cs} × ${cLr}`, weight:"BW", info:"legRaise" },
+          { name:"Dead Bug", note:"Exhala completamente cada rep", sets:`${cs} × ${cDb}`, weight:"BW", info:"deadbug" },
+          { name:"Hollow Body Hold", note:isPeak?"Piernas a 22°":"Piernas a 26°", sets:`${cs} × ${cHt}s`, weight:"BW", info:"hollowHold" },
         ]},
       ],
       isDeload ? "Deload de pecho y tríceps. Forma impecable, sin esfuerzo máximo. El músculo se consolida."
@@ -301,7 +330,7 @@ function buildAllWeeks() {
           { name:"FitXR — Box", note:`${isPeak||isIntA?"4":"3"} rounds, máximo esfuerzo`, sets:isPeak||isIntA?"25 min":"20 min", weight:"—", info:"fitxrBox" },
           { name:"FitXR — HIIT", note:isPeak?"Peak cardio — 100% esfuerzo":"Máximo esfuerzo", sets:isPeak?"20 min":"15 min", weight:"—", info:"fitxrHiit" },
         ]},
-        { name:"Abdomen", exercises: isBaseA ? [
+        { name:"Abdomen", exercises: (isBaseA || isVolA) ? [
           { name:"Russian Twist", note:"Rota completamente cada lado", sets:`${cs} × ${cTw}`, weight:"4.5 kg", info:"russianTwist" },
           { name:"Bicycle crunches", note:"Lento — rotación de torso", sets:`${cs} × ${cBc}`, weight:"BW", info:"bicycle" },
           { name:"Leg Raise", note:"4s bajando siempre", sets:`${cs} × ${cLr}`, weight:"BW", info:"legRaise" },
@@ -311,16 +340,35 @@ function buildAllWeeks() {
           { name:"Plank Shoulder Tap", note:"Caderas sin rotar", sets:`${cs} × ${cTw} taps`, weight:"BW", info:"plankShoulder" },
           { name:"Crunches", note:"Pequeño y controlado", sets:`${cs} × ${cTt+4}`, weight:"BW", info:"crunches" },
           { name:"Dead Bug", note:"Exhala completamente", sets:`${cs} × ${cDb}`, weight:"BW", info:"deadbug" },
-        ] : [
+        ] : (isVarA || isIntA) ? [
+          { name:"Side Plank", note:"Cadera arriba — cambia de lado", sets:`${cs} × ${cHt-10}s/lado`, weight:"BW", info:"sidePlank" },
+          { name:"V-Up", note:"Sube brazos y piernas juntos", sets:`${cs} × ${cTt}`, weight:"BW", info:"vUp" },
+          { name:"Reverse Crunch", note:"La cadera sube — no patees", sets:`${cs} × ${cLr}`, weight:"BW", info:"reverseCrunch" },
+          { name:"Scissor Kicks", note:"Piernas siempre arriba", sets:`${cs} × ${cBc}`, weight:"BW", info:"scissorKicks" },
+          { name:"Hollow Body Hold", note:isIntA?"Piernas a 25°":"Piernas a 28°", sets:`${cs} × ${cHt}s`, weight:"BW", info:"hollowHold" },
           { name:"Russian Twist Heavy", note:"Rota completamente — toca el suelo", sets:`${cs} × ${cTw}`, weight:"6.8 kg", info:"russianHeavy" },
+          { name:"Mountain Climbers", note:"Full effort — caderas quietas", sets:`${cs} × ${cMc}`, weight:"BW", info:"mountainClimber" },
+          { name:"Toe Touches", note:"Piernas al techo — sin impulso", sets:`${cs} × ${cTt}`, weight:"BW", info:"toeTouches" },
+          { name:"Dead Bug", note:"Exhala completamente", sets:`${cs} × ${cDb}`, weight:"BW", info:"deadbug" },
+        ] : isDeload ? [
+          { name:"Russian Twist", note:"Rota completamente cada lado", sets:`${cs} × ${cTw}`, weight:"4.5 kg", info:"russianTwist" },
           { name:"Bicycle crunches", note:"Lento — rotación de torso", sets:`${cs} × ${cBc}`, weight:"BW", info:"bicycle" },
           { name:"Leg Raise", note:"4s bajando siempre", sets:`${cs} × ${cLr}`, weight:"BW", info:"legRaise" },
-          { name:"Hollow Body Hold", note:isPeak?"Piernas a 22°":isIntA?"Piernas a 25°":"Piernas a 28°", sets:`${cs} × ${cHt}s`, weight:"BW", info:"hollowHold" },
+          { name:"Hollow Body Hold", note:"Piernas a 28°", sets:`${cs} × ${cHt}s`, weight:"BW", info:"hollowHold" },
           { name:"KB Plank Drag", note:"Core anti-rotación — caderas quietas", sets:`${cs} × ${cDb}/lado`, weight:"4.5 kg", info:"plankDrag" },
-          ...(wi >= 3 ? [{ name:"Hollow Body Rock", note:"Mantén la forma al rockear", sets:`${cs} × 15 rocks`, weight:"BW", info:"hollowRock" }] : []),
           { name:"Mountain Climbers", note:"Full effort — caderas quietas", sets:`${cs} × ${cMc}`, weight:"BW", info:"mountainClimber" },
           { name:"Toe Touches", note:"Piernas al techo — sin impulso", sets:`${cs} × ${cTt}`, weight:"BW", info:"toeTouches" },
           { name:"Crunches", note:"Pequeño y controlado", sets:`${cs} × ${cTt+4}`, weight:"BW", info:"crunches" },
+          { name:"Dead Bug", note:"Exhala completamente", sets:`${cs} × ${cDb}`, weight:"BW", info:"deadbug" },
+        ] : [
+          { name:"Flutter Kicks", note:"Rápido y pequeño", sets:`${cs} × ${cMc}`, weight:"BW", info:"flutterKicks" },
+          { name:"Scissor Kicks", note:"Piernas siempre arriba", sets:`${cs} × ${cBc}`, weight:"BW", info:"scissorKicks" },
+          { name:"Leg Raise", note:"4s bajando siempre", sets:`${cs} × ${cLr}`, weight:"BW", info:"legRaise" },
+          { name:"Hollow Body Hold", note:isPeak?"Piernas a 22°":"Piernas a 26°", sets:`${cs} × ${cHt}s`, weight:"BW", info:"hollowHold" },
+          { name:"KB Plank Drag", note:"Core anti-rotación — caderas quietas", sets:`${cs} × ${cDb}/lado`, weight:"4.5 kg", info:"plankDrag" },
+          { name:"Hollow Body Rock", note:"Mantén la forma al rockear", sets:`${cs} × 15 rocks`, weight:"BW", info:"hollowRock" },
+          { name:"Mountain Climbers", note:"Full effort — caderas quietas", sets:`${cs} × ${cMc}`, weight:"BW", info:"mountainClimber" },
+          { name:"Toe Touches", note:"Piernas al techo — sin impulso", sets:`${cs} × ${cTt}`, weight:"BW", info:"toeTouches" },
           { name:"Dead Bug", note:"Exhala completamente", sets:`${cs} × ${cDb}`, weight:"BW", info:"deadbug" },
         ]},
       ],
@@ -371,18 +419,30 @@ function buildAllWeeks() {
         ]},
         { name:"Espalda", exercises: jueEspalda },
         { name:"Bíceps", exercises: jueBiceps },
-        { name:"Core", exercises: isBaseA ? [
+        { name:"Core", exercises: (isBaseA || isVolA) ? [
           { name:"Plank Shoulder Tap", note:"Caderas sin rotar", sets:`${cs} × ${cTw} taps`, weight:"BW", info:"plankShoulder" },
           { name:"Mountain Climbers", note:"Caderas completamente quietas", sets:`${cs} × ${cMc}`, weight:"BW", info:"mountainClimber" },
           { name:"Toe Touches", note:"Piernas al techo — sin impulso", sets:`${cs} × ${cTt}`, weight:"BW", info:"toeTouches" },
           { name:"Hollow Body Hold", note:"Piernas a 30°", sets:`${cs} × ${cHt}s`, weight:"BW", info:"hollowHold" },
           { name:"Crunches", note:"Pequeño y controlado", sets:`${cs} × ${cTt+4}`, weight:"BW", info:"crunches" },
-        ] : [
+        ] : (isVarA || isIntA) ? [
+          { name:"Reverse Crunch", note:"La cadera sube — no patees", sets:`${cs} × ${cLr}`, weight:"BW", info:"reverseCrunch" },
+          { name:"Russian Twist Heavy", note:"Rota completamente — toca el suelo", sets:`${cs} × ${cTw}`, weight:"6.8 kg", info:"russianHeavy" },
+          { name:"Side Plank", note:"Cadera arriba — cambia de lado", sets:`${cs} × ${cHt-10}s/lado`, weight:"BW", info:"sidePlank" },
+          { name:"Hollow Body Hold", note:isIntA?"Piernas a 25°":"Piernas a 30°", sets:`${cs} × ${cHt}s`, weight:"BW", info:"hollowHold" },
+          { name:"V-Up", note:"Sube brazos y piernas juntos", sets:`${cs} × ${cTt}`, weight:"BW", info:"vUp" },
+        ] : isDeload ? [
           { name:"Dead Bug", note:"Exhala completamente cada rep", sets:`${cs} × ${cDb}`, weight:"BW", info:"deadbug" },
-          { name:"Russian Twist", note:"Rota completamente cada lado", sets:`${cs} × ${cTw}`, weight:wi >= 3 ? "6.8 kg" : "4.5 kg", info:wi >= 3 ? "russianHeavy" : "russianTwist" },
+          { name:"Russian Twist", note:"Rota completamente cada lado", sets:`${cs} × ${cTw}`, weight:"4.5 kg", info:"russianTwist" },
           { name:"Leg Raise", note:"4s bajando siempre", sets:`${cs} × ${cLr}`, weight:"BW", info:"legRaise" },
-          { name:"Hollow Body Hold", note:isPeak?"Piernas a 22°":isIntA?"Piernas a 25°":"Piernas a 30°", sets:`${cs} × ${cHt}s`, weight:"BW", info:"hollowHold" },
+          { name:"Hollow Body Hold", note:"Piernas a 30°", sets:`${cs} × ${cHt}s`, weight:"BW", info:"hollowHold" },
           { name:"Bicycle crunches", note:"Lento — rotación de torso", sets:`${cs} × ${cBc}`, weight:"BW", info:"bicycle" },
+        ] : [
+          { name:"Flutter Kicks", note:"Rápido y pequeño", sets:`${cs} × ${cMc}`, weight:"BW", info:"flutterKicks" },
+          { name:"Scissor Kicks", note:"Piernas siempre arriba", sets:`${cs} × ${cBc}`, weight:"BW", info:"scissorKicks" },
+          { name:"Russian Twist Heavy", note:"Rota completamente", sets:`${cs} × ${cTw}`, weight:"6.8 kg", info:"russianHeavy" },
+          { name:"Hollow Body Hold", note:isPeak?"Piernas a 22°":"Piernas a 26°", sets:`${cs} × ${cHt}s`, weight:"BW", info:"hollowHold" },
+          { name:"Dead Bug", note:"Exhala completamente cada rep", sets:`${cs} × ${cDb}`, weight:"BW", info:"deadbug" },
         ]},
       ],
       isDeload ? "Deload: el músculo crece y se consolida durante el descanso. Forma perfecta en cada rep — sin esfuerzo máximo."
@@ -489,18 +549,30 @@ function buildAllWeeks() {
           { name:"KB Tricep Kickback", note:"5s — cierra el tríceps", sets:"4 × 8/arm", weight:"4.5 kg", info:"tricepKickback" },
           { name:"Diamond Push-up", note:"Al fallo — cierra el ciclo", sets:"5 × max", weight:"BW", info:"diamondPushup" },
         ]},
-        { name:"Finisher + Core", exercises: isBaseA ? [
+        { name:"Finisher + Core", exercises: (isBaseA || isVolA) ? [
           { name:"KB Farmer Carry", note:"Grip + postura + core", sets:`${cs} × 40m`, weight:"10 kg + 6.8 kg", info:"farmerCarry" },
           { name:"Hollow Body Hold", note:"Piernas a 30°", sets:`3 × ${25+wi*3}s`, weight:"BW", info:"hollowHold" },
           { name:"Crunches", note:"Pequeño y controlado", sets:`3 × ${14+wi}`, weight:"BW", info:"crunches" },
           { name:"Plank Shoulder Tap", note:"Caderas sin rotar", sets:`3 × ${10+wi} taps`, weight:"BW", info:"plankShoulder" },
           { name:"Bicycle crunches", note:"Lento — rotación de torso", sets:`3 × ${25+wi*3}`, weight:"BW", info:"bicycle" },
+        ] : (isVarA || isIntA) ? [
+          { name:"KB Farmer Carry", note:"Grip + postura + core", sets:`${cs} × 40m`, weight:"10 kg + 6.8 kg", info:"farmerCarry" },
+          { name:"Hollow Body Hold", note:isIntA?"Piernas a 25°":"Piernas a 28°", sets:`3 × ${25+wi*3}s`, weight:"BW", info:"hollowHold" },
+          { name:"Reverse Crunch", note:"La cadera sube — no patees", sets:`3 × ${10+wi}`, weight:"BW", info:"reverseCrunch" },
+          { name:"Side Plank", note:"Cadera arriba — cambia de lado", sets:`3 × ${(25+wi*3)-10}s/lado`, weight:"BW", info:"sidePlank" },
+          { name:"V-Up", note:"Sube brazos y piernas juntos", sets:`3 × ${14+wi}`, weight:"BW", info:"vUp" },
+        ] : isDeload ? [
+          { name:"KB Farmer Carry", note:"Grip + postura + core", sets:"2 × 40m", weight:"10 kg + 6.8 kg", info:"farmerCarry" },
+          { name:"Hollow Body Hold", note:"Piernas a 35° — deload", sets:"2 × 25s", weight:"BW", info:"hollowHold" },
+          { name:"Russian Twist", note:"Rota completamente cada lado", sets:"2 × 14", weight:"4.5 kg", info:"russianTwist" },
+          { name:"Leg Raise", note:"4s bajando siempre", sets:"2 × 10", weight:"BW", info:"legRaise" },
+          { name:"Mountain Climbers", note:"Caderas completamente quietas", sets:"2 × 25s", weight:"BW", info:"mountainClimber" },
         ] : [
-          { name:"KB Farmer Carry", note:"Grip + postura + core", sets:wi===4?"2 × 40m":`${cs} × 40m`, weight:"10 kg + 6.8 kg", info:"farmerCarry" },
-          { name:"Hollow Body Hold", note:wi < 4 ? "Piernas a 30°" : wi === 4 ? "Piernas a 35° — deload" : wi < 8 ? "Piernas a 28°" : "Piernas a 22°", sets:wi===4?"2 × 25s":`3 × ${25+wi*3}s`, weight:"BW", info:"hollowHold" },
-          { name:"Russian Twist", note:"Rota completamente cada lado", sets:wi===4?"2 × 14":`3 × ${14+wi}`, weight:wi < 7 ? "4.5 kg" : "6.8 kg", info:wi < 7 ? "russianTwist" : "russianHeavy" },
-          { name:"Leg Raise", note:"4s bajando siempre", sets:wi===4?"2 × 10":`3 × ${10+wi}`, weight:"BW", info:"legRaise" },
-          { name:"Mountain Climbers", note:"Caderas completamente quietas", sets:wi===4?"2 × 25s":`3 × ${25+wi*3}s`, weight:"BW", info:"mountainClimber" },
+          { name:"KB Farmer Carry", note:"Grip + postura + core", sets:`${cs} × 40m`, weight:"10 kg + 6.8 kg", info:"farmerCarry" },
+          { name:"Hollow Body Hold", note:isPeak?"Piernas a 22°":"Piernas a 26°", sets:`3 × ${25+wi*3}s`, weight:"BW", info:"hollowHold" },
+          { name:"Flutter Kicks", note:"Rápido y pequeño", sets:`3 × ${25+wi*3}s`, weight:"BW", info:"flutterKicks" },
+          { name:"Scissor Kicks", note:"Piernas siempre arriba", sets:`3 × ${14+wi}`, weight:"BW", info:"scissorKicks" },
+          { name:"Russian Twist Heavy", note:"Rota completamente", sets:`3 × ${14+wi}`, weight:"6.8 kg", info:"russianHeavy" },
         ]},
       ],
       wi === 4 ? "Deload de hombros y brazos. Forma perfecta en cada repetición. El músculo se consolida esta semana."
@@ -522,7 +594,7 @@ function buildAllWeeks() {
             sets: sundayLevel < 2 ? "15 min" : sundayLevel < 5 ? "18 min" : "20 min", weight:"—", info:"fitxrBox" },
           ...(sundayLevel >= 4 ? [{ name:"FitXR — Combat", note:"1 round, footwork", sets:"8 min", weight:"—", info:"fitxrCombat" }] : []),
         ]},
-        { name:"Abdomen", exercises: isBaseA ? [
+        { name:"Abdomen", exercises: (isBaseA || isVolA) ? [
           { name:"Russian Twist", note:"Rota completamente cada lado", sets:`3 × ${16 + sundayLevel}`, weight:"4.5 kg", info:"russianTwist" },
           { name:"Bicycle crunches", note:"Lento — rotación de torso", sets:`3 × ${18 + sundayLevel}`, weight:"BW", info:"bicycle" },
           { name:"Hollow Body Hold", note:"Piernas a 30°", sets:`3 × ${28 + sundayLevel*2}s`, weight:"BW", info:"hollowHold" },
@@ -530,16 +602,29 @@ function buildAllWeeks() {
           { name:"Dead Bug", note:"Exhala completamente cada rep", sets:`3 × ${10+sundayLevel}`, weight:"BW", info:"deadbug" },
           { name:"Crunches", note:"Pequeño y controlado", sets:`3 × ${16+sundayLevel}`, weight:"BW", info:"crunches" },
           { name:"Plank Shoulder Tap", note:"Caderas sin rotar", sets:`3 × ${35+sundayLevel*3} taps`, weight:"BW", info:"plankShoulder" },
-        ] : [
-          { name:"Russian Twist", note:"Rota completamente cada lado", sets:`3 × ${16 + sundayLevel}`, weight: sundayLevel < 3 ? "4.5 kg" : "6.8 kg", info: sundayLevel < 3 ? "russianTwist" : "russianHeavy" },
+        ] : (isVarA || isIntA) ? [
+          { name:"Side Plank", note:"Cadera arriba — cambia de lado", sets:`3 × ${18 + sundayLevel*2}s/lado`, weight:"BW", info:"sidePlank" },
+          { name:"V-Up", note:"Sube brazos y piernas juntos", sets:`3 × ${16+sundayLevel}`, weight:"BW", info:"vUp" },
+          { name:"Reverse Crunch", note:"La cadera sube — no patees", sets:`3 × ${10+sundayLevel}`, weight:"BW", info:"reverseCrunch" },
+          { name:"Hollow Body Hold", note:isIntA?"Piernas a 25°":"Piernas a 28°", sets:`3 × ${28 + sundayLevel*2}s`, weight:"BW", info:"hollowHold" },
+          { name:"Scissor Kicks", note:"Piernas siempre arriba", sets:`3 × ${18 + sundayLevel}`, weight:"BW", info:"scissorKicks" },
+          { name:"Flutter Kicks", note:"Rápido y pequeño", sets:`3 × ${28 + sundayLevel*2}s`, weight:"BW", info:"flutterKicks" },
+          { name:"Dead Bug", note:"Exhala completamente cada rep", sets:`3 × ${10+sundayLevel}`, weight:"BW", info:"deadbug" },
+        ] : isDeload ? [
+          { name:"Russian Twist", note:"Rota completamente cada lado", sets:`3 × ${16 + sundayLevel}`, weight:"4.5 kg", info:"russianTwist" },
           { name:"Bicycle crunches", note:"Lento — rotación de torso", sets:`3 × ${18 + sundayLevel}`, weight:"BW", info:"bicycle" },
-          { name:"Hollow Body Hold", note: sundayLevel < 4 ? "Piernas a 30°" : "Piernas a 25°", sets:`3 × ${28 + sundayLevel*2}s`, weight:"BW", info:"hollowHold" },
+          { name:"Hollow Body Hold", note:"Piernas a 30°", sets:`3 × ${28 + sundayLevel*2}s`, weight:"BW", info:"hollowHold" },
           { name:"Plank hold", note:"Abs + glúteos apretados", sets:`3 × ${38 + sundayLevel*2}s`, weight:"BW", info:"plank" },
-          ...(sundayLevel >= 3 ? [{ name:"Mountain Climbers", note:"Caderas completamente quietas", sets:`3 × ${28 + sundayLevel*2}s`, weight:"BW", info:"mountainClimber" }] : []),
-          ...(sundayLevel >= 6 ? [{ name:"Hollow Body Rock", note:"Mantén la forma al rockear", sets:"3 × 15 rocks", weight:"BW", info:"hollowRock" }] : []),
           { name:"Dead Bug", note:"Exhala completamente cada rep", sets:`3 × ${10+sundayLevel}`, weight:"BW", info:"deadbug" },
           { name:"Toe Touches", note:"Piernas al techo — sin impulso", sets:`3 × ${16+sundayLevel}`, weight:"BW", info:"toeTouches" },
-          { name:"Plank hold", note:"Abs + glúteos apretados", sets:`3 × ${35+sundayLevel*3}s`, weight:"BW", info:"plank" },
+        ] : [
+          { name:"Russian Twist Heavy", note:"Rota completamente — toca el suelo", sets:`3 × ${16 + sundayLevel}`, weight:"6.8 kg", info:"russianHeavy" },
+          { name:"Flutter Kicks", note:"Rápido y pequeño", sets:`3 × ${28 + sundayLevel*2}s`, weight:"BW", info:"flutterKicks" },
+          { name:"Hollow Body Hold", note:isPeak?"Piernas a 22°":"Piernas a 26°", sets:`3 × ${28 + sundayLevel*2}s`, weight:"BW", info:"hollowHold" },
+          { name:"Plank hold", note:"Abs + glúteos apretados", sets:`3 × ${38 + sundayLevel*2}s`, weight:"BW", info:"plank" },
+          { name:"Mountain Climbers", note:"Caderas completamente quietas", sets:`3 × ${28 + sundayLevel*2}s`, weight:"BW", info:"mountainClimber" },
+          { name:"Scissor Kicks", note:"Piernas siempre arriba", sets:`3 × ${18 + sundayLevel}`, weight:"BW", info:"scissorKicks" },
+          { name:"Dead Bug", note:"Exhala completamente cada rep", sets:`3 × ${10+sundayLevel}`, weight:"BW", info:"deadbug" },
         ]},
       ],
       "Opcional — solo si no juegas fútbol este domingo. Si juegas, descansa: el partido ya es tu cardio. Si no, esto te mantiene activo sin comprometer las piernas para el lunes."
@@ -577,6 +662,7 @@ const MUSCLE_OF = {
   plank:"Core", plankShoulder:"Core", plankDrag:"Core", deadbug:"Core", legRaise:"Core",
   hollowHold:"Core", hollowRock:"Core", russianTwist:"Core", russianHeavy:"Core",
   bicycle:"Core", toeTouches:"Core", crunches:"Core", mountainClimber:"Core",
+  flutterKicks:"Core", reverseCrunch:"Core", sidePlank:"Core", vUp:"Core", scissorKicks:"Core",
   fitxrBox:"Cardio", fitxrCombat:"Cardio", fitxrHiit:"Cardio", fitxrFlow:"Cardio",
 };
 const MUSCLE_COLOR = {
@@ -640,6 +726,7 @@ function EX_NAME(infoKey) {
     plank:"Plank hold", plankShoulder:"Plank Shoulder Tap", plankDrag:"KB Plank Drag", deadbug:"Dead Bug", legRaise:"Leg Raise",
     hollowHold:"Hollow Body Hold", hollowRock:"Hollow Body Rock", russianTwist:"Russian Twist", russianHeavy:"Russian Twist Heavy",
     bicycle:"Bicycle crunches", toeTouches:"Toe Touches", crunches:"Crunches", mountainClimber:"Mountain Climbers",
+    flutterKicks:"Flutter Kicks", reverseCrunch:"Reverse Crunch", sidePlank:"Side Plank", vUp:"V-Up", scissorKicks:"Scissor Kicks",
     fitxrBox:"FitXR — Box", fitxrCombat:"FitXR — Combat", fitxrHiit:"FitXR — HIIT", fitxrFlow:"FitXR — Flow",
   };
   return names[infoKey] || infoKey;
@@ -847,29 +934,80 @@ function CompleteCheckbox({ isDone, dot, onToggle }) {
 
 // Swipe right to complete a set — faster than aiming for a small circle
 // mid-set. Falls through to a normal tap/click when there's no drag.
-function SwipeRow({ dot, onToggle, children }) {
+// Holding a row for LONG_PRESS_MS instead shows how to do the exercise
+// (onLongPress) — cancelled the moment the finger/cursor moves, so it never
+// fires mid-swipe or mid-scroll.
+function SwipeRow({ dot, onToggle, onLongPress, children }) {
   const [dx, setDx] = useState(0);
+  const [pressPct, setPressPct] = useState(0);
   const draggingRef = useRef(false);
   const startXRef = useRef(0);
+  const startYRef = useRef(0);
+  const longPressTimer = useRef(null);
+  const longPressRaf = useRef(null);
+  const longPressFiredRef = useRef(false);
+  const pressStartRef = useRef(0);
   const THRESHOLD = 72;
+  const LONG_PRESS_MS = 3000;
+  const MOVE_CANCEL_PX = 10;
+
+  const clearLongPress = () => {
+    if (longPressTimer.current) { clearTimeout(longPressTimer.current); longPressTimer.current = null; }
+    if (longPressRaf.current) { cancelAnimationFrame(longPressRaf.current); longPressRaf.current = null; }
+    setPressPct(0);
+  };
+  const startLongPress = () => {
+    if (!onLongPress) return;
+    longPressFiredRef.current = false;
+    clearLongPress();
+    pressStartRef.current = Date.now();
+    const tick = () => {
+      setPressPct(Math.min(1, (Date.now() - pressStartRef.current) / LONG_PRESS_MS));
+      longPressRaf.current = requestAnimationFrame(tick);
+    };
+    longPressRaf.current = requestAnimationFrame(tick);
+    longPressTimer.current = setTimeout(() => {
+      longPressFiredRef.current = true;
+      clearLongPress();
+      haptic([15, 45, 15]);
+      onLongPress();
+    }, LONG_PRESS_MS);
+  };
 
   const onTouchStart = (e) => {
     startXRef.current = e.touches[0].clientX;
+    startYRef.current = e.touches[0].clientY;
     draggingRef.current = true;
+    startLongPress();
   };
   const onTouchMove = (e) => {
     if (!draggingRef.current) return;
     const delta = e.touches[0].clientX - startXRef.current;
+    const deltaY = e.touches[0].clientY - startYRef.current;
+    if (Math.abs(delta) > MOVE_CANCEL_PX || Math.abs(deltaY) > MOVE_CANCEL_PX) clearLongPress();
     setDx(Math.max(0, Math.min(delta, 100)));
   };
   const onTouchEnd = () => {
     draggingRef.current = false;
+    clearLongPress();
+    if (longPressFiredRef.current) { setDx(0); return; }
     if (dx > THRESHOLD) { haptic([10, 30, 12]); onToggle(); }
     setDx(0);
   };
+  const onMouseDown = () => startLongPress();
+  const onMouseUpOrLeave = () => clearLongPress();
+
+  // Swallows the click that follows a long-press so it doesn't also toggle
+  // the row done/undone right after opening the info modal.
+  const onClickCapture = (e) => {
+    if (longPressFiredRef.current) {
+      e.preventDefault(); e.stopPropagation();
+      longPressFiredRef.current = false;
+    }
+  };
 
   return (
-    <div style={{ position:"relative", borderRadius:8, overflow:"hidden" }}>
+    <div style={{ position:"relative", borderRadius:8, overflow:"hidden" }} onClickCapture={onClickCapture}>
       {dx > 4 && (
         <div style={{
           position:"absolute", inset:0, display:"flex", alignItems:"center", paddingLeft:16,
@@ -878,14 +1016,60 @@ function SwipeRow({ dot, onToggle, children }) {
           <span style={{ fontSize:14, color:dot, fontWeight:700, opacity:Math.min(dx / THRESHOLD, 1) }}>✓ Completar</span>
         </div>
       )}
+      {pressPct > 0 && (
+        <div style={{ position:"absolute", left:0, top:0, bottom:0, width:`${pressPct*100}%`, background:`${dot}18`, pointerEvents:"none", transition:"width 0.05s linear" }}/>
+      )}
       <div
         onTouchStart={onTouchStart}
         onTouchMove={onTouchMove}
         onTouchEnd={onTouchEnd}
+        onMouseDown={onMouseDown}
+        onMouseUp={onMouseUpOrLeave}
+        onMouseLeave={onMouseUpOrLeave}
         style={{ transform:`translateX(${dx}px)`, transition: dx === 0 ? "transform 0.2s" : "none" }}
       >
         {children}
       </div>
+    </div>
+  );
+}
+
+// A brief welcome moment on app open — one line of context (time-of-day
+// greeting, today's focus, streak) before the dashboard, instead of landing
+// straight on raw numbers. Shows once per browser session, not on every tab
+// switch, and never blocks — it fades itself out.
+function greetingForHour(h) {
+  if (h < 6) return "Buenas noches";
+  if (h < 12) return "Buenos días";
+  if (h < 19) return "Buenas tardes";
+  return "Buenas noches";
+}
+function OpeningRitual({ focus, isRest, streak, onDone }) {
+  const [leaving, setLeaving] = useState(false);
+  useEffect(() => {
+    const leaveTimer = setTimeout(() => setLeaving(true), 1300);
+    const doneTimer = setTimeout(onDone, 1750);
+    return () => { clearTimeout(leaveTimer); clearTimeout(doneTimer); };
+  }, [onDone]);
+  const greeting = greetingForHour(new Date().getHours());
+  return (
+    <div onClick={() => { setLeaving(true); setTimeout(onDone, 250); }} style={{
+      position:"fixed", inset:0, zIndex:400, background:"#000",
+      display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center",
+      gap:10, cursor:"pointer",
+      opacity: leaving ? 0 : 1, transition:"opacity 0.45s ease",
+      pointerEvents: leaving ? "none" : "auto",
+    }}>
+      <div style={{ fontFamily:"'DM Mono',monospace", fontSize:10, color:"#39ff88", letterSpacing:"0.28em", fontWeight:600 }}>{greeting.toUpperCase()}</div>
+      <div style={{ fontSize:20, fontWeight:700, color:"#f3f4f6", textAlign:"center", padding:"0 24px" }}>
+        {isRest ? "Hoy toca descanso" : `Hoy: ${focus}`}
+      </div>
+      {streak > 0 && (
+        <div style={{ display:"flex", alignItems:"center", gap:6, marginTop:4 }}>
+          <span style={{ fontSize:16 }}>🔥</span>
+          <span style={{ fontFamily:"'DM Mono',monospace", fontSize:13, color:"#fb923c", fontWeight:700 }}>{streak} días seguidos</span>
+        </div>
+      )}
     </div>
   );
 }
@@ -966,12 +1150,14 @@ function TimelineView({ day, wk, done, setDone, onStartTimer, weights, setWeight
     });
   }, [setDone]);
 
+  const [infoEx, setInfoEx] = useState(null);
+
   const renderRow = (section, si, ex, ei, ri, dot) => {
     const key = `tl-w${wk}-${day.id}-${si}-${ei}-${ri}`;
     const isDone = done[key];
     const doToggle = () => toggle(key);
     return (
-      <SwipeRow key={ei} dot={dot} onToggle={doToggle}>
+      <SwipeRow key={ei} dot={dot} onToggle={doToggle} onLongPress={ex.info ? () => setInfoEx({ name: ex.name, info: ex.info, dot }) : undefined}>
         <div onClick={doToggle} style={{
           display:"grid", gridTemplateColumns:"1fr auto auto auto",
           alignItems:"center", gap:10,
@@ -1069,6 +1255,8 @@ function TimelineView({ day, wk, done, setDone, onStartTimer, weights, setWeight
           </div>
         </div>
       )}
+
+      {infoEx && <ExerciseInfoModal name={infoEx.name} infoKey={infoEx.info} dot={infoEx.dot} onClose={() => setInfoEx(null)}/>}
     </div>
   );
 }
@@ -1108,6 +1296,72 @@ function ExPanel({ infoKey, dot }) {
         <span style={{ fontSize:9, color:"#92400e", fontWeight:700, letterSpacing:"0.09em" }}>CLAVE  </span>
         <span style={{ fontSize:11, color:"#fcd34d", lineHeight:1.6 }}>{info.cue}</span>
       </div>
+    </div>
+  );
+}
+
+// Long-press (3s) on a Timeline row opens this — the full how-to-do-it in one
+// glance (all steps at once, no tab-switching) instead of having to leave
+// Hoy's compact view and go find the exercise in the full Sesión grid.
+function ExerciseInfoModal({ name, infoKey, dot, onClose }) {
+  const info = EX[infoKey];
+  const [closing, setClosing] = useState(false);
+  const dismiss = () => { setClosing(true); setTimeout(onClose, 160); };
+  if (!info) return null;
+  return (
+    <div onClick={dismiss} style={{
+      position:"fixed", inset:0, zIndex:300, background:"rgba(0,0,0,0.7)", backdropFilter:"blur(2px)",
+      display:"flex", alignItems:"flex-end", justifyContent:"center",
+      animation: closing ? "jayFadeOut 0.16s ease forwards" : "jayFadeIn 0.18s ease",
+    }}>
+      <div onClick={e => e.stopPropagation()} style={{
+        width:"100%", maxWidth:440, maxHeight:"82vh", overflowY:"auto", boxSizing:"border-box",
+        background:"#0b0c0e", border:`1px solid ${dot}30`, borderBottom:"none",
+        borderRadius:"20px 20px 0 0", padding:"10px 20px 26px",
+        boxShadow:"0 -8px 40px rgba(0,0,0,0.5)",
+        animation: closing ? "jaySheetDown 0.16s ease forwards" : "jaySheetUp 0.22s cubic-bezier(0.16,1,0.3,1)",
+      }}>
+        <div style={{ width:36, height:4, borderRadius:99, background:"rgba(255,255,255,0.15)", margin:"4px auto 14px" }}/>
+
+        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:16 }}>
+          <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+            <span style={{ width:9, height:9, borderRadius:"50%", background:dot, flexShrink:0 }}/>
+            <div style={{ fontSize:15, fontWeight:700, color:"#f3f4f6" }}>{name}</div>
+          </div>
+          <button onClick={dismiss} style={{
+            width:28, height:28, borderRadius:"50%", cursor:"pointer", flexShrink:0,
+            background:"rgba(255,255,255,0.06)", border:"none", color:"#9ca3af",
+            fontSize:14, display:"flex", alignItems:"center", justifyContent:"center",
+          }}>✕</button>
+        </div>
+
+        <div style={{ display:"flex", flexDirection:"column", gap:8, marginBottom:14 }}>
+          {info.steps.map((s, i) => (
+            <div key={i} style={{
+              display:"flex", gap:10, background:"rgba(255,255,255,0.03)",
+              border:"1px solid rgba(255,255,255,0.06)", borderRadius:12, padding:"12px 14px",
+            }}>
+              <div style={{
+                flexShrink:0, width:20, height:20, borderRadius:"50%", background:`${dot}20`, color:dot,
+                fontSize:10, fontWeight:700, display:"flex", alignItems:"center", justifyContent:"center", marginTop:1,
+              }}>{i + 1}</div>
+              <div style={{ fontSize:13, color:"#d1d5db", lineHeight:1.65 }}>{s}</div>
+            </div>
+          ))}
+        </div>
+
+        <div style={{ background:"rgba(251,191,36,0.06)", borderRadius:10, padding:"10px 12px", borderLeft:"2px solid rgba(251,191,36,0.35)" }}>
+          <div style={{ fontSize:9, color:"#92400e", fontWeight:700, letterSpacing:"0.09em", marginBottom:3 }}>CLAVE</div>
+          <div style={{ fontSize:12, color:"#fcd34d", lineHeight:1.6 }}>{info.cue}</div>
+        </div>
+      </div>
+
+      <style>{`
+        @keyframes jayFadeIn { from { opacity:0; } to { opacity:1; } }
+        @keyframes jayFadeOut { from { opacity:1; } to { opacity:0; } }
+        @keyframes jaySheetUp { from { transform:translateY(24px); opacity:0.6; } to { transform:translateY(0); opacity:1; } }
+        @keyframes jaySheetDown { from { transform:translateY(0); opacity:1; } to { transform:translateY(24px); opacity:0; } }
+      `}</style>
     </div>
   );
 }
@@ -1234,6 +1488,63 @@ function MiniPanel({ dayId, wi }) {
   );
 }
 
+// A simplified front-view silhouette that lights up per muscle group trained
+// this week — a visual read of the same `vol` data the ranked list below
+// already shows in text, for the "at a glance" case. Espalda and Cardio
+// aren't visible from the front, so they're called out as dots beside the
+// figure instead of dropped — the ranked list underneath still has everyone.
+function MuscleMap({ vol }) {
+  // Deliberately NOT scaled against the panel's shared `max` below: Core is
+  // trained in some form every single day, so it dwarfs everything else on
+  // a relative scale and would make the figure look like a dim body with one
+  // glowing belly. ~18 working sets/week is a reasonable "well-trained" mark
+  // for any single muscle group, so brightness here reads per-muscle instead.
+  const opacityFor = (sets) => 0.12 + 0.68 * Math.min(1, sets / 18);
+  const armSets = Math.round(((vol["Bíceps"] || 0) + (vol["Tríceps"] || 0)) / 2);
+  const sideNotes = [
+    { muscle:"Espalda", sets: vol["Espalda"] || 0 },
+    { muscle:"Cardio", sets: vol["Cardio"] || 0 },
+  ];
+
+  return (
+    <div style={{ display:"flex", alignItems:"center", gap:14, marginBottom:14 }}>
+      <svg viewBox="0 0 100 170" width="76" height="130" style={{ flexShrink:0 }}>
+        <circle cx="50" cy="13" r="10" fill="rgba(255,255,255,0.08)"/>
+        <rect x="17" y="26" width="17" height="13" rx="6" fill={MUSCLE_COLOR.Hombros} opacity={opacityFor(vol["Hombros"] || 0)}/>
+        <rect x="66" y="26" width="17" height="13" rx="6" fill={MUSCLE_COLOR.Hombros} opacity={opacityFor(vol["Hombros"] || 0)}/>
+        <rect x="34" y="28" width="32" height="24" rx="8" fill={MUSCLE_COLOR.Pecho} opacity={opacityFor(vol["Pecho"] || 0)}/>
+        <rect x="13" y="40" width="11" height="36" rx="5" fill={MUSCLE_COLOR.Bíceps} opacity={opacityFor(armSets)}/>
+        <rect x="76" y="40" width="11" height="36" rx="5" fill={MUSCLE_COLOR.Bíceps} opacity={opacityFor(armSets)}/>
+        <rect x="35" y="54" width="30" height="32" rx="8" fill={MUSCLE_COLOR.Core} opacity={opacityFor(vol["Core"] || 0)}/>
+        <rect x="35" y="88" width="13" height="56" rx="6" fill={MUSCLE_COLOR.Piernas} opacity={opacityFor(vol["Piernas"] || 0)}/>
+        <rect x="52" y="88" width="13" height="56" rx="6" fill={MUSCLE_COLOR.Piernas} opacity={opacityFor(vol["Piernas"] || 0)}/>
+      </svg>
+      <div style={{ display:"flex", flexDirection:"column", gap:5, flex:1, minWidth:0 }}>
+        {["Hombros", "Pecho", "Bíceps/Tríceps", "Core", "Piernas"].map(label => {
+          const key = label === "Bíceps/Tríceps" ? null : label;
+          const sets = key ? (vol[key] || 0) : armSets;
+          const color = key ? MUSCLE_COLOR[key] : MUSCLE_COLOR.Bíceps;
+          return (
+            <div key={label} style={{ display:"flex", alignItems:"center", gap:6 }}>
+              <span style={{ width:7, height:7, borderRadius:"50%", background:color, opacity:opacityFor(sets), flexShrink:0 }}/>
+              <span style={{ fontSize:10, color:"#9ca3af" }}>{label}</span>
+              <span style={{ fontFamily:"'DM Mono',monospace", fontSize:10, color, marginLeft:"auto" }}>{sets}</span>
+            </div>
+          );
+        })}
+        <div style={{ display:"flex", gap:10, marginTop:2, paddingTop:5, borderTop:"1px solid rgba(255,255,255,0.06)" }}>
+          {sideNotes.map(({ muscle, sets }) => (
+            <div key={muscle} style={{ display:"flex", alignItems:"center", gap:4 }}>
+              <span style={{ width:6, height:6, borderRadius:"50%", background:MUSCLE_COLOR[muscle], opacity:opacityFor(sets) }}/>
+              <span style={{ fontSize:9, color:"#6b7280" }}>{muscle} (no visible de frente)</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Muscle Balance Panel ──────────────────────────────────────────────────────
 function MuscleBalancePanel({ days }) {
   const vol = computeMuscleVolume(days);
@@ -1248,6 +1559,7 @@ function MuscleBalancePanel({ days }) {
   return (
     <div style={{ background:"rgba(255,255,255,0.02)", border:"1px solid rgba(255,255,255,0.07)", borderRadius:9, padding:"12px 13px", marginTop:12 }}>
       <div style={{ fontSize:9, fontWeight:700, color:"#39ff88", letterSpacing:"0.14em", marginBottom:10 }}>BALANCE MUSCULAR · ESTA SEMANA</div>
+      <MuscleMap vol={vol}/>
       <div style={{ display:"flex", flexDirection:"column", gap:6, marginBottom:12 }}>
         {rows.map(({ muscle, sets }) => {
           const c = MUSCLE_COLOR[muscle] || "#9ca3af";
@@ -3727,6 +4039,14 @@ export default function App() {
     })();
   }, [applyRemoteData]);
 
+  const [showIntro, setShowIntro] = useState(() => {
+    try { return !sessionStorage.getItem("voltra-intro-shown"); } catch { return false; }
+  });
+  useEffect(() => {
+    if (!showIntro) return;
+    try { sessionStorage.setItem("voltra-intro-shown", "1"); } catch {}
+  }, [showIntro]);
+
   // Measures the real, live header height (it changes with viewport width —
   // stacked on mobile, single row on desktop) so anything that sticks below
   // it (Hoy's stats bar) can line up exactly via a CSS var, instead of a
@@ -4042,6 +4362,15 @@ export default function App() {
           .jay-wide-shell { max-width: 860px; }
         }
       `}</style>
+
+      {showIntro && (
+        <OpeningRitual
+          focus={todayWorkoutDay.focus}
+          isRest={todayWorkoutDay.type === "REST"}
+          streak={streak}
+          onDone={() => setShowIntro(false)}
+        />
+      )}
 
       {/* Header — includes a compact progress row in day view so it stays
           visible while scrolling a long session, regardless of header height */}
