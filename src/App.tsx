@@ -3809,6 +3809,7 @@ function TodayOverview({ day, tc, total, doneN, streak, onOpenSession, plan, log
   const [entrenoOpen, setEntrenoOpen] = useState(false);
   const [nutriOpen, setNutriOpen] = useState(false);
   const [lucaOpen, setLucaOpen] = useState(false);
+  const [statsOpen, setStatsOpen] = useState(false);
 
   const lucaTodayKey = isoDate(new Date());
   const lucaMission = LUCA_MISSIONS[lucaMissionChoice[lucaTodayKey] ?? lucaMissionForToday()];
@@ -3850,12 +3851,30 @@ function TodayOverview({ day, tc, total, doneN, streak, onOpenSession, plan, log
   return (
     <div className="jay-hoy-shell">
       <div className="jay-hoy-stats">
-        <StatTile icon="🔥" value={streak} label="racha entreno" color="#fb923c"/>
-        <StatTile icon="🥑" value={nutriStreak} label="racha nutrición" color={nc}/>
-        <StatTile icon="🧒" value={lucaStreak} label="racha luca" color={lc}/>
-        <StatTile icon="⚡" value={Math.round(burnedKcal)} label="kcal quemadas" color={tc.accent}/>
-        <StatTile icon="🍽️" value={`${mealsEatenN}/3`} label="comidas hoy" color={nc}/>
-        <StatTile icon="✅" value={total > 0 ? `${pct}%` : "—"} label="entreno hoy" color={tc.accent}/>
+        <div onClick={() => setStatsOpen(o => !o)} style={{
+          display:"flex", alignItems:"center", justifyContent:"space-between", cursor:"pointer",
+          background:"rgba(251,146,60,0.06)", border:"1px solid rgba(251,146,60,0.22)",
+          borderRadius:10, padding:"10px 14px",
+        }}>
+          <div style={{ display:"flex", alignItems:"baseline", gap:8 }}>
+            <span style={{ fontSize:20 }}>🔥</span>
+            <span style={{ fontFamily:"'DM Mono',monospace", fontSize:20, fontWeight:700, color:"#fb923c" }}>{streak}</span>
+            <span style={{ fontSize:10, color:"#9ca3af", textTransform:"uppercase", letterSpacing:"0.06em" }}>días seguidos</span>
+          </div>
+          <div style={{ display:"flex", alignItems:"center", gap:4 }}>
+            <span style={{ fontSize:10, color:"#6b7280" }}>{statsOpen ? "ocultar" : "más stats"}</span>
+            <CollapseChevron open={statsOpen}/>
+          </div>
+        </div>
+        {statsOpen && (
+          <div style={{ display:"grid", gridTemplateColumns:"repeat(3, 1fr)", gap:6, marginTop:6 }}>
+            <StatTile icon="🥑" value={nutriStreak} label="racha nutrición" color={nc}/>
+            <StatTile icon="🧒" value={lucaStreak} label="racha luca" color={lc}/>
+            <StatTile icon="⚡" value={Math.round(burnedKcal)} label="kcal quemadas" color={tc.accent}/>
+            <StatTile icon="🍽️" value={`${mealsEatenN}/3`} label="comidas hoy" color={nc}/>
+            <StatTile icon="✅" value={total > 0 ? `${pct}%` : "—"} label="entreno hoy" color={tc.accent}/>
+          </div>
+        )}
       </div>
 
       <div className="jay-hoy-cards">
@@ -4335,7 +4354,6 @@ export default function App() {
            cards fill the width instead of staying a stretched narrow strip ── */
         .jay-hoy-shell { max-width: 560px; margin: 0 auto; display: flex; flex-direction: column; gap: 10px; }
         .jay-hoy-stats {
-          display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px;
           position: sticky; top: var(--jay-header-h, 64px); z-index: 15;
           background: rgba(0,0,0,0.92); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
           padding: 8px 0; margin: 0 -2px; border-bottom: 1px solid rgba(255,255,255,0.06);
@@ -4344,7 +4362,7 @@ export default function App() {
         .jay-hoy-cards { display: flex; flex-direction: column; gap: 10px; }
         @media (min-width: 1024px) {
           .jay-hoy-shell { max-width: 1280px; }
-          .jay-hoy-stats { grid-template-columns: repeat(6, 1fr); position: static; background: none; backdrop-filter: none; -webkit-backdrop-filter: none; border-bottom: none; padding: 0; margin: 0; }
+          .jay-hoy-stats { position: static; background: none; backdrop-filter: none; -webkit-backdrop-filter: none; border-bottom: none; padding: 0; margin: 0; }
           .jay-hoy-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; align-items: start; }
         }
         @media (min-width: 1600px) {
@@ -4415,14 +4433,6 @@ export default function App() {
               fontFamily:"'DM Sans',sans-serif", fontWeight:600,
               transition:"all 0.15s",
             }}>🧒 Luca</button>
-            <button onClick={()=>setView("nutri")} title="Nutrición" style={{
-              background:view==="nutri"?"rgba(251,191,36,0.12)":"transparent",
-              border:`1px solid ${view==="nutri"?"rgba(251,191,36,0.4)":"rgba(255,255,255,0.08)"}`,
-              color:view==="nutri"?"#fbbf24":"#6b7280",
-              borderRadius:6, padding:"5px 12px", fontSize:11, cursor:"pointer",
-              fontFamily:"'DM Sans',sans-serif", fontWeight:600,
-              transition:"all 0.15s",
-            }}>🥗 Nutrición</button>
           </div>
         </div>
         {view==="day" && day.type!=="REST" && total>0 && (
