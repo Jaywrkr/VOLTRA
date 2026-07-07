@@ -168,7 +168,7 @@ function buildAllWeeks() {
 
     // ── LUN: Piernas + Glúteos + Core ──────────────────────────────────────
     const lun = mkDay("lun","LUN","Lunes","STRENGTH","Piernas + Glúteos",
-      isDeload ? "45 min" : wi === 0 ? "60 min" : "65 min",
+      isDeload ? "55 min" : wi === 0 ? "70 min" : "75 min",
       "Cuádriceps · Isquios · Glúteos · Aductores · Core",
       [
         { name:"Warm-up", exercises:[
@@ -198,6 +198,9 @@ function buildAllWeeks() {
         ] : [
           { name:"KB Romanian Deadlift", note:`${e}${isIntA||isPeak?" + pausa 2s en estiramiento":""}`, sets:`${ms} × ${mr}`, weight:"10 kg", info:"rdl" },
           { name:"KB Single-leg Deadlift", note:`${e} — equilibrio`, sets:`${is_} × ${ir}/leg`, weight:"10 kg", info:"singleLegDL" },
+        ]},
+        { name:"FitXR corto", exercises:[
+          { name:"FitXR — Flow", note:"Cardio ligero — las piernas ya trabajaron duro hoy. Ajusta los minutos si haces más o menos.", sets:"10 min", weight:"—", info:"fitxrFlow" },
         ]},
         { name:"Core", exercises: (isBaseA || isVolA) ? [
           { name:"KB Plank Drag", note:"Core anti-rotación — caderas quietas", sets:`${cs} × ${cDb}/lado`, weight:"4.5 kg", info:"plankDrag" },
@@ -270,7 +273,7 @@ function buildAllWeeks() {
       { name:"KB Tricep Kickback", note:`${e} — pausa 1s arriba`, sets:`${is_} × ${ir}/arm`, weight:"4.5 kg", info:"tricepKickback" },
     ];
     const mar = mkDay("mar","MAR","Martes","STRENGTH","Pecho + Tríceps",
-      isDeload ? "45 min" : wi === 0 ? "60 min" : "65 min",
+      isDeload ? "55 min" : wi === 0 ? "70 min" : "75 min",
       "Pectoral · Tríceps · Serratus · Core",
       [
         { name:"Warm-up — Espalda alta (antagonista)", exercises:[
@@ -279,6 +282,9 @@ function buildAllWeeks() {
         ]},
         { name:"Pecho", exercises: marPecho },
         { name:"Tríceps", exercises: marTriceps },
+        { name:"FitXR corto", exercises:[
+          { name:"FitXR — Box", note:"Cardio corto — sube el pulso antes del core. Ajusta los minutos si haces más o menos.", sets:"10 min", weight:"—", info:"fitxrBox" },
+        ]},
         { name:"Core", exercises: (isBaseA || isVolA) ? [
           { name:"Plank hold", note:"Abs + glúteos apretados", sets:`${cs} × ${cHt}s`, weight:"BW", info:"plank" },
           { name:"Crunches", note:"Pequeño y controlado", sets:`${cs} × ${cTt+4}`, weight:"BW", info:"crunches" },
@@ -410,7 +416,7 @@ function buildAllWeeks() {
       { name:"KB Hammer Curl", note:`${e} — grosor del brazo`, sets:`${is_} × ${ir}/arm`, weight:"6.8 kg", info:"hammerCurl" },
     ];
     const jue = mkDay("jue","JUE","Jueves","STRENGTH","Espalda + Bíceps",
-      isDeload ? "45 min" : wi === 0 ? "60 min" : "65 min",
+      isDeload ? "55 min" : wi === 0 ? "70 min" : "75 min",
       "Dorsal · Romboides · Trapecio · Bíceps · Braquial · Core",
       [
         { name:"Warm-up — Pecho (antagonista)", exercises:[
@@ -419,6 +425,9 @@ function buildAllWeeks() {
         ]},
         { name:"Espalda", exercises: jueEspalda },
         { name:"Bíceps", exercises: jueBiceps },
+        { name:"FitXR corto", exercises:[
+          { name:"FitXR — Combat", note:"Cardio corto — footwork activo. Ajusta los minutos si haces más o menos.", sets:"10 min", weight:"—", info:"fitxrCombat" },
+        ]},
         { name:"Core", exercises: (isBaseA || isVolA) ? [
           { name:"Plank Shoulder Tap", note:"Caderas sin rotar", sets:`${cs} × ${cTw} taps`, weight:"BW", info:"plankShoulder" },
           { name:"Mountain Climbers", note:"Caderas completamente quietas", sets:`${cs} × ${cMc}`, weight:"BW", info:"mountainClimber" },
@@ -453,7 +462,7 @@ function buildAllWeeks() {
 
     // VIE: Hombros + Brazos
     const vie = mkDay("vie","VIE","Viernes","STRENGTH","Hombros + Brazos",
-      wi < 1 ? "55 min" : wi === 4 ? "45 min" : "60 min",
+      wi < 1 ? "65 min" : wi === 4 ? "55 min" : "70 min",
       "Deltoides · Trapecio · Bíceps · Tríceps · Core",
       [
         { name:"Warm-up", exercises:[
@@ -548,6 +557,9 @@ function buildAllWeeks() {
           { name:"KB Bicep Curl", note:"5s + pausa 2s", sets:"5 × 6/arm", weight:"6.8 kg", info:"bicepCurl" },
           { name:"KB Tricep Kickback", note:"5s — cierra el tríceps", sets:"4 × 8/arm", weight:"4.5 kg", info:"tricepKickback" },
           { name:"Diamond Push-up", note:"Al fallo — cierra el ciclo", sets:"5 × max", weight:"BW", info:"diamondPushup" },
+        ]},
+        { name:"FitXR corto", exercises:[
+          { name:"FitXR — HIIT", note:"Cardio corto para cerrar la semana. Ajusta los minutos si haces más o menos.", sets:"10 min", weight:"—", info:"fitxrHiit" },
         ]},
         { name:"Finisher + Core", exercises: (isBaseA || isVolA) ? [
           { name:"KB Farmer Carry", note:"Grip + postura + core", sets:`${cs} × 40m`, weight:"10 kg + 6.8 kg", info:"farmerCarry" },
