@@ -4596,6 +4596,16 @@ export default function App() {
       {/* Header — includes a compact progress row in day view so it stays
           visible while scrolling a long session, regardless of header height */}
       <div ref={headerRef} style={{ background:"#000000", borderBottom:"1px solid rgba(57,255,136,0.12)", padding:"14px 0 12px", position:"sticky", top:0, zIndex:20 }}>
+        {/* Pinned to the header's own corner (not the scrollable nav row) so
+            it's always one tap away regardless of scroll position or how
+            many pills the nav row is currently showing. */}
+        <button onClick={openPerfil} title="Perfil, nutrición y sincronización" style={{
+          position:"absolute", top:12, right:16, zIndex:21,
+          width:34, height:34, borderRadius:"50%", cursor:"pointer",
+          background:"rgba(255,255,255,0.06)", border:"1px solid rgba(255,255,255,0.12)",
+          color:"#d1d5db", fontSize:15,
+          display:"flex", alignItems:"center", justifyContent:"center",
+        }}>👤</button>
         <div style={{ width:"100%", maxWidth:1440, margin:"0 auto", padding:"0 20px", boxSizing:"border-box" }} className="jay-header-inner">
           <div>
             <div style={{ fontFamily:"'DM Mono',monospace", fontSize:9, color:"#39ff88", letterSpacing:"0.22em", fontWeight:600 }}>JAY · HIPERTROFIA · 8 SEMANAS</div>
@@ -4636,14 +4646,6 @@ export default function App() {
               fontFamily:"'DM Sans',sans-serif", fontWeight:600,
               transition:"all 0.15s",
             }}>🧒 Luca</button>
-            <button onClick={openPerfil} title="Perfil, nutrición y sincronización" style={{
-              background:"transparent",
-              border:"1px solid rgba(255,255,255,0.08)",
-              color:"#6b7280",
-              borderRadius:6, padding:"5px 10px", fontSize:11, cursor:"pointer",
-              fontFamily:"'DM Sans',sans-serif", fontWeight:600,
-              transition:"all 0.15s",
-            }}>👤 Perfil</button>
           </div>
         </div>
         {view==="day" && day.type!=="REST" && total>0 && (
