@@ -732,6 +732,41 @@ function EX_NAME(infoKey) {
   return names[infoKey] || infoKey;
 }
 
+// Two same-muscle-group substitutes per exercise, offered from the Timeline
+// info modal for whoever wants a change (no equipment that day, an ache,
+// plain boredom). Swapping only changes which exercise a slot points to —
+// the programmed sets/reps/weight stay exactly as scheduled.
+const EX_ALTERNATIVES = {
+  gobletSquat:["sumoSquat","kbStepUp"], splitSquat:["lateralLunge","curtsyLunge"], sumoSquat:["gobletSquat","gluteBridge"],
+  rdl:["singleLegDL","gluteBridge"], singleLegDL:["rdl","curtsyLunge"], gluteBridge:["sumoSquat","rdl"],
+  lateralLunge:["curtsyLunge","splitSquat"], kbStepUp:["splitSquat","gobletSquat"], curtsyLunge:["lateralLunge","singleLegDL"],
+  gobletHold:["gobletSquat","sumoSquat"],
+  bentOverRow:["bentOverRowPause","renegadeRow"], bentOverRowPause:["bentOverRow","kbSwingSingle"],
+  renegadeRow:["bentOverRow","suitcaseCarry"], kbSwing:["kbSwingSingle","deadlift"], kbSwingSingle:["kbSwing","suitcaseCarry"],
+  deadlift:["kbSwing","bentOverRowPause"], pulloverKb:["bentOverRow","renegadeRow"],
+  farmerCarry:["suitcaseCarry","deadlift"], suitcaseCarry:["farmerCarry","kbSwingSingle"], kbRowLight:["bentOverRow","bentOverRowPause"],
+  bicepCurl:["hammerCurl","concentrationCurl"], hammerCurl:["bicepCurl","dragCurl"],
+  concentrationCurl:["bicepCurl","dragCurl"], dragCurl:["hammerCurl","concentrationCurl"],
+  kbPress:["cleanPress","kbWindmill"], lateralRaise:["frontRaise","uprightRow"], frontRaise:["lateralRaise","uprightRow"],
+  uprightRow:["lateralRaise","frontRaise"], kbHalo:["kbWindmill","lateralRaise"], cleanPress:["kbPress","kbWindmill"],
+  kbWindmill:["kbHalo","cleanPress"],
+  tricepExt:["tricepKickback","kbSkullCrusher"], tricepKickback:["tricepExt","diamondPushup"],
+  diamondPushup:["tricepKickback","kbSkullCrusher"], kbSkullCrusher:["tricepExt","diamondPushup"],
+  pushupLight:["pushup","pushupClose"],
+  floorPress:["floorFly","pushup"], floorFly:["floorPress","pushupClose"], pushup:["pushupClose","floorPress"],
+  pushupClose:["pushup","floorFly"], pushupArcher:["pushup","pushupClose"],
+  plank:["sidePlank","plankShoulder"], plankShoulder:["plank","plankDrag"], plankDrag:["plankShoulder","sidePlank"],
+  deadbug:["reverseCrunch","legRaise"], legRaise:["deadbug","toeTouches"], hollowHold:["plank","sidePlank"],
+  hollowRock:["hollowHold","vUp"], russianTwist:["russianHeavy","bicycle"], russianHeavy:["russianTwist","bicycle"],
+  bicycle:["russianTwist","crunches"], toeTouches:["crunches","legRaise"], crunches:["toeTouches","reverseCrunch"],
+  mountainClimber:["flutterKicks","scissorKicks"], flutterKicks:["scissorKicks","mountainClimber"],
+  reverseCrunch:["crunches","deadbug"], sidePlank:["plank","plankDrag"], vUp:["reverseCrunch","toeTouches"],
+  scissorKicks:["flutterKicks","mountainClimber"],
+  fitxrBox:["fitxrCombat","fitxrHiit"], fitxrCombat:["fitxrBox","fitxrFlow"], fitxrHiit:["fitxrBox","fitxrCombat"],
+  fitxrFlow:["fitxrCombat","fitxrHiit"],
+  hipCircles:["catCow","activation"], catCow:["hipCircles","activation"], activation:["kbHalo","hipCircles"],
+};
+
 // ─── UI Styles ────────────────────────────────────────────────────────────────
 const TC = {
   STRENGTH:{ bg:"#060a07", accent:"#39ff88", label:"#a3ffcb", glow:"rgba(57,255,136,0.10)" },
@@ -1145,7 +1180,7 @@ function FloatingStopwatch({ info, onClose }) {
 // ─── Timeline View ────────────────────────────────────────────────────────────
 // Rounds are interleaved across muscle-group sections: SERIE 1 shows round 1
 // of every working section (e.g. Espalda + Bíceps) before moving to SERIE 2.
-function TimelineView({ day, wk, done, setDone, onStartTimer, weights, setWeight, fitxrMinutes, setFitxrMinutes }) {
+function TimelineView({ day, wk, done, setDone, onStartTimer, weights, setWeight, fitxrMinutes, setFitxrMinutes, exerciseOverrides = {}, setExerciseOverrides }) {
   const sections = day.sections.filter(s => s.exercises.length > 0);
   const warmupIdx = [];
   const mainIdx = [];
@@ -1161,12 +1196,26 @@ function TimelineView({ day, wk, done, setDone, onStartTimer, weights, setWeight
 
   const [infoEx, setInfoEx] = useState(null);
 
-  const renderRow = (section, si, ex, ei, ri, dot) => {
+  const renderRow = (section, si, rawEx, ei, ri, dot) => {
     const key = `tl-w${wk}-${day.id}-${si}-${ei}-${ri}`;
+    const slotKey = `ov-w${wk}-${day.id}-${si}-${ei}`;
+    const overrideInfo = exerciseOverrides[slotKey];
+    const ex = overrideInfo
+      ? { ...rawEx, name: EX_NAME(overrideInfo), info: overrideInfo, weight: INFO_WEIGHT[overrideInfo] || rawEx.weight }
+      : rawEx;
     const isDone = done[key];
     const doToggle = () => toggle(key);
+    const swapExercise = (altKey) => {
+      if (!setExerciseOverrides) return;
+      setExerciseOverrides(prev => {
+        const next = { ...prev };
+        if (altKey) next[slotKey] = altKey; else delete next[slotKey];
+        persist("voltra-exercise-overrides", next);
+        return next;
+      });
+    };
     return (
-      <SwipeRow key={ei} dot={dot} onToggle={doToggle} onLongPress={ex.info ? () => setInfoEx({ name: ex.name, info: ex.info, dot }) : undefined}>
+      <SwipeRow key={ei} dot={dot} onToggle={doToggle} onLongPress={ex.info ? () => setInfoEx({ name: ex.name, info: ex.info, dot, slotKey, isOverridden: !!overrideInfo, swap: swapExercise }) : undefined}>
         <div onClick={doToggle} style={{
           display:"grid", gridTemplateColumns:"1fr auto auto auto",
           alignItems:"center", gap:10,
@@ -1182,7 +1231,7 @@ function TimelineView({ day, wk, done, setDone, onStartTimer, weights, setWeight
             fontSize:13, fontWeight:500,
             color: isDone ? "#4b5563" : "#f3f4f6",
             textDecoration: isDone ? "line-through" : "none",
-          }}>{ex.name}</div>
+          }}>{ex.name}{overrideInfo && <span style={{ fontSize:9, color:dot, marginLeft:6, fontWeight:600 }}>· cambiado</span>}</div>
           {ex.info && ex.info.startsWith("fitxr") ? (
             <MinutesInput storeKey={key} defaultMinutes={parseDurationMinutes(ex.sets)} value={fitxrMinutes[key]} onChange={setFitxrMinutes} isDone={isDone}/>
           ) : (
@@ -1265,7 +1314,14 @@ function TimelineView({ day, wk, done, setDone, onStartTimer, weights, setWeight
         </div>
       )}
 
-      {infoEx && <ExerciseInfoModal name={infoEx.name} infoKey={infoEx.info} dot={infoEx.dot} onClose={() => setInfoEx(null)}/>}
+      {infoEx && (
+        <ExerciseInfoModal
+          name={infoEx.name} infoKey={infoEx.info} dot={infoEx.dot}
+          isOverridden={infoEx.isOverridden}
+          onSwap={infoEx.swap}
+          onClose={() => setInfoEx(null)}
+        />
+      )}
     </div>
   );
 }
@@ -1312,11 +1368,13 @@ function ExPanel({ infoKey, dot }) {
 // Long-press (3s) on a Timeline row opens this — the full how-to-do-it in one
 // glance (all steps at once, no tab-switching) instead of having to leave
 // Hoy's compact view and go find the exercise in the full Sesión grid.
-function ExerciseInfoModal({ name, infoKey, dot, onClose }) {
+function ExerciseInfoModal({ name, infoKey, dot, onClose, onSwap, isOverridden }) {
   const info = EX[infoKey];
   const [closing, setClosing] = useState(false);
   const dismiss = () => { setClosing(true); setTimeout(onClose, 160); };
+  const swapTo = (altKey) => { haptic(12); onSwap(altKey); dismiss(); };
   if (!info) return null;
+  const alternatives = EX_ALTERNATIVES[infoKey] || [];
   return (
     <div onClick={dismiss} style={{
       position:"fixed", inset:0, zIndex:300, background:"rgba(0,0,0,0.7)", backdropFilter:"blur(2px)",
@@ -1363,6 +1421,29 @@ function ExerciseInfoModal({ name, infoKey, dot, onClose }) {
           <div style={{ fontSize:9, color:"#92400e", fontWeight:700, letterSpacing:"0.09em", marginBottom:3 }}>CLAVE</div>
           <div style={{ fontSize:12, color:"#fcd34d", lineHeight:1.6 }}>{info.cue}</div>
         </div>
+
+        {alternatives.length > 0 && onSwap && (
+          <div style={{ marginTop:16 }}>
+            <div style={{ fontSize:9, fontWeight:700, letterSpacing:"0.09em", color:"#6b7280", marginBottom:8 }}>¿CAMBIAR POR OTRO EJERCICIO?</div>
+            <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
+              {alternatives.map(altKey => (
+                <button key={altKey} onClick={() => swapTo(altKey)} style={{
+                  display:"flex", alignItems:"center", justifyContent:"space-between", width:"100%",
+                  background:"rgba(255,255,255,0.03)", border:`1px solid ${dot}25`, borderRadius:10,
+                  padding:"11px 14px", cursor:"pointer", textAlign:"left",
+                }}>
+                  <span style={{ fontSize:13, color:"#e5e7eb", fontWeight:500 }}>{EX_NAME(altKey)}</span>
+                  <span style={{ fontSize:11, color:dot, fontWeight:600 }}>Cambiar →</span>
+                </button>
+              ))}
+            </div>
+            {isOverridden && (
+              <div onClick={() => swapTo(null)} style={{ textAlign:"center", marginTop:10, fontSize:11, color:"#6b7280", cursor:"pointer", textDecoration:"underline" }}>
+                Restaurar ejercicio original
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       <style>{`
@@ -2308,21 +2389,26 @@ const FITXR_MET_DEFAULT = 8;
 // effort, and spreading the day's total duration evenly across every set
 // (the old approach) credited them identically. Grouped by movement demand,
 // approximated against the Compendium of Physical Activities: isolation/arm
-// work ≈3-4.5 (light-moderate resistance training), squats/hinges/rows
-// ≈5.5-6.5 (vigorous free-weight), loaded carries/ballistic swings ≈6.5-7
-// (comparable to loaded carrying / vigorous calisthenics), ab/core holds
-// ≈3-4, mountain climbers ≈7 (cardio-like).
+// work ≈3-3.5 (light-moderate resistance training), squats/hinges/lunges/rows
+// ≈5.5-6.5 (vigorous free-weight), loaded carries ≈7.5 (Compendium "carrying
+// heavy loads" 05130), kettlebell swings/clean-and-press ≈8.5 (per the 2010
+// ACE-sponsored Porcari study measuring ~9.6-20 MET during actual KB swing
+// intervals — 8.5 here stays conservative for a home/moderate-load session
+// rather than the study's competitive-pace numbers), ab/core holds ≈3-3.5,
+// dynamic core (legs/torso moving, not just holding) ≈4-4.5, mountain
+// climbers ≈7 (cardio-like, Compendium "mountain climber" 02065).
 const STRENGTH_MET = {
   gobletSquat:6, splitSquat:6, sumoSquat:6, rdl:6, singleLegDL:6, gluteBridge:5, lateralLunge:6, deadlift:6.5, gobletHold:4,
+  kbStepUp:6.5, curtsyLunge:6,
   bentOverRow:5.5, bentOverRowPause:5, renegadeRow:6, pulloverKb:4.5, kbRowLight:4,
-  kbSwing:7, kbSwingSingle:7,
-  farmerCarry:6.5, suitcaseCarry:6.5, plankDrag:5.5,
-  bicepCurl:3.5, hammerCurl:3.5, concentrationCurl:3, kbPress:4.5, lateralRaise:3.5, frontRaise:3.5, uprightRow:4, tricepExt:3.5, tricepKickback:3.5,
-  kbHalo:5.5, cleanPress:6.5, kbWindmill:5,
+  kbSwing:8.5, kbSwingSingle:8.5,
+  farmerCarry:7.5, suitcaseCarry:7.5, plankDrag:5.5,
+  bicepCurl:3.5, hammerCurl:3.5, concentrationCurl:3, dragCurl:3.5, kbPress:4.5, lateralRaise:3.5, frontRaise:3.5, uprightRow:4, tricepExt:3.5, tricepKickback:3.5, kbSkullCrusher:3.5,
+  kbHalo:5.5, cleanPress:7.5, kbWindmill:5,
   diamondPushup:5.5, pushupLight:3.5, floorPress:5, floorFly:4.5, pushup:5, pushupArcher:6, pushupClose:5.5,
-  plank:3.5, plankShoulder:4, deadbug:3, hollowHold:3.5,
+  plank:3.5, plankShoulder:4, deadbug:3, hollowHold:3.5, sidePlank:3.5,
   legRaise:4, hollowRock:4, russianTwist:4, russianHeavy:4.5, bicycle:4.5, toeTouches:3.5, crunches:3,
-  mountainClimber:7,
+  mountainClimber:7, flutterKicks:4.5, reverseCrunch:4, vUp:4.5, scissorKicks:4.5,
 };
 const STRENGTH_MET_DEFAULT = 5;
 // ~4s eccentric-focused tempo per rep, matching Voltra's own programming
@@ -2895,7 +2981,7 @@ const BACKUP_KEYS = [
   "luca-training-done", "voltra-luca-completed-dates", "voltra-luca-mission-choice", "voltra-luca-participants",
   "voltra-nutri-budget", "voltra-nutri-completed-dates", "voltra-nutri-logs", "voltra-nutri-profile",
   "voltra-nutri-protein", "voltra-nutri-shopping-checked", "voltra-nutri-sunday-prep", "voltra-reminder-settings",
-  "voltra-extra-workouts", "voltra-fitxr-minutes", "voltra-pantry", "voltra-custom-foods",
+  "voltra-extra-workouts", "voltra-fitxr-minutes", "voltra-pantry", "voltra-custom-foods", "voltra-exercise-overrides",
 ];
 
 function BackupSection({ c }) {
@@ -3795,7 +3881,8 @@ function ContributionsCalendar({ workoutDates, nutriDates, lucaDates }) {
 
 function TodayOverview({ day, tc, total, doneN, streak, onOpenSession, plan, log, updateLog, targets, burnedKcal, nutriStreak, onOpenNutri, wk, done, setDone, startTimer, protein, weights, setWeight,
   onOpenLuca, lucaDone, setLucaDone, lucaMissionChoice, setLucaMissionChoice, lucaParticipants, setLucaParticipants, lucaStreak, workoutCompletedDates, nutriCompletedDates, lucaCompletedDates,
-  extraWorkouts, onAddExtraWorkout, onRemoveExtraWorkout, weightKg, fitxrMinutes, setFitxrMinutes, pantry, customFoods }) {
+  extraWorkouts, onAddExtraWorkout, onRemoveExtraWorkout, weightKg, fitxrMinutes, setFitxrMinutes, pantry, customFoods,
+  exerciseOverrides, setExerciseOverrides }) {
   const pct = total > 0 ? Math.round(doneN / total * 100) : 0;
   const consumed = nutriMacrosForDay(plan, log);
   const adjustedTarget = targets.kcal + burnedKcal;
@@ -3906,7 +3993,7 @@ function TodayOverview({ day, tc, total, doneN, streak, onOpenSession, plan, log
             </div>
             {entrenoOpen && (
               <div style={{ marginTop:10 }}>
-                <TimelineView day={day} wk={wk} done={done} setDone={setDone} onStartTimer={startTimer} weights={weights} setWeight={setWeight} fitxrMinutes={fitxrMinutes} setFitxrMinutes={setFitxrMinutes}/>
+                <TimelineView day={day} wk={wk} done={done} setDone={setDone} onStartTimer={startTimer} weights={weights} setWeight={setWeight} fitxrMinutes={fitxrMinutes} setFitxrMinutes={setFitxrMinutes} exerciseOverrides={exerciseOverrides} setExerciseOverrides={setExerciseOverrides}/>
               </div>
             )}
           </>
@@ -4032,6 +4119,7 @@ export default function App() {
   const [fitxrMinutes, setFitxrMinutesRaw] = useState(() => loadLocal("voltra-fitxr-minutes", {}));
   const [pantry, setPantry] = useState(() => loadLocal("voltra-pantry", DEFAULT_PANTRY));
   const [customFoods, setCustomFoods] = useState(() => loadLocal("voltra-custom-foods", []));
+  const [exerciseOverrides, setExerciseOverrides] = useState(() => loadLocal("voltra-exercise-overrides", {}));
   const [cloudSync, setCloudSync] = useState({ configured: false, authenticated: false });
 
   const applyRemoteData = useCallback((data) => {
@@ -4045,6 +4133,7 @@ export default function App() {
       "voltra-nutri-shopping-checked": setNutriShoppingChecked, "voltra-nutri-sunday-prep": setNutriSundayPrep,
       "voltra-reminder-settings": setReminderSettings, "voltra-extra-workouts": setExtraWorkouts,
       "voltra-fitxr-minutes": setFitxrMinutesRaw, "voltra-pantry": setPantry, "voltra-custom-foods": setCustomFoods,
+      "voltra-exercise-overrides": setExerciseOverrides,
     };
     Object.entries(data || {}).forEach(([key, value]) => {
       if (value === undefined || !setters[key]) return;
@@ -4465,7 +4554,8 @@ export default function App() {
             lucaParticipants={lucaParticipants} setLucaParticipants={setLucaParticipants} lucaStreak={lucaStreak}
             workoutCompletedDates={completedDates} nutriCompletedDates={nutriCompletedDates} lucaCompletedDates={lucaCompletedDates}
             extraWorkouts={todayExtraWorkouts} onAddExtraWorkout={addExtraWorkout} onRemoveExtraWorkout={removeExtraWorkout} weightKg={nutriProfile.weightKg}
-            fitxrMinutes={fitxrMinutes} setFitxrMinutes={setFitxrMinutes} pantry={pantry} customFoods={customFoods}/>
+            fitxrMinutes={fitxrMinutes} setFitxrMinutes={setFitxrMinutes} pantry={pantry} customFoods={customFoods}
+            exerciseOverrides={exerciseOverrides} setExerciseOverrides={setExerciseOverrides}/>
         ) : view==="luca" ? (
           <LucaView done={lucaDone} setDone={setLucaDone} missionChoice={lucaMissionChoice} setMissionChoice={setLucaMissionChoice}
             participants={lucaParticipants} setParticipants={setLucaParticipants}/>
@@ -4625,7 +4715,7 @@ export default function App() {
                 </div>
 
                 {tlView ? (
-                  <TimelineView day={day} wk={wk} done={done} setDone={setDone} onStartTimer={startTimer} weights={weights} setWeight={setWeight} fitxrMinutes={fitxrMinutes} setFitxrMinutes={setFitxrMinutes}/>
+                  <TimelineView day={day} wk={wk} done={done} setDone={setDone} onStartTimer={startTimer} weights={weights} setWeight={setWeight} fitxrMinutes={fitxrMinutes} setFitxrMinutes={setFitxrMinutes} exerciseOverrides={exerciseOverrides} setExerciseOverrides={setExerciseOverrides}/>
                 ) : null}
 
                 {!tlView && day.sections.map(section=>{
