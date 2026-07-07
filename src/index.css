@@ -11,6 +11,11 @@ html, body, #root {
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  /* Blocks pinch-zoom and double-tap-to-zoom at the gesture level — the
+     viewport meta tag alone (maximum-scale/user-scalable) is ignored by
+     some browsers, this is the reliable belt-and-suspenders half. Panning
+     (pan-x pan-y) stays enabled so normal scroll still works. */
+  touch-action: pan-x pan-y;
 }
 
 /* overflow-x must live on <html> only — setting it on <body> too disqualifies

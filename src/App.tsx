@@ -4091,13 +4091,15 @@ function TodayOverview({ day, tc, total, doneN, streak, onOpenSession, plan, log
             <CollapseChevron open={statsOpen}/>
           </div>
         </div>
+        <div style={{ display:"grid", gridTemplateColumns:"repeat(2, 1fr)", gap:6, marginTop:6 }}>
+          <StatTile icon="⚡" value={Math.round(burnedKcal)} label="kcal quemadas" color={tc.accent}/>
+          <StatTile icon="✅" value={total > 0 ? `${pct}%` : "—"} label="entreno hoy" color={tc.accent}/>
+        </div>
         {statsOpen && (
           <div style={{ display:"grid", gridTemplateColumns:"repeat(3, 1fr)", gap:6, marginTop:6 }}>
             <StatTile icon="🥑" value={nutriStreak} label="racha nutrición" color={nc}/>
             <StatTile icon="🧒" value={lucaStreak} label="racha luca" color={lc}/>
-            <StatTile icon="⚡" value={Math.round(burnedKcal)} label="kcal quemadas" color={tc.accent}/>
             <StatTile icon="🍽️" value={`${mealsEatenN}/3`} label="comidas hoy" color={nc}/>
-            <StatTile icon="✅" value={total > 0 ? `${pct}%` : "—"} label="entreno hoy" color={tc.accent}/>
           </div>
         )}
       </div>
