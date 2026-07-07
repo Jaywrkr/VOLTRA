@@ -1,6 +1,6 @@
 // @ts-nocheck
 import { useState, useCallback, useEffect, useRef, useMemo } from "react";
-import { setSyncEnabled, queueSync, pullSync, flushNow, authStatus, authLogin, authLogout } from "./sync";
+import { setSyncEnabled, queueSync, pullSync, flushNow, forceSync, getSyncMeta, authStatus, authLogin, authLogout } from "./sync";
 
 // Every persisted key in the app goes through these two — localStorage stays
 // the instant local source of truth, and persist() also queues a debounced
@@ -3133,10 +3133,34 @@ function ReminderSection({ reminderSettings, setReminderSettings, c }) {
 // Opt-in: without a configured backend (no Postgres/PIN set on the Vercel
 // deployment) this section quietly says so and the app keeps working exactly
 // as it does today, local-only.
+// "hace 3s" / "hace 4 min" — recomputed by SyncSection's 1s poll so it
+// counts up live instead of freezing at whatever it said on first render.
+function timeAgo(ms) {
+  if (ms == null) return null;
+  const s = Math.floor((Date.now() - ms) / 1000);
+  if (s < 5) return "justo ahora";
+  if (s < 60) return `hace ${s}s`;
+  const m = Math.floor(s / 60);
+  if (m < 60) return `hace ${m} min`;
+  return `hace ${Math.floor(m / 60)} h`;
+}
+
 function SyncSection({ cloudSync, connectSync, disconnectSync, c }) {
   const [pin, setPin] = useState("");
   const [error, setError] = useState(null);
   const [connecting, setConnecting] = useState(false);
+  const [meta, setMeta] = useState(() => getSyncMeta());
+  const [saving, setSaving] = useState(false);
+  const [justSaved, setJustSaved] = useState(false);
+
+  // Polls the in-memory sync module instead of lifting this into app state —
+  // it's UI-only status, no reason to persist or thread it through props.
+  useEffect(() => {
+    if (!cloudSync.authenticated) return;
+    setMeta(getSyncMeta());
+    const id = setInterval(() => setMeta(getSyncMeta()), 1000);
+    return () => clearInterval(id);
+  }, [cloudSync.authenticated]);
 
   const submit = async () => {
     setConnecting(true);
@@ -3145,6 +3169,21 @@ function SyncSection({ cloudSync, connectSync, disconnectSync, c }) {
     setConnecting(false);
     if (!result.ok) setError(result.error);
     else setPin("");
+  };
+
+  const saveNow = async () => {
+    setSaving(true);
+    setError(null);
+    const result = await forceSync();
+    setSaving(false);
+    setMeta(getSyncMeta());
+    if (result.ok) {
+      haptic(10);
+      setJustSaved(true);
+      setTimeout(() => setJustSaved(false), 2000);
+    } else {
+      setError(result.error);
+    }
   };
 
   return (
@@ -3157,12 +3196,29 @@ function SyncSection({ cloudSync, connectSync, disconnectSync, c }) {
         {!cloudSync.configured ? (
           <div style={{ fontSize:11, color:"#6b7280" }}>Este deployment todavía no tiene sincronización configurada.</div>
         ) : cloudSync.authenticated ? (
-          <div style={{ display:"flex", alignItems:"center", gap:10, flexWrap:"wrap" }}>
-            <span style={{ fontSize:11, color:"#39ff88", fontWeight:600 }}>☁️ Conectado</span>
-            <button onClick={disconnectSync} style={{
-              padding:"7px 12px", borderRadius:7, fontSize:11, fontWeight:600, cursor:"pointer",
-              background:"rgba(255,255,255,0.04)", border:"1px solid rgba(255,255,255,0.12)", color:"#d1d5db",
-            }}>Desconectar este dispositivo</button>
+          <div>
+            <div style={{ display:"flex", alignItems:"center", gap:10, flexWrap:"wrap", marginBottom:10 }}>
+              <span style={{ fontSize:11, color:"#39ff88", fontWeight:600 }}>☁️ Conectado</span>
+              <button onClick={disconnectSync} style={{
+                padding:"7px 12px", borderRadius:7, fontSize:11, fontWeight:600, cursor:"pointer",
+                background:"rgba(255,255,255,0.04)", border:"1px solid rgba(255,255,255,0.12)", color:"#d1d5db",
+              }}>Desconectar este dispositivo</button>
+            </div>
+            <div style={{
+              display:"flex", alignItems:"center", justifyContent:"space-between", gap:10,
+              background:"rgba(255,255,255,0.03)", border:"1px solid rgba(255,255,255,0.06)", borderRadius:8, padding:"9px 12px",
+            }}>
+              <div style={{ fontSize:11, fontWeight:600, color: justSaved ? "#39ff88" : meta.pendingCount > 0 ? "#fbbf24" : "#9ca3af", display:"flex", alignItems:"center", gap:6 }}>
+                {saving ? "Guardando…" : justSaved ? "✓ Guardado" :
+                  meta.pendingCount > 0 ? `${meta.pendingCount} cambio${meta.pendingCount > 1 ? "s" : ""} sin enviar` :
+                  meta.lastSyncedAt ? `✓ Todo guardado · ${timeAgo(meta.lastSyncedAt)}` : "Sin cambios enviados todavía"}
+              </div>
+              <button onClick={saveNow} disabled={saving} style={{
+                padding:"6px 12px", borderRadius:7, fontSize:11, fontWeight:600, cursor: saving ? "default" : "pointer", flexShrink:0,
+                background:`${c}18`, border:`1px solid ${c}45`, color:c, opacity: saving ? 0.6 : 1,
+              }}>{saving ? "…" : "Guardar ahora"}</button>
+            </div>
+            {error && <div style={{ fontSize:10, color:"#f87171", marginTop:8 }}>{error}</div>}
           </div>
         ) : (
           <div>
