@@ -179,22 +179,26 @@ function buildAllWeeks() {
     const ecc = (isDeload) ? "3s" : (isPeak || isIntA) ? "5s" : "4s";
     const e   = `${ecc} excéntrico`;
 
-    // Main compound: sets × reps
-    const ms = isDeload ? 3 : isPeak ? 6 : (isVolA || isVolB) ? 5 : 4;
-    const mr = isDeload ? 10 : (isIntA || isPeak) ? 8 : (isBaseB || isVolB) ? 10 : 12;
+    // Main compound: sets × reps — shifted toward a strength rep range
+    // (5-8) with one fewer set across every tier than the original
+    // hypertrophy scheme (10-12 reps, 4-6 sets). Fewer total working sets
+    // is the single biggest lever on how long a session actually takes —
+    // this is the fix for "no estoy acabando los ejercicios."
+    const ms = isDeload ? 2 : isPeak ? 5 : (isVolA || isVolB) ? 4 : 3;
+    const mr = isDeload ? 8 : (isIntA || isPeak) ? 5 : (isBaseB || isVolB) ? 6 : 8;
     // Isolation: sets × reps
-    const is_ = isDeload ? 3 : isPeak ? 5 : (isVolA || isVolB) ? 5 : 4;
-    const ir  = isDeload ? 10 : (isIntA || isPeak) ? 8 : (isBaseB || isVolB) ? 10 : 12;
+    const is_ = isDeload ? 2 : isPeak ? 4 : (isVolA || isVolB) ? 4 : 3;
+    const ir  = isDeload ? 8 : (isIntA || isPeak) ? 6 : (isBaseB || isVolB) ? 8 : 10;
     // Core: sets
-    const cs  = isDeload ? 3 : 4;
-    // Core reps / holds (progressive)
-    const cTw = isDeload ? 14 : 16 + wi * 2;           // twist reps
-    const cLr = isDeload ? 10 : 12 + wi;               // leg raise reps
-    const cHt = isDeload ? 30 : 35 + wi * 3;           // hollow hold seconds
-    const cBc = isDeload ? 16 : 18 + wi * 2;           // bicycle reps
-    const cMc = isDeload ? "25s" : `${28 + wi * 4}s`;  // mountain climber time
-    const cDb = isDeload ? 10 : 12 + wi;               // dead bug reps
-    const cTt = isDeload ? 14 : 16 + wi;               // toe touches reps
+    const cs  = isDeload ? 2 : 3;
+    // Core reps / holds (progressive, also trimmed — same reasoning as above)
+    const cTw = isDeload ? 12 : 14 + wi;                // twist reps
+    const cLr = isDeload ? 8 : 10 + wi;                 // leg raise reps
+    const cHt = isDeload ? 25 : 30 + wi * 2;            // hollow hold seconds
+    const cBc = isDeload ? 14 : 16 + wi;                // bicycle reps
+    const cMc = isDeload ? "20s" : `${24 + wi * 3}s`;   // mountain climber time
+    const cDb = isDeload ? 8 : 10 + wi;                 // dead bug reps
+    const cTt = isDeload ? 12 : 14 + wi;                // toe touches reps
 
     // ── LUN: Piernas + Glúteos + Core ──────────────────────────────────────
     const lun = mkDay("lun","LUN","Lunes","STRENGTH","Piernas + Glúteos",
@@ -372,10 +376,7 @@ function buildAllWeeks() {
           { name:"Leg Raise", note:"4s bajando siempre", sets:`${cs} × ${cLr}`, weight:"BW", info:"legRaise" },
           { name:"Side Plank", note:"Cadera arriba — cambia de lado", sets:`${cs} × ${cHt-10}s/lado`, weight:"BW", info:"sidePlank" },
           { name:"Plank hold", note:"Abs + glúteos apretados", sets:`${cs} × ${cMc}`, weight:"BW", info:"plank" },
-          { name:"Mountain Climbers", note:"Full effort — caderas quietas", sets:`${cs} × ${cMc}`, weight:"BW", info:"mountainClimber" },
-          { name:"Plank Shoulder Tap", note:"Caderas sin rotar", sets:`${cs} × ${cTw} taps`, weight:"BW", info:"plankShoulder" },
           { name:"Crunches", note:"Pequeño y controlado", sets:`${cs} × ${cTt+4}`, weight:"BW", info:"crunches" },
-          { name:"Dead Bug", note:"Exhala completamente", sets:`${cs} × ${cDb}`, weight:"BW", info:"deadbug" },
         ] : (isVarA || isIntA) ? [
           { name:"Side Plank", note:"Cadera arriba — cambia de lado", sets:`${cs} × ${cHt-10}s/lado`, weight:"BW", info:"sidePlank" },
           { name:"V-Up", note:"Sube brazos y piernas juntos", sets:`${cs} × ${cTt}`, weight:"BW", info:"vUp" },
@@ -383,17 +384,11 @@ function buildAllWeeks() {
           { name:"Scissor Kicks", note:"Piernas siempre arriba", sets:`${cs} × ${cBc}`, weight:"BW", info:"scissorKicks" },
           { name:"Plank hold", note:"Abs + glúteos apretados", sets:`${cs} × ${cHt}s`, weight:"BW", info:"plank" },
           { name:"Russian Twist Heavy", note:"Rota completamente — toca el suelo", sets:`${cs} × ${cTw}`, weight:"6.8 kg", info:"russianHeavy" },
-          { name:"Mountain Climbers", note:"Full effort — caderas quietas", sets:`${cs} × ${cMc}`, weight:"BW", info:"mountainClimber" },
-          { name:"Toe Touches", note:"Piernas al techo — sin impulso", sets:`${cs} × ${cTt}`, weight:"BW", info:"toeTouches" },
-          { name:"Dead Bug", note:"Exhala completamente", sets:`${cs} × ${cDb}`, weight:"BW", info:"deadbug" },
         ] : isDeload ? [
           { name:"Russian Twist", note:"Rota completamente cada lado", sets:`${cs} × ${cTw}`, weight:"4.5 kg", info:"russianTwist" },
           { name:"Bicycle crunches", note:"Lento — rotación de torso", sets:`${cs} × ${cBc}`, weight:"BW", info:"bicycle" },
           { name:"Leg Raise", note:"4s bajando siempre", sets:`${cs} × ${cLr}`, weight:"BW", info:"legRaise" },
           { name:"Plank hold", note:"Abs + glúteos apretados", sets:`${cs} × ${cHt}s`, weight:"BW", info:"plank" },
-          { name:"KB Plank Drag", note:"Core anti-rotación — caderas quietas", sets:`${cs} × ${cDb}/lado`, weight:"4.5 kg", info:"plankDrag" },
-          { name:"Mountain Climbers", note:"Full effort — caderas quietas", sets:`${cs} × ${cMc}`, weight:"BW", info:"mountainClimber" },
-          { name:"Toe Touches", note:"Piernas al techo — sin impulso", sets:`${cs} × ${cTt}`, weight:"BW", info:"toeTouches" },
           { name:"Crunches", note:"Pequeño y controlado", sets:`${cs} × ${cTt+4}`, weight:"BW", info:"crunches" },
           { name:"Dead Bug", note:"Exhala completamente", sets:`${cs} × ${cDb}`, weight:"BW", info:"deadbug" },
         ] : [
@@ -401,11 +396,8 @@ function buildAllWeeks() {
           { name:"Scissor Kicks", note:"Piernas siempre arriba", sets:`${cs} × ${cBc}`, weight:"BW", info:"scissorKicks" },
           { name:"Leg Raise", note:"4s bajando siempre", sets:`${cs} × ${cLr}`, weight:"BW", info:"legRaise" },
           { name:"Side Plank", note:"Cadera arriba — cambia de lado", sets:`${cs} × ${cHt-10}s/lado`, weight:"BW", info:"sidePlank" },
-          { name:"KB Plank Drag", note:"Core anti-rotación — caderas quietas", sets:`${cs} × ${cDb}/lado`, weight:"4.5 kg", info:"plankDrag" },
           { name:"Hollow Body Rock", note:"Mantén la forma al rockear", sets:`${cs} × 15 rocks`, weight:"BW", info:"hollowRock" },
-          { name:"Mountain Climbers", note:"Full effort — caderas quietas", sets:`${cs} × ${cMc}`, weight:"BW", info:"mountainClimber" },
           { name:"Toe Touches", note:"Piernas al techo — sin impulso", sets:`${cs} × ${cTt}`, weight:"BW", info:"toeTouches" },
-          { name:"Dead Bug", note:"Exhala completamente", sets:`${cs} × ${cDb}`, weight:"BW", info:"deadbug" },
         ]},
       ],
       isDeload ? "Deload: Flow + abdomen suave. El cuerpo procesa el trabajo de las 4 semanas anteriores."
