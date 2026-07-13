@@ -1275,7 +1275,13 @@ function TimelineView({ day, wk, done, setDone, onStartTimer, weights, setWeight
 
   const [infoEx, setInfoEx] = useState(null);
 
-  const dayPrefix = `ov-w${wk}-${day.id}-`;
+  // Deliberately NOT keyed by week (wk) — a swap is a substitution for that
+  // day/slot across the whole 8-week program, not a one-off for the current
+  // week. Each week still renders its own programmed sets/reps/weight for
+  // that slot (rawEx, untouched by the override); only which movement fills
+  // it stays consistent, so progression on that movement carries across
+  // weeks instead of resetting to the original exercise every Monday.
+  const dayPrefix = `ov-${day.id}-`;
   const dayHasOverrides = Object.keys(exerciseOverrides).some(k => k.startsWith(dayPrefix));
 
   // "Otro set" — for every main-section slot, swap in a different same-muscle
