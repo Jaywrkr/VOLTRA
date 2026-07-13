@@ -1327,10 +1327,13 @@ function TimelineView({ day, wk, done, setDone, onStartTimer, weights, setWeight
     const slotKey = `${dayPrefix}${si}-${ei}`;
     const overrideInfo = exerciseOverrides[slotKey];
     const overrideIsCustom = overrideInfo && typeof overrideInfo === "object";
+    // Swapping only ever changes which movement fills the slot — sets, reps
+    // and weight stay exactly as programmed for that week/day (rawEx), so
+    // the intended load for the session is never diluted by a substitution.
     const ex = overrideInfo
       ? overrideIsCustom
         ? { ...rawEx, name: overrideInfo.name, info: null }
-        : { ...rawEx, name: EX_NAME(overrideInfo), info: overrideInfo, weight: INFO_WEIGHT[overrideInfo] || rawEx.weight }
+        : { ...rawEx, name: EX_NAME(overrideInfo), info: overrideInfo }
       : rawEx;
     const isDone = done[key];
     const doToggle = () => toggle(key);
