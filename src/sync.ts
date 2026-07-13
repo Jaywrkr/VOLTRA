@@ -158,6 +158,25 @@ export async function estimateMacros(input) {
   }
 }
 
+// Exercise name -> category + description lookup, same auth gating as
+// estimateMacros — see api/exercise-lookup.js. Returns
+// { ok:true, exercise:{name,category,description} } or { ok:false, error }.
+export async function lookupExercise(name) {
+  try {
+    const res = await fetch("/api/exercise-lookup", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ name }),
+    });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) return { ok: false, error: body.error || "No se pudo identificar el ejercicio." };
+    return { ok: true, exercise: body };
+  } catch {
+    return { ok: false, error: "Sin conexión." };
+  }
+}
+
 export async function authLogout() {
   try {
     await fetch("/api/auth/logout", { method: "POST", credentials: "include" });

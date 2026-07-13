@@ -1,6 +1,6 @@
 // @ts-nocheck
 import { useState, useCallback, useEffect, useRef, useMemo } from "react";
-import { setSyncEnabled, queueSync, pullSync, flushNow, forceSync, getSyncMeta, authStatus, authLogin, authLogout, estimateMacros } from "./sync";
+import { setSyncEnabled, queueSync, pullSync, flushNow, forceSync, getSyncMeta, authStatus, authLogin, authLogout, estimateMacros, lookupExercise } from "./sync";
 
 // Every persisted key in the app goes through these two — localStorage stays
 // the instant local source of truth, and persist() also queues a debounced
@@ -52,6 +52,35 @@ function useVisibleHeight() {
     return () => { vv?.removeEventListener("resize", update); window.removeEventListener("resize", update); };
   }, []);
   return h;
+}
+
+// One-shot voice dictation via the browser's native SpeechRecognition —
+// no server round-trip, just fills a text field. Shared by any modal that
+// wants a 🎤 button next to an input (quick-add food, custom exercises).
+function useDictation(onResult) {
+  const [listening, setListening] = useState(false);
+  const recognitionRef = useRef(null);
+  const supported = typeof window !== "undefined" && !!(window.SpeechRecognition || window.webkitSpeechRecognition);
+
+  const toggle = () => {
+    if (!supported) return false;
+    if (listening) { recognitionRef.current?.stop(); return true; }
+    const Ctor = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const rec = new Ctor();
+    rec.lang = "es-MX";
+    rec.interimResults = false;
+    rec.maxAlternatives = 1;
+    rec.onresult = (ev) => onResult(ev.results[0]?.[0]?.transcript || "");
+    rec.onerror = () => setListening(false);
+    rec.onend = () => setListening(false);
+    recognitionRef.current = rec;
+    setListening(true);
+    rec.start();
+    haptic(10);
+    return true;
+  };
+
+  return { listening, toggle, supported };
 }
 
 // Equipment: 10kg | 6.8kg (15lbs) | 4.5kg (10lbs) | BW
@@ -3335,6 +3364,9 @@ function CustomExerciseModal({ onSave, onClose }) {
   const [description, setDescription] = useState("");
   const [image, setImage] = useState(null);
   const [closing, setClosing] = useState(false);
+  const [identifying, setIdentifying] = useState(false);
+  const [identifyError, setIdentifyError] = useState("");
+  const dictation = useDictation(t => setName(n => (n ? `${n} ${t}` : t)));
   const canSave = name.trim().length > 0;
 
   const dismiss = () => { setClosing(true); setTimeout(onClose, 160); };
@@ -3347,6 +3379,29 @@ function CustomExerciseModal({ onSave, onClose }) {
     const file = e.target.files?.[0];
     if (!file) return;
     try { setImage(await resizeImageFile(file)); } catch {}
+  };
+  const toggleDictation = () => {
+    if (!dictation.toggle()) setIdentifyError("Este navegador no soporta dictado por voz.");
+  };
+  const identify = async () => {
+    if (!name.trim() || identifying) return;
+    setIdentifyError("");
+    setIdentifying(true);
+    try {
+      const result = await lookupExercise(name.trim());
+      if (result.ok) {
+        haptic([10, 40, 12]);
+        setName(result.exercise.name);
+        setCategory(result.exercise.category);
+        setDescription(result.exercise.description);
+      } else {
+        setIdentifyError(result.error);
+      }
+    } catch {
+      setIdentifyError("No se pudo identificar el ejercicio.");
+    } finally {
+      setIdentifying(false);
+    }
   };
 
   return (
@@ -3388,8 +3443,31 @@ function CustomExerciseModal({ onSave, onClose }) {
           )}
         </label>
 
-        <input value={name} onChange={e => setName(e.target.value)} placeholder="Nombre (ej. Sentadilla búlgara)" autoFocus
-          style={{ width:"100%", fontSize:14, color:"#f3f4f6", background:"rgba(255,255,255,0.05)", border:"1px solid rgba(255,255,255,0.1)", borderRadius:10, padding:"11px 14px", boxSizing:"border-box", marginBottom:12 }}/>
+        <div style={{ display:"flex", gap:8, marginBottom:8 }}>
+          <input value={name} onChange={e => setName(e.target.value)} placeholder="Nombre (ej. Sentadilla búlgara), o dilo en voz alta" autoFocus
+            style={{ flex:1, fontSize:14, color:"#f3f4f6", background:"rgba(255,255,255,0.05)", border:"1px solid rgba(255,255,255,0.1)", borderRadius:10, padding:"11px 14px", boxSizing:"border-box" }}/>
+          <button onClick={toggleDictation} disabled={identifying} title="Dictar" style={{
+            width:44, borderRadius:10, cursor: identifying ? "default" : "pointer", flexShrink:0,
+            background: dictation.listening ? "#f87171" : "rgba(255,255,255,0.06)",
+            border: `1px solid ${dictation.listening ? "#f87171" : "rgba(255,255,255,0.12)"}`,
+            color: dictation.listening ? "#0b0c0e" : "#e5e7eb", fontSize:17,
+          }}>{dictation.listening ? "⏹️" : "🎤"}</button>
+        </div>
+
+        <button onClick={identify} disabled={identifying || !name.trim()} style={{
+          display:"flex", alignItems:"center", justifyContent:"center", gap:8,
+          width:"100%", boxSizing:"border-box", padding:"10px 14px", marginBottom:8,
+          borderRadius:10, cursor: identifying || !name.trim() ? "default" : "pointer",
+          background:"rgba(57,255,136,0.08)", border:"1px dashed rgba(57,255,136,0.35)",
+          fontSize:12.5, fontWeight:600, color: identifying || !name.trim() ? "#6b7280" : "#39ff88",
+          opacity: identifying || !name.trim() ? 0.7 : 1,
+        }}>
+          <span>{identifying ? "⏳" : "🔍"}</span>
+          <span>{identifying ? "Identificando..." : "Identificar con IA (categoría + descripción)"}</span>
+        </button>
+        {identifyError && (
+          <div style={{ fontSize:11.5, color:"#f87171", marginBottom:8, textAlign:"center" }}>{identifyError}</div>
+        )}
 
         <div style={{ fontSize:9, color:"#8a8f98", marginBottom:6 }}>CATEGORÍA / GRUPO MUSCULAR</div>
         <div style={{ display:"flex", flexWrap:"wrap", gap:6, marginBottom:14 }}>
@@ -3989,8 +4067,7 @@ function QuickAddFoodModal({ onSave, onClose }) {
   const [photoError, setPhotoError] = useState("");
   const [describeOpen, setDescribeOpen] = useState(false);
   const [description, setDescription] = useState("");
-  const [listening, setListening] = useState(false);
-  const recognitionRef = useRef(null);
+  const dictation = useDictation(t => setDescription(d => (d ? `${d} ${t}` : t)));
   const canSave = draft.name.trim().length > 0;
   const visibleH = useVisibleHeight();
 
@@ -4043,24 +4120,8 @@ function QuickAddFoodModal({ onSave, onClose }) {
     }
   };
 
-  const SpeechRecognitionCtor = typeof window !== "undefined" && (window.SpeechRecognition || window.webkitSpeechRecognition);
   const toggleDictation = () => {
-    if (!SpeechRecognitionCtor) { setPhotoError("Este navegador no soporta dictado por voz."); return; }
-    if (listening) { recognitionRef.current?.stop(); return; }
-    const rec = new SpeechRecognitionCtor();
-    rec.lang = "es-MX";
-    rec.interimResults = false;
-    rec.maxAlternatives = 1;
-    rec.onresult = (ev) => {
-      const transcript = ev.results[0]?.[0]?.transcript || "";
-      setDescription(d => (d ? `${d} ${transcript}` : transcript));
-    };
-    rec.onerror = () => setListening(false);
-    rec.onend = () => setListening(false);
-    recognitionRef.current = rec;
-    setListening(true);
-    rec.start();
-    haptic(10);
+    if (!dictation.toggle()) setPhotoError("Este navegador no soporta dictado por voz.");
   };
 
   return (
@@ -4128,10 +4189,10 @@ function QuickAddFoodModal({ onSave, onClose }) {
                 }}/>
               <button onClick={toggleDictation} disabled={analyzing} title="Dictar" style={{
                 width:44, borderRadius:12, cursor: analyzing ? "default" : "pointer", flexShrink:0,
-                background: listening ? "#f87171" : "rgba(255,255,255,0.06)",
-                border: `1px solid ${listening ? "#f87171" : "rgba(255,255,255,0.12)"}`,
-                color: listening ? "#0b0c0e" : "#e5e7eb", fontSize:17,
-              }}>{listening ? "⏹️" : "🎤"}</button>
+                background: dictation.listening ? "#f87171" : "rgba(255,255,255,0.06)",
+                border: `1px solid ${dictation.listening ? "#f87171" : "rgba(255,255,255,0.12)"}`,
+                color: dictation.listening ? "#0b0c0e" : "#e5e7eb", fontSize:17,
+              }}>{dictation.listening ? "⏹️" : "🎤"}</button>
             </div>
             <button onClick={estimateFromText} disabled={analyzing || !description.trim()} style={{
               width:"100%", padding:"10px", borderRadius:12, fontSize:12.5, fontWeight:700,
