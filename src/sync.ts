@@ -138,17 +138,17 @@ export async function authLogin(pin) {
   }
 }
 
-// Photo -> macros estimation, gated behind the same session cookie as
-// sync/auth — see api/macros.js. Returns { ok:true, macros } or
-// { ok:false, error } so the modal can show a message and let the user
-// fall back to typing the macros in by hand.
-export async function estimateMacrosFromPhoto(dataUrl) {
+// Photo/text -> macros estimation, gated behind the same session cookie as
+// sync/auth — see api/macros.js. Pass { image: dataUrl } or { text: "..." }.
+// Returns { ok:true, macros } or { ok:false, error } so the modal can show
+// a message and let the user fall back to typing the macros in by hand.
+export async function estimateMacros(input) {
   try {
     const res = await fetch("/api/macros", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
-      body: JSON.stringify({ image: dataUrl }),
+      body: JSON.stringify(input),
     });
     const body = await res.json().catch(() => ({}));
     if (!res.ok) return { ok: false, error: body.error || "No se pudo estimar los macros." };

@@ -1,14 +1,14 @@
 // @ts-nocheck
-// Photo -> macros estimation. Gated behind the same session cookie as
+// Photo/text -> macros estimation. Gated behind the same session cookie as
 // /api/sync so a stray/shared link can't rack up API usage — this is a
 // personal app, not a public tool.
 import Anthropic from "@anthropic-ai/sdk";
 import { isConfigured, isAuthenticated } from "./_auth.js";
 
-const SYSTEM_PROMPT = `Eres un nutriólogo que estima macros de una foto de comida.
+const SYSTEM_PROMPT = `Eres un nutriólogo que estima macros de una comida a partir de una foto o de una descripción en texto (que puede venir de dictado por voz, con errores de transcripción).
 Responde ÚNICAMENTE con un objeto JSON, sin texto adicional, con esta forma exacta:
 {"name": string, "kcal": number, "protein": number, "carbs": number, "fat": number}
-Todos los valores numéricos son para la porción completa mostrada en la foto, en gramos (excepto kcal). Si no puedes identificar comida en la imagen, responde {"error": "no se reconoce comida en la foto"}.`;
+Todos los valores numéricos son para la porción completa descrita, en gramos (excepto kcal). Si la descripción es demasiado vaga o no es comida, responde {"error": "no se reconoce comida en la descripción"}.`;
 
 function unauthorized() {
   return Response.json({ error: "No autenticado." }, { status: 401 });
@@ -17,7 +17,7 @@ function unauthorized() {
 export async function POST(request) {
   if (!isConfigured() || !isAuthenticated(request)) return unauthorized();
   if (!process.env.ANTHROPIC_API_KEY) {
-    return Response.json({ error: "Estimación por foto no está configurada en este deployment." }, { status: 501 });
+    return Response.json({ error: "Estimación de macros no está configurada en este deployment." }, { status: 501 });
   }
   let body;
   try {
@@ -25,10 +25,23 @@ export async function POST(request) {
   } catch {
     return Response.json({ error: "Body inválido." }, { status: 400 });
   }
+
   const image = body?.image; // data URL: "data:image/jpeg;base64,...."
+  const description = typeof body?.text === "string" ? body.text.trim() : "";
   const match = typeof image === "string" && image.match(/^data:(image\/\w+);base64,(.+)$/);
-  if (!match) return Response.json({ error: "Falta imagen válida." }, { status: 400 });
-  const [, mediaType, base64Data] = match;
+
+  let content;
+  if (match) {
+    const [, mediaType, base64Data] = match;
+    content = [
+      { type: "image", source: { type: "base64", media_type: mediaType, data: base64Data } },
+      { type: "text", text: "Estima los macros de esta comida." },
+    ];
+  } else if (description) {
+    content = [{ type: "text", text: `Estima los macros de esta comida descrita por el usuario: "${description}"` }];
+  } else {
+    return Response.json({ error: "Falta imagen o descripción." }, { status: 400 });
+  }
 
   const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
   let message;
@@ -37,13 +50,7 @@ export async function POST(request) {
       model: "claude-haiku-4-5",
       max_tokens: 300,
       system: SYSTEM_PROMPT,
-      messages: [{
-        role: "user",
-        content: [
-          { type: "image", source: { type: "base64", media_type: mediaType, data: base64Data } },
-          { type: "text", text: "Estima los macros de esta comida." },
-        ],
-      }],
+      messages: [{ role: "user", content }],
     });
   } catch (err) {
     return Response.json({ error: "No se pudo contactar al servicio de estimación." }, { status: 502 });
