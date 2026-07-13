@@ -1155,7 +1155,7 @@ function OpeningRitual({ focus, isRest, streak, onDone }) {
 function VersionBadge() {
   return (
     <div style={{
-      position:"fixed", bottom:16, left:16, zIndex:190,
+      position:"fixed", bottom:"calc(16px + var(--jay-bottomnav-h, 0px))", left:16, zIndex:190,
       background:"rgba(0,0,0,0.55)", border:"1px solid rgba(255,255,255,0.1)",
       borderRadius:6, padding:"3px 8px", pointerEvents:"none",
       backdropFilter:"blur(4px)",
@@ -1192,7 +1192,7 @@ function FloatingStopwatch({ info, onClose }) {
 
   return (
     <div style={{
-      position:"fixed", bottom:16, right:16, zIndex:200,
+      position:"fixed", bottom:"calc(16px + var(--jay-bottomnav-h, 0px))", right:16, zIndex:200,
       background:"#0a0a0a", border:`1px solid ${finished ? "#39ff88" : "rgba(255,255,255,0.15)"}`,
       borderRadius:12, padding:"10px 12px", minWidth:140,
       boxShadow:"0 6px 28px rgba(0,0,0,0.55)",
@@ -3891,7 +3891,7 @@ function QuickAddFAB({ onSave, dodge }) {
   return (
     <>
       <button onClick={() => { haptic(10); setOpen(true); }} title="Agregar alimento rápido" style={{
-        position:"fixed", right:16, bottom: dodge ? 140 : 16, zIndex:190,
+        position:"fixed", right:16, bottom: `calc(${dodge ? 140 : 16}px + var(--jay-bottomnav-h, 0px))`, zIndex:190,
         width:52, height:52, borderRadius:"50%", cursor:"pointer",
         background:"#39ff88", border:"none", color:"#04140a",
         fontSize:26, fontWeight:700, lineHeight:1,
@@ -3900,6 +3900,32 @@ function QuickAddFAB({ onSave, dodge }) {
       }}>+</button>
       {open && <QuickAddFoodModal onClose={() => setOpen(false)} onSave={(food) => { onSave(food); setOpen(false); }}/>}
     </>
+  );
+}
+
+// iOS-style bottom tab bar — mobile only (hidden ≥640px via .jay-bottom-nav's
+// CSS, which is where the header's own nav pills take back over). Mirrors
+// the same 3 views as the header nav plus the pinned Perfil shortcut, just
+// reachable with a thumb instead of a reach to the top of the screen.
+function BottomTabBar({ view, setView, goToday, openPerfil }) {
+  const tabs = [
+    { key:"hoy", icon:"🏠", label:"Hoy", active: view === "hoy", onClick: goToday },
+    { key:"day", icon:"📋", label:"Sesión", active: view === "day", onClick: () => setView("day") },
+    { key:"luca", icon:"🧒", label:"Luca", active: view === "luca", onClick: () => setView("luca") },
+    { key:"perfil", icon:"👤", label:"Perfil", active: view === "nutri", onClick: openPerfil },
+  ];
+  return (
+    <nav className="jay-bottom-nav">
+      {tabs.map(t => (
+        <button key={t.key} onClick={t.onClick} style={{
+          background: t.active ? "rgba(57,255,136,0.1)" : "transparent",
+          color: t.active ? "#39ff88" : "#6b7280",
+        }}>
+          <span style={{ fontSize:19, lineHeight:1 }}>{t.icon}</span>
+          <span style={{ fontSize:9.5, fontWeight:600, fontFamily:"'DM Sans',sans-serif" }}>{t.label}</span>
+        </button>
+      ))}
+    </nav>
   );
 }
 
@@ -4615,6 +4641,27 @@ export default function App() {
           .jay-header-nav { width: auto; overflow-x: visible; }
         }
 
+        /* ── Mobile-only iOS-style bottom tab bar. Below 640px it replaces
+           the header's nav pills entirely; fixed-bottom UI (FAB, stopwatch,
+           version badge) shifts up by --jay-bottomnav-h so nothing sits
+           underneath it, and page content gets matching bottom padding. ── */
+        :root { --jay-bottomnav-h: 0px; }
+        .jay-bottom-nav { display: none; }
+        @media (max-width: 639px) {
+          :root { --jay-bottomnav-h: 60px; }
+          .jay-header-nav { display: none; }
+          .jay-bottom-nav {
+            display: flex; position: fixed; left: 0; right: 0; bottom: 0; z-index: 250;
+            background: rgba(8,8,10,0.85); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
+            border-top: 1px solid rgba(255,255,255,0.08);
+            padding: 6px 4px calc(6px + env(safe-area-inset-bottom));
+          }
+        }
+        .jay-bottom-nav button {
+          flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+          gap: 2px; padding: 6px 2px; border-radius: 10px;
+        }
+
         /* ── Hoy: single column on mobile, dashboard grid on desktop so the
            cards fill the width instead of staying a stretched narrow strip ── */
         .jay-hoy-shell { max-width: 560px; margin: 0 auto; display: flex; flex-direction: column; gap: 10px; }
@@ -4723,7 +4770,7 @@ export default function App() {
       </div>
 
       {/* Content */}
-      <div style={{ width:"100%", maxWidth:1440, margin:"0 auto", padding:"14px 20px 56px", boxSizing:"border-box" }}>
+      <div style={{ width:"100%", maxWidth:1440, margin:"0 auto", padding:"14px 20px calc(56px + var(--jay-bottomnav-h, 0px))", boxSizing:"border-box" }}>
         {view==="hoy" ? (
           <TodayOverview day={todayWorkoutDay} tc={todayTc} total={todayWorkoutTotal} doneN={todayWorkoutDoneN} streak={streak} onOpenSession={openSession}
             plan={todayNutriPlan} log={todayNutriLog} updateLog={updateTodayNutriLog} targets={nutriTargets} burnedKcal={burnedKcalToday} nutriStreak={nutriStreak} onOpenNutri={()=>setView("nutri")}
@@ -4990,6 +5037,7 @@ export default function App() {
       </div>
       <FloatingStopwatch info={timer} onClose={()=>setTimer(null)}/>
       {(view === "hoy" || view === "nutri") && <QuickAddFAB onSave={addCustomFood} dodge={!!timer}/>}
+      <BottomTabBar view={view} setView={setView} goToday={goToday} openPerfil={openPerfil}/>
       <VersionBadge/>
     </div>
   );
