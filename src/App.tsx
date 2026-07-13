@@ -1,6 +1,6 @@
 // @ts-nocheck
 import { useState, useCallback, useEffect, useRef, useMemo } from "react";
-import { setSyncEnabled, queueSync, pullSync, flushNow, forceSync, getSyncMeta, authStatus, authLogin, authLogout, estimateMacrosFromPhoto } from "./sync";
+import { setSyncEnabled, queueSync, pullSync, flushNow, forceSync, getSyncMeta, authStatus, authLogin, authLogout, estimateMacros } from "./sync";
 
 // Every persisted key in the app goes through these two — localStorage stays
 // the instant local source of truth, and persist() also queues a debounced
@@ -3987,6 +3987,10 @@ function QuickAddFoodModal({ onSave, onClose }) {
   const [closing, setClosing] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
   const [photoError, setPhotoError] = useState("");
+  const [describeOpen, setDescribeOpen] = useState(false);
+  const [description, setDescription] = useState("");
+  const [listening, setListening] = useState(false);
+  const recognitionRef = useRef(null);
   const canSave = draft.name.trim().length > 0;
   const visibleH = useVisibleHeight();
 
@@ -3996,6 +4000,20 @@ function QuickAddFoodModal({ onSave, onClose }) {
     haptic([10, 40, 12]);
     onSave({ name: draft.name.trim(), macros: { kcal: draft.kcal, protein: draft.protein, carbs: draft.carbs, fat: draft.fat } });
   };
+
+  const applyEstimate = (result) => {
+    if (result.ok) {
+      haptic([10, 40, 12]);
+      setDraft(d => ({
+        name: result.macros.name || d.name,
+        kcal: result.macros.kcal, protein: result.macros.protein,
+        carbs: result.macros.carbs, fat: result.macros.fat,
+      }));
+    } else {
+      setPhotoError(result.error);
+    }
+  };
+
   const onPickPhoto = async (e) => {
     const file = e.target.files?.[0];
     e.target.value = "";
@@ -4004,22 +4022,45 @@ function QuickAddFoodModal({ onSave, onClose }) {
     setAnalyzing(true);
     try {
       const dataUrl = await resizeImageFile(file);
-      const result = await estimateMacrosFromPhoto(dataUrl);
-      if (result.ok) {
-        haptic([10, 40, 12]);
-        setDraft(d => ({
-          name: result.macros.name || d.name,
-          kcal: result.macros.kcal, protein: result.macros.protein,
-          carbs: result.macros.carbs, fat: result.macros.fat,
-        }));
-      } else {
-        setPhotoError(result.error);
-      }
+      applyEstimate(await estimateMacros({ image: dataUrl }));
     } catch {
       setPhotoError("No se pudo procesar la foto.");
     } finally {
       setAnalyzing(false);
     }
+  };
+
+  const estimateFromText = async () => {
+    if (!description.trim() || analyzing) return;
+    setPhotoError("");
+    setAnalyzing(true);
+    try {
+      applyEstimate(await estimateMacros({ text: description.trim() }));
+    } catch {
+      setPhotoError("No se pudo procesar la descripción.");
+    } finally {
+      setAnalyzing(false);
+    }
+  };
+
+  const SpeechRecognitionCtor = typeof window !== "undefined" && (window.SpeechRecognition || window.webkitSpeechRecognition);
+  const toggleDictation = () => {
+    if (!SpeechRecognitionCtor) { setPhotoError("Este navegador no soporta dictado por voz."); return; }
+    if (listening) { recognitionRef.current?.stop(); return; }
+    const rec = new SpeechRecognitionCtor();
+    rec.lang = "es-MX";
+    rec.interimResults = false;
+    rec.maxAlternatives = 1;
+    rec.onresult = (ev) => {
+      const transcript = ev.results[0]?.[0]?.transcript || "";
+      setDescription(d => (d ? `${d} ${transcript}` : transcript));
+    };
+    rec.onerror = () => setListening(false);
+    rec.onend = () => setListening(false);
+    recognitionRef.current = rec;
+    setListening(true);
+    rec.start();
+    haptic(10);
   };
 
   return (
@@ -4063,6 +4104,45 @@ function QuickAddFoodModal({ onSave, onClose }) {
           <span>{analyzing ? "Analizando foto..." : "Estimar macros con una foto"}</span>
           <input type="file" accept="image/*" capture="environment" onChange={onPickPhoto} disabled={analyzing} style={{ display:"none" }}/>
         </label>
+
+        <button onClick={() => setDescribeOpen(o => !o)} disabled={analyzing} style={{
+          display:"flex", alignItems:"center", justifyContent:"center", gap:8,
+          width:"100%", boxSizing:"border-box", padding:"11px 14px", marginBottom: describeOpen ? 8 : 10,
+          borderRadius:12, cursor: analyzing ? "default" : "pointer",
+          background:"rgba(167,139,250,0.08)", border:"1px dashed rgba(167,139,250,0.35)",
+          fontSize:12.5, fontWeight:600, color: analyzing ? "#6b7280" : "#a78bfa",
+        }}>
+          <span>✏️</span>
+          <span>Describir lo que comí (texto o voz)</span>
+        </button>
+
+        {describeOpen && (
+          <div style={{ marginBottom:10 }}>
+            <div style={{ display:"flex", gap:8, marginBottom:8 }}>
+              <textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Ej. dos tacos de pastor con piña y un refresco de lata"
+                rows={2} disabled={analyzing}
+                style={{
+                  flex:1, fontSize:13, color:"#f3f4f6", background:"rgba(255,255,255,0.05)",
+                  border:"1px solid rgba(255,255,255,0.1)", borderRadius:12, padding:"10px 12px",
+                  boxSizing:"border-box", resize:"none", fontFamily:"inherit",
+                }}/>
+              <button onClick={toggleDictation} disabled={analyzing} title="Dictar" style={{
+                width:44, borderRadius:12, cursor: analyzing ? "default" : "pointer", flexShrink:0,
+                background: listening ? "#f87171" : "rgba(255,255,255,0.06)",
+                border: `1px solid ${listening ? "#f87171" : "rgba(255,255,255,0.12)"}`,
+                color: listening ? "#0b0c0e" : "#e5e7eb", fontSize:17,
+              }}>{listening ? "⏹️" : "🎤"}</button>
+            </div>
+            <button onClick={estimateFromText} disabled={analyzing || !description.trim()} style={{
+              width:"100%", padding:"10px", borderRadius:12, fontSize:12.5, fontWeight:700,
+              cursor: analyzing || !description.trim() ? "default" : "pointer",
+              background: analyzing || !description.trim() ? "rgba(255,255,255,0.05)" : "#a78bfa",
+              border:"none", color: analyzing || !description.trim() ? "#6b7280" : "#1a1024",
+              opacity: analyzing || !description.trim() ? 0.6 : 1,
+            }}>{analyzing ? "Analizando..." : "Estimar macros de esta descripción"}</button>
+          </div>
+        )}
+
         {photoError && (
           <div style={{ fontSize:11.5, color:"#f87171", marginBottom:10, textAlign:"center" }}>{photoError}</div>
         )}
