@@ -3526,18 +3526,38 @@ function CustomExerciseModal({ onSave, onClose }) {
 function CustomExercisesSection({ customExercises, onAdd, onRemove }) {
   const [open, setOpen] = useState(false);
   const [expanded, setExpanded] = useState(null);
+  const [copied, setCopied] = useState(false);
   const grouped = {};
   for (const ex of customExercises) (grouped[ex.category] ||= []).push(ex);
+
+  const copyList = async () => {
+    const text = customExercises
+      .map(ex => `- ${ex.name} (${ex.category})${ex.description ? `: ${ex.description}` : ""}`)
+      .join("\n");
+    try {
+      await navigator.clipboard.writeText(text);
+      haptic(10);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1600);
+    } catch {}
+  };
 
   return (
     <div>
       <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:6, paddingLeft:2 }}>
         <div style={{ fontSize:9, fontWeight:700, letterSpacing:"0.12em", color:"#6b7280" }}>MIS EJERCICIOS</div>
-        <span onClick={() => setOpen(true)} style={{ fontSize:11, color:"#39ff88", fontWeight:600, cursor:"pointer" }}>+ Agregar</span>
+        <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+          {customExercises.length > 0 && (
+            <span onClick={copyList} style={{ fontSize:11, color: copied ? "#39ff88" : "#9ca3af", fontWeight:600, cursor:"pointer" }}>
+              {copied ? "✓ Copiado" : "📋 Copiar lista"}
+            </span>
+          )}
+          <span onClick={() => setOpen(true)} style={{ fontSize:11, color:"#39ff88", fontWeight:600, cursor:"pointer" }}>+ Agregar</span>
+        </div>
       </div>
       <div style={{ background:"rgba(255,255,255,0.02)", border:"1px solid rgba(255,255,255,0.07)", borderRadius:12, padding:"16px 18px" }}>
         <div style={{ fontSize:11, color:"#9ca3af", lineHeight:1.6, marginBottom:12 }}>
-          Ejercicios tuyos, con foto y descripción. Cuando agregues los que quieras, pídeme en el chat que arme la semana con ellos.
+          Ejercicios tuyos, con foto y descripción. Cuando agregues los que quieras, toca "Copiar lista" y pégala en el chat pidiéndome que arme la semana con ellos.
         </div>
         {customExercises.length === 0 ? (
           <div style={{ fontSize:11, color:"#6b7280" }}>Todavía no agregas ninguno.</div>
