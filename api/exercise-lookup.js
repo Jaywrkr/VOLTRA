@@ -4,6 +4,7 @@
 // field by hand. Gated behind the same session cookie as /api/sync.
 import Anthropic from "@anthropic-ai/sdk";
 import { isConfigured, isAuthenticated } from "./_auth.js";
+import { extractJson } from "./_ai.js";
 
 const CATEGORIES = ["Piernas", "Espalda", "Bíceps", "Hombros", "Tríceps", "Pecho", "Core", "Cardio"];
 
@@ -46,7 +47,7 @@ export async function POST(request) {
   const raw = message.content.find((b) => b.type === "text")?.text || "";
   let parsed;
   try {
-    parsed = JSON.parse(raw.trim());
+    parsed = extractJson(raw);
   } catch {
     return Response.json({ error: "Respuesta inesperada del modelo." }, { status: 502 });
   }
