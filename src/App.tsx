@@ -4082,19 +4082,64 @@ function QuickAddFoodModal({ onSave, onClose }) {
   );
 }
 
-function QuickAddFAB({ onSave, dodge }) {
+// One FAB, not several — tap "+" and it "smashes" open (Material-style
+// speed dial) into 2 labeled satellites stacked upward, instead of one
+// button per action. Growing upward means it moves further away from the
+// mobile bottom tab bar as it opens, and its resting position sits above
+// that bar via the same --jay-bottomnav-h var everything else uses; the
+// whole dial also sits at a higher z-index than the tab bar (260 > 250)
+// so it's never visually stuck underneath it even if the offset math is
+// ever slightly off on some device's safe-area quirks.
+function AddSpeedDial({ onSaveFood, onSaveExercise, dodge }) {
   const [open, setOpen] = useState(false);
+  const [modal, setModal] = useState(null); // "food" | "exercise" | null
+
+  const satellites = [
+    { key:"exercise", icon:"🏋️", label:"Ejercicio", onClick: () => { haptic(10); setModal("exercise"); setOpen(false); } },
+    { key:"food", icon:"🍽️", label:"Alimento", onClick: () => { haptic(10); setModal("food"); setOpen(false); } },
+  ];
+
   return (
     <>
-      <button onClick={() => { haptic(10); setOpen(true); }} title="Agregar alimento rápido" style={{
-        position:"fixed", right:16, bottom: `calc(${dodge ? 140 : 16}px + var(--jay-bottomnav-h, 0px))`, zIndex:190,
-        width:52, height:52, borderRadius:"50%", cursor:"pointer",
-        background:"#39ff88", border:"none", color:"#04140a",
-        fontSize:26, fontWeight:700, lineHeight:1,
-        display:"flex", alignItems:"center", justifyContent:"center",
-        boxShadow:"0 6px 20px rgba(57,255,136,0.35)", transition:"bottom 0.15s, transform 0.1s",
-      }}>+</button>
-      {open && <QuickAddFoodModal onClose={() => setOpen(false)} onSave={(food) => { onSave(food); setOpen(false); }}/>}
+      {open && <div onClick={() => setOpen(false)} style={{ position:"fixed", inset:0, zIndex:255, background:"rgba(0,0,0,0.4)" }}/>}
+      <div style={{
+        position:"fixed", right:16, zIndex:260,
+        bottom: `calc(${dodge ? 140 : 16}px + var(--jay-bottomnav-h, 0px))`,
+        display:"flex", flexDirection:"column", alignItems:"flex-end", gap:10,
+        transition:"bottom 0.15s",
+      }}>
+        {open && satellites.map((s, i) => (
+          <button key={s.key} onClick={s.onClick} style={{
+            display:"flex", alignItems:"center", gap:9,
+            background:"#12141a", border:"1px solid rgba(255,255,255,0.16)",
+            borderRadius:99, padding:"6px 8px 6px 16px", cursor:"pointer",
+            boxShadow:"0 8px 22px rgba(0,0,0,0.5)",
+            animation:`jaySatelliteIn 0.18s ease ${i * 0.03}s backwards`,
+          }}>
+            <span style={{ fontSize:12.5, fontWeight:600, color:"#e5e7eb", whiteSpace:"nowrap" }}>{s.label}</span>
+            <span style={{
+              width:36, height:36, borderRadius:"50%", background:"rgba(255,255,255,0.07)", flexShrink:0,
+              display:"flex", alignItems:"center", justifyContent:"center", fontSize:17,
+            }}>{s.icon}</span>
+          </button>
+        ))}
+        <button onClick={() => { haptic(10); setOpen(o => !o); }} title="Agregar" style={{
+          width:52, height:52, borderRadius:"50%", cursor:"pointer",
+          background:"#39ff88", border:"none", color:"#04140a",
+          fontSize:26, fontWeight:700, lineHeight:1,
+          display:"flex", alignItems:"center", justifyContent:"center",
+          boxShadow:"0 6px 20px rgba(57,255,136,0.35)",
+          transform: open ? "rotate(45deg)" : "rotate(0deg)",
+          transition:"transform 0.2s",
+        }}>+</button>
+      </div>
+
+      {modal === "food" && <QuickAddFoodModal onClose={() => setModal(null)} onSave={(food) => { onSaveFood(food); setModal(null); }}/>}
+      {modal === "exercise" && <CustomExerciseModal onClose={() => setModal(null)} onSave={(ex) => { onSaveExercise(ex); setModal(null); }}/>}
+
+      <style>{`
+        @keyframes jaySatelliteIn { from { opacity:0; transform:translateY(8px) scale(0.9); } to { opacity:1; transform:translateY(0) scale(1); } }
+      `}</style>
     </>
   );
 }
@@ -5249,7 +5294,7 @@ export default function App() {
         {/* ── END SHELL / LUCA ── */}
       </div>
       <FloatingStopwatch info={timer} onClose={()=>setTimer(null)}/>
-      {(view === "hoy" || view === "nutri") && <QuickAddFAB onSave={addCustomFood} dodge={!!timer}/>}
+      {(view === "hoy" || view === "nutri") && <AddSpeedDial onSaveFood={addCustomFood} onSaveExercise={addCustomExercise} dodge={!!timer}/>}
       <BottomTabBar view={view} setView={setView} goToday={goToday} openPerfil={openPerfil}/>
       <VersionBadge/>
     </div>
