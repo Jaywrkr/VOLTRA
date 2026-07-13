@@ -853,6 +853,22 @@ const SDOT = (n) => {
   return "#9ca3af";
 };
 
+// Maps a section's display name to the same muscle-group category used by
+// MUSCLE_OF and by custom exercises' category tag, so the "otro set" shuffle
+// can find same-muscle substitutes (catalog or user-added) for any section.
+function categoryOfSection(n) {
+  if (n.startsWith("Warm-up")) return null;
+  if (n.startsWith("Cuádr") || n.includes("Glúteo") || n.includes("Isquio")) return "Piernas";
+  if (n.includes("Espalda")) return "Espalda";
+  if (n.includes("Bícep")) return "Bíceps";
+  if (n.includes("Hombro")) return "Hombros";
+  if (n.includes("Trícep")) return "Tríceps";
+  if (n.includes("Pecho")) return "Pecho";
+  if (n.includes("Core") || n.includes("Abdomen")) return "Core";
+  if (n.includes("FitXR")) return "Cardio";
+  return null;
+}
+
 const DAY_LABELS = { jue:"JUE", vie:"VIE", sat:"SAT", dom:"DOM", lun:"LUN", mar:"MAR", mie:"MIÉ" };
 
 function initWeek() {
@@ -1243,7 +1259,7 @@ function FloatingStopwatch({ info, onClose }) {
 // ─── Timeline View ────────────────────────────────────────────────────────────
 // Rounds are interleaved across muscle-group sections: SERIE 1 shows round 1
 // of every working section (e.g. Espalda + Bíceps) before moving to SERIE 2.
-function TimelineView({ day, wk, done, setDone, onStartTimer, weights, setWeight, fitxrMinutes, setFitxrMinutes, exerciseOverrides = {}, setExerciseOverrides }) {
+function TimelineView({ day, wk, done, setDone, onStartTimer, weights, setWeight, fitxrMinutes, setFitxrMinutes, exerciseOverrides = {}, setExerciseOverrides, customExercises = [] }) {
   const sections = day.sections.filter(s => s.exercises.length > 0);
   const warmupIdx = [];
   const mainIdx = [];
@@ -1259,12 +1275,62 @@ function TimelineView({ day, wk, done, setDone, onStartTimer, weights, setWeight
 
   const [infoEx, setInfoEx] = useState(null);
 
+  const dayPrefix = `ov-w${wk}-${day.id}-`;
+  const dayHasOverrides = Object.keys(exerciseOverrides).some(k => k.startsWith(dayPrefix));
+
+  // "Otro set" — for every main-section slot, swap in a different same-muscle
+  // exercise (catalog alternative or a custom one the user added), so a day
+  // can be re-rolled to a fresh combination without touching the programmed
+  // sets/reps. Slots with no other candidate for their category are left as-is.
+  const shuffleDay = () => {
+    if (!setExerciseOverrides) return;
+    haptic([10, 30, 10]);
+    setExerciseOverrides(prev => {
+      const next = { ...prev };
+      mainIdx.forEach(si => {
+        const section = sections[si];
+        const category = categoryOfSection(section.name);
+        if (!category) return;
+        const catalogPool = Object.keys(MUSCLE_OF).filter(k => MUSCLE_OF[k] === category);
+        const customPool = customExercises.filter(ce => ce.category === category);
+        section.exercises.forEach((rawEx, ei) => {
+          const slotKey = `${dayPrefix}${si}-${ei}`;
+          const current = next[slotKey];
+          const currentId = current ? (typeof current === "object" ? `custom:${current.id}` : current) : rawEx.info;
+          const candidates = [
+            ...catalogPool.filter(k => k !== currentId).map(k => ({ type:"catalog", key:k })),
+            ...customPool.filter(ce => `custom:${ce.id}` !== currentId).map(ce => ({ type:"custom", id:ce.id, name:ce.name })),
+          ];
+          if (candidates.length === 0) return;
+          const pick = candidates[Math.floor(Math.random() * candidates.length)];
+          next[slotKey] = pick.type === "catalog" ? pick.key : { custom:true, id:pick.id, name:pick.name };
+        });
+      });
+      persist("voltra-exercise-overrides", next);
+      return next;
+    });
+  };
+
+  const restoreDay = () => {
+    if (!setExerciseOverrides) return;
+    haptic(10);
+    setExerciseOverrides(prev => {
+      const next = { ...prev };
+      Object.keys(next).forEach(k => { if (k.startsWith(dayPrefix)) delete next[k]; });
+      persist("voltra-exercise-overrides", next);
+      return next;
+    });
+  };
+
   const renderRow = (section, si, rawEx, ei, ri, dot) => {
     const key = `tl-w${wk}-${day.id}-${si}-${ei}-${ri}`;
-    const slotKey = `ov-w${wk}-${day.id}-${si}-${ei}`;
+    const slotKey = `${dayPrefix}${si}-${ei}`;
     const overrideInfo = exerciseOverrides[slotKey];
+    const overrideIsCustom = overrideInfo && typeof overrideInfo === "object";
     const ex = overrideInfo
-      ? { ...rawEx, name: EX_NAME(overrideInfo), info: overrideInfo, weight: INFO_WEIGHT[overrideInfo] || rawEx.weight }
+      ? overrideIsCustom
+        ? { ...rawEx, name: overrideInfo.name, info: null }
+        : { ...rawEx, name: EX_NAME(overrideInfo), info: overrideInfo, weight: INFO_WEIGHT[overrideInfo] || rawEx.weight }
       : rawEx;
     const isDone = done[key];
     const doToggle = () => toggle(key);
@@ -1278,7 +1344,7 @@ function TimelineView({ day, wk, done, setDone, onStartTimer, weights, setWeight
       });
     };
     return (
-      <SwipeRow key={ei} dot={dot} onToggle={doToggle} onLongPress={ex.info ? () => setInfoEx({ name: ex.name, info: ex.info, dot, slotKey, isOverridden: !!overrideInfo, swap: swapExercise }) : undefined}>
+      <SwipeRow key={ei} dot={dot} onToggle={doToggle} onLongPress={(ex.info || overrideIsCustom) ? () => setInfoEx({ name: ex.name, info: ex.info, dot, slotKey, isOverridden: !!overrideInfo, swap: swapExercise }) : undefined}>
         <div onClick={doToggle} style={{
           display:"grid", gridTemplateColumns:"1fr auto auto auto",
           alignItems:"center", gap:10,
@@ -1337,6 +1403,23 @@ function TimelineView({ day, wk, done, setDone, onStartTimer, weights, setWeight
 
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:20 }}>
+      {setExerciseOverrides && mainIdx.length > 0 && (
+        <div style={{ display:"flex", gap:8 }}>
+          <button onClick={shuffleDay} style={{
+            flex:1, display:"flex", alignItems:"center", justifyContent:"center", gap:6,
+            padding:"9px 12px", borderRadius:10, cursor:"pointer",
+            background:"rgba(57,255,136,0.08)", border:"1px dashed rgba(57,255,136,0.35)",
+            fontSize:11.5, fontWeight:600, color:"#39ff88",
+          }}>🔀 Otro set de ejercicios</button>
+          {dayHasOverrides && (
+            <button onClick={restoreDay} title="Restaurar ejercicios originales" style={{
+              padding:"9px 14px", borderRadius:10, cursor:"pointer",
+              background:"rgba(255,255,255,0.04)", border:"1px solid rgba(255,255,255,0.12)",
+              fontSize:11.5, fontWeight:600, color:"#9ca3af",
+            }}>↺</button>
+          )}
+        </div>
+      )}
       {warmupIdx.map(si => {
         const section = sections[si];
         const dot = SDOT(section.name);
@@ -1436,8 +1519,7 @@ function ExerciseInfoModal({ name, infoKey, dot, onClose, onSwap, isOverridden }
   const [closing, setClosing] = useState(false);
   const dismiss = () => { setClosing(true); setTimeout(onClose, 160); };
   const swapTo = (altKey) => { haptic(12); onSwap(altKey); dismiss(); };
-  if (!info) return null;
-  const alternatives = EX_ALTERNATIVES[infoKey] || [];
+  const alternatives = info ? (EX_ALTERNATIVES[infoKey] || []) : [];
   return (
     <div onClick={dismiss} style={{
       position:"fixed", inset:0, zIndex:300, background:"rgba(0,0,0,0.7)", backdropFilter:"blur(2px)",
@@ -1465,25 +1547,37 @@ function ExerciseInfoModal({ name, infoKey, dot, onClose, onSwap, isOverridden }
           }}>✕</button>
         </div>
 
-        <div style={{ display:"flex", flexDirection:"column", gap:8, marginBottom:14 }}>
-          {info.steps.map((s, i) => (
-            <div key={i} style={{
-              display:"flex", gap:10, background:"rgba(255,255,255,0.03)",
-              border:"1px solid rgba(255,255,255,0.06)", borderRadius:12, padding:"12px 14px",
-            }}>
-              <div style={{
-                flexShrink:0, width:20, height:20, borderRadius:"50%", background:`${dot}20`, color:dot,
-                fontSize:10, fontWeight:700, display:"flex", alignItems:"center", justifyContent:"center", marginTop:1,
-              }}>{i + 1}</div>
-              <div style={{ fontSize:13, color:"#d1d5db", lineHeight:1.65 }}>{s}</div>
+        {info ? (
+          <>
+            <div style={{ display:"flex", flexDirection:"column", gap:8, marginBottom:14 }}>
+              {info.steps.map((s, i) => (
+                <div key={i} style={{
+                  display:"flex", gap:10, background:"rgba(255,255,255,0.03)",
+                  border:"1px solid rgba(255,255,255,0.06)", borderRadius:12, padding:"12px 14px",
+                }}>
+                  <div style={{
+                    flexShrink:0, width:20, height:20, borderRadius:"50%", background:`${dot}20`, color:dot,
+                    fontSize:10, fontWeight:700, display:"flex", alignItems:"center", justifyContent:"center", marginTop:1,
+                  }}>{i + 1}</div>
+                  <div style={{ fontSize:13, color:"#d1d5db", lineHeight:1.65 }}>{s}</div>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
 
-        <div style={{ background:"rgba(251,191,36,0.06)", borderRadius:10, padding:"10px 12px", borderLeft:"2px solid rgba(251,191,36,0.35)" }}>
-          <div style={{ fontSize:9, color:"#92400e", fontWeight:700, letterSpacing:"0.09em", marginBottom:3 }}>CLAVE</div>
-          <div style={{ fontSize:12, color:"#fcd34d", lineHeight:1.6 }}>{info.cue}</div>
-        </div>
+            <div style={{ background:"rgba(251,191,36,0.06)", borderRadius:10, padding:"10px 12px", borderLeft:"2px solid rgba(251,191,36,0.35)" }}>
+              <div style={{ fontSize:9, color:"#92400e", fontWeight:700, letterSpacing:"0.09em", marginBottom:3 }}>CLAVE</div>
+              <div style={{ fontSize:12, color:"#fcd34d", lineHeight:1.6 }}>{info.cue}</div>
+            </div>
+          </>
+        ) : (
+          <div style={{ fontSize:12, color:"#9ca3af", lineHeight:1.6 }}>Ejercicio personalizado — sin guía paso a paso todavía.</div>
+        )}
+
+        {alternatives.length === 0 && isOverridden && onSwap && (
+          <div onClick={() => swapTo(null)} style={{ textAlign:"center", marginTop:16, fontSize:11, color:"#6b7280", cursor:"pointer", textDecoration:"underline" }}>
+            Restaurar ejercicio original
+          </div>
+        )}
 
         {alternatives.length > 0 && onSwap && (
           <div style={{ marginTop:16 }}>
@@ -4508,7 +4602,7 @@ function ContributionsCalendar({ workoutDates, nutriDates, lucaDates }) {
 function TodayOverview({ day, tc, total, doneN, streak, onOpenSession, plan, log, updateLog, targets, burnedKcal, nutriStreak, onOpenNutri, wk, done, setDone, startTimer, protein, weights, setWeight,
   onOpenLuca, lucaDone, setLucaDone, lucaMissionChoice, setLucaMissionChoice, lucaParticipants, setLucaParticipants, lucaStreak, workoutCompletedDates, nutriCompletedDates, lucaCompletedDates,
   extraWorkouts, onAddExtraWorkout, onRemoveExtraWorkout, weightKg, fitxrMinutes, setFitxrMinutes, pantry, customFoods,
-  exerciseOverrides, setExerciseOverrides }) {
+  exerciseOverrides, setExerciseOverrides, customExercises = [] }) {
   const pct = total > 0 ? Math.round(doneN / total * 100) : 0;
   const consumed = nutriMacrosForDay(plan, log);
   const adjustedTarget = targets.kcal + burnedKcal;
@@ -4621,7 +4715,7 @@ function TodayOverview({ day, tc, total, doneN, streak, onOpenSession, plan, log
             </div>
             {entrenoOpen && (
               <div style={{ marginTop:10 }}>
-                <TimelineView day={day} wk={wk} done={done} setDone={setDone} onStartTimer={startTimer} weights={weights} setWeight={setWeight} fitxrMinutes={fitxrMinutes} setFitxrMinutes={setFitxrMinutes} exerciseOverrides={exerciseOverrides} setExerciseOverrides={setExerciseOverrides}/>
+                <TimelineView day={day} wk={wk} done={done} setDone={setDone} onStartTimer={startTimer} weights={weights} setWeight={setWeight} fitxrMinutes={fitxrMinutes} setFitxrMinutes={setFitxrMinutes} exerciseOverrides={exerciseOverrides} setExerciseOverrides={setExerciseOverrides} customExercises={customExercises}/>
               </div>
             )}
           </>
@@ -5258,7 +5352,7 @@ export default function App() {
             workoutCompletedDates={completedDates} nutriCompletedDates={nutriCompletedDates} lucaCompletedDates={lucaCompletedDates}
             extraWorkouts={todayExtraWorkouts} onAddExtraWorkout={addExtraWorkout} onRemoveExtraWorkout={removeExtraWorkout} weightKg={nutriProfile.weightKg}
             fitxrMinutes={fitxrMinutes} setFitxrMinutes={setFitxrMinutes} pantry={pantry} customFoods={customFoods}
-            exerciseOverrides={exerciseOverrides} setExerciseOverrides={setExerciseOverrides}/>
+            exerciseOverrides={exerciseOverrides} setExerciseOverrides={setExerciseOverrides} customExercises={customExercises}/>
         ) : view==="luca" ? (
           <LucaView done={lucaDone} setDone={setLucaDone} missionChoice={lucaMissionChoice} setMissionChoice={setLucaMissionChoice}
             participants={lucaParticipants} setParticipants={setLucaParticipants}/>
@@ -5420,7 +5514,7 @@ export default function App() {
                 </div>
 
                 {tlView ? (
-                  <TimelineView day={day} wk={wk} done={done} setDone={setDone} onStartTimer={startTimer} weights={weights} setWeight={setWeight} fitxrMinutes={fitxrMinutes} setFitxrMinutes={setFitxrMinutes} exerciseOverrides={exerciseOverrides} setExerciseOverrides={setExerciseOverrides}/>
+                  <TimelineView day={day} wk={wk} done={done} setDone={setDone} onStartTimer={startTimer} weights={weights} setWeight={setWeight} fitxrMinutes={fitxrMinutes} setFitxrMinutes={setFitxrMinutes} exerciseOverrides={exerciseOverrides} setExerciseOverrides={setExerciseOverrides} customExercises={customExercises}/>
                 ) : null}
 
                 {!tlView && day.sections.map(section=>{
