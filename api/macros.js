@@ -4,6 +4,7 @@
 // personal app, not a public tool.
 import Anthropic from "@anthropic-ai/sdk";
 import { isConfigured, isAuthenticated } from "./_auth.js";
+import { extractJson } from "./_ai.js";
 
 const SYSTEM_PROMPT = `Eres un nutriólogo que estima macros de una comida a partir de una foto o de una descripción en texto (que puede venir de dictado por voz, con errores de transcripción).
 Responde ÚNICAMENTE con un objeto JSON, sin texto adicional, con esta forma exacta:
@@ -59,7 +60,7 @@ export async function POST(request) {
   const text = message.content.find((b) => b.type === "text")?.text || "";
   let parsed;
   try {
-    parsed = JSON.parse(text.trim());
+    parsed = extractJson(text);
   } catch {
     return Response.json({ error: "Respuesta inesperada del modelo." }, { status: 502 });
   }
