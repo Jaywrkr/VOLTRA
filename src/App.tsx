@@ -3015,7 +3015,7 @@ const BACKUP_KEYS = [
   "luca-training-done", "voltra-luca-completed-dates", "voltra-luca-mission-choice", "voltra-luca-participants",
   "voltra-nutri-budget", "voltra-nutri-completed-dates", "voltra-nutri-logs", "voltra-nutri-profile",
   "voltra-nutri-protein", "voltra-nutri-shopping-checked", "voltra-nutri-sunday-prep", "voltra-reminder-settings",
-  "voltra-extra-workouts", "voltra-fitxr-minutes", "voltra-pantry", "voltra-custom-foods", "voltra-exercise-overrides",
+  "voltra-extra-workouts", "voltra-fitxr-minutes", "voltra-pantry", "voltra-custom-foods", "voltra-exercise-overrides", "voltra-custom-exercises",
 ];
 
 function BackupSection({ c }) {
@@ -3297,6 +3297,197 @@ function SyncSection({ cloudSync, connectSync, disconnectSync, c }) {
   );
 }
 
+const EXERCISE_CATEGORIES = ["Piernas", "Espalda", "Bíceps", "Hombros", "Tríceps", "Pecho", "Core", "Cardio"];
+
+// Downscales+recompresses a picked photo before it goes anywhere near
+// localStorage — a raw phone photo can be several MB, and a handful of
+// those quickly eats into the ~5-10MB origin quota shared with every other
+// piece of app data. 480px/JPEG-0.75 keeps a thumbnail-quality reference
+// (this isn't a photo gallery, just "which exercise was this again") at a
+// few tens of KB instead.
+function resizeImageFile(file, maxDim = 480, quality = 0.75) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new window.Image();
+      img.onload = () => {
+        let { width, height } = img;
+        if (width > maxDim || height > maxDim) {
+          if (width > height) { height = Math.round(height * maxDim / width); width = maxDim; }
+          else { width = Math.round(width * maxDim / height); height = maxDim; }
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width = width; canvas.height = height;
+        canvas.getContext("2d").drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL("image/jpeg", quality));
+      };
+      img.onerror = reject;
+      img.src = reader.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+function CustomExerciseModal({ onSave, onClose }) {
+  const [name, setName] = useState("");
+  const [category, setCategory] = useState(EXERCISE_CATEGORIES[0]);
+  const [description, setDescription] = useState("");
+  const [image, setImage] = useState(null);
+  const [closing, setClosing] = useState(false);
+  const canSave = name.trim().length > 0;
+
+  const dismiss = () => { setClosing(true); setTimeout(onClose, 160); };
+  const save = () => {
+    if (!canSave) return;
+    haptic([10, 40, 12]);
+    onSave({ name: name.trim(), category, description: description.trim(), image });
+  };
+  const onPickImage = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try { setImage(await resizeImageFile(file)); } catch {}
+  };
+
+  return (
+    <div onClick={dismiss} style={{
+      position:"fixed", inset:0, zIndex:300, background:"rgba(0,0,0,0.7)", backdropFilter:"blur(2px)",
+      display:"flex", alignItems:"flex-end", justifyContent:"center",
+      animation: closing ? "jayFadeOut 0.16s ease forwards" : "jayFadeIn 0.18s ease",
+    }}>
+      <div onClick={e => e.stopPropagation()} style={{
+        width:"100%", maxWidth:440, maxHeight:"86vh", overflowY:"auto", boxSizing:"border-box",
+        background:"#0b0c0e", border:"1px solid rgba(255,255,255,0.1)", borderBottom:"none",
+        borderRadius:"20px 20px 0 0", padding:"10px 20px 26px",
+        boxShadow:"0 -8px 40px rgba(0,0,0,0.5)",
+        animation: closing ? "jaySheetDown 0.16s ease forwards" : "jaySheetUp 0.22s cubic-bezier(0.16,1,0.3,1)",
+      }}>
+        <div style={{ width:36, height:4, borderRadius:99, background:"rgba(255,255,255,0.15)", margin:"4px auto 14px" }}/>
+
+        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:16 }}>
+          <div style={{ fontSize:14, fontWeight:700, color:"#f3f4f6" }}>Agregar ejercicio</div>
+          <button onClick={dismiss} style={{
+            width:28, height:28, borderRadius:"50%", cursor:"pointer",
+            background:"rgba(255,255,255,0.06)", border:"none", color:"#9ca3af",
+            fontSize:14, display:"flex", alignItems:"center", justifyContent:"center",
+          }}>✕</button>
+        </div>
+
+        <label style={{ display:"block", cursor:"pointer", marginBottom:14 }}>
+          <input type="file" accept="image/*" capture="environment" onChange={onPickImage} style={{ display:"none" }}/>
+          {image ? (
+            <img src={image} alt="" style={{ width:"100%", maxHeight:180, objectFit:"cover", borderRadius:12, border:"1px solid rgba(255,255,255,0.1)", display:"block" }}/>
+          ) : (
+            <div style={{
+              width:"100%", height:110, borderRadius:12, border:"1px dashed rgba(255,255,255,0.2)",
+              display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:6, color:"#6b7280", boxSizing:"border-box",
+            }}>
+              <span style={{ fontSize:20 }}>📷</span>
+              <span style={{ fontSize:11 }}>Agregar foto (opcional)</span>
+            </div>
+          )}
+        </label>
+
+        <input value={name} onChange={e => setName(e.target.value)} placeholder="Nombre (ej. Sentadilla búlgara)" autoFocus
+          style={{ width:"100%", fontSize:14, color:"#f3f4f6", background:"rgba(255,255,255,0.05)", border:"1px solid rgba(255,255,255,0.1)", borderRadius:10, padding:"11px 14px", boxSizing:"border-box", marginBottom:12 }}/>
+
+        <div style={{ fontSize:9, color:"#8a8f98", marginBottom:6 }}>CATEGORÍA / GRUPO MUSCULAR</div>
+        <div style={{ display:"flex", flexWrap:"wrap", gap:6, marginBottom:14 }}>
+          {EXERCISE_CATEGORIES.map(cat => (
+            <button key={cat} onClick={() => setCategory(cat)} style={{
+              padding:"6px 12px", borderRadius:99, fontSize:11, fontWeight:600, cursor:"pointer",
+              background: category === cat ? `${MUSCLE_COLOR[cat]}22` : "rgba(255,255,255,0.04)",
+              border: `1px solid ${category === cat ? MUSCLE_COLOR[cat] + "60" : "rgba(255,255,255,0.1)"}`,
+              color: category === cat ? MUSCLE_COLOR[cat] : "#9ca3af",
+            }}>{cat}</button>
+          ))}
+        </div>
+
+        <textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Descripción — cómo se hace, en qué te enfocas…" rows={4}
+          style={{
+            width:"100%", fontSize:13, color:"#f3f4f6", background:"rgba(255,255,255,0.05)",
+            border:"1px solid rgba(255,255,255,0.1)", borderRadius:10, padding:"11px 14px",
+            boxSizing:"border-box", marginBottom:16, resize:"vertical", fontFamily:"inherit",
+          }}/>
+
+        <div style={{ display:"flex", gap:8 }}>
+          <button onClick={dismiss} style={{
+            padding:"13px 18px", borderRadius:12, cursor:"pointer", fontSize:13, fontWeight:600,
+            background:"rgba(255,255,255,0.05)", border:"1px solid rgba(255,255,255,0.12)", color:"#9ca3af",
+          }}>Cancelar</button>
+          <button onClick={save} disabled={!canSave} style={{
+            flex:1, padding:"13px", borderRadius:12, cursor: canSave ? "pointer" : "default", fontSize:13, fontWeight:700,
+            background: canSave ? "#39ff88" : "rgba(255,255,255,0.05)", border:"none",
+            color: canSave ? "#04140a" : "#6b7280", opacity: canSave ? 1 : 0.6,
+          }}>Guardar ejercicio</button>
+        </div>
+      </div>
+
+      <style>{`
+        @keyframes jayFadeIn { from { opacity:0; } to { opacity:1; } }
+        @keyframes jayFadeOut { from { opacity:1; } to { opacity:0; } }
+        @keyframes jaySheetUp { from { transform:translateY(24px); opacity:0.6; } to { transform:translateY(0); opacity:1; } }
+        @keyframes jaySheetDown { from { transform:translateY(0); opacity:1; } to { transform:translateY(24px); opacity:0; } }
+      `}</style>
+    </div>
+  );
+}
+
+// Your own exercise library — grouped by muscle group so it reads the same
+// way the app's own muscle-balance panel does. Purely a personal catalog:
+// adding one here doesn't change the programmed week by itself — ask for
+// that separately once you've added what you want, since slotting a new
+// exercise into a specific day/section is a judgment call, not something
+// safe to automate from a category tag alone.
+function CustomExercisesSection({ customExercises, onAdd, onRemove }) {
+  const [open, setOpen] = useState(false);
+  const [expanded, setExpanded] = useState(null);
+  const grouped = {};
+  for (const ex of customExercises) (grouped[ex.category] ||= []).push(ex);
+
+  return (
+    <div>
+      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:6, paddingLeft:2 }}>
+        <div style={{ fontSize:9, fontWeight:700, letterSpacing:"0.12em", color:"#6b7280" }}>MIS EJERCICIOS</div>
+        <span onClick={() => setOpen(true)} style={{ fontSize:11, color:"#39ff88", fontWeight:600, cursor:"pointer" }}>+ Agregar</span>
+      </div>
+      <div style={{ background:"rgba(255,255,255,0.02)", border:"1px solid rgba(255,255,255,0.07)", borderRadius:12, padding:"16px 18px" }}>
+        <div style={{ fontSize:11, color:"#9ca3af", lineHeight:1.6, marginBottom:12 }}>
+          Ejercicios tuyos, con foto y descripción. Cuando agregues los que quieras, pídeme en el chat que arme la semana con ellos.
+        </div>
+        {customExercises.length === 0 ? (
+          <div style={{ fontSize:11, color:"#6b7280" }}>Todavía no agregas ninguno.</div>
+        ) : (
+          Object.keys(grouped).map(cat => (
+            <div key={cat} style={{ marginBottom:12 }}>
+              <div style={{ fontSize:9, fontWeight:700, color:MUSCLE_COLOR[cat] || "#9ca3af", letterSpacing:"0.08em", marginBottom:6 }}>{cat.toUpperCase()}</div>
+              <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
+                {grouped[cat].map(ex => (
+                  <div key={ex.id} style={{ background:"rgba(255,255,255,0.03)", border:"1px solid rgba(255,255,255,0.06)", borderRadius:10, overflow:"hidden" }}>
+                    <div onClick={() => setExpanded(expanded === ex.id ? null : ex.id)} style={{ display:"flex", alignItems:"center", gap:10, padding:"9px 12px", cursor:"pointer" }}>
+                      {ex.image ? (
+                        <img src={ex.image} alt="" style={{ width:36, height:36, borderRadius:8, objectFit:"cover", flexShrink:0 }}/>
+                      ) : (
+                        <div style={{ width:36, height:36, borderRadius:8, background:"rgba(255,255,255,0.05)", flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center", fontSize:14 }}>🏋️</div>
+                      )}
+                      <span style={{ fontSize:12, color:"#e5e7eb", flex:1 }}>{ex.name}</span>
+                      <span onClick={(e) => { e.stopPropagation(); onRemove(ex.id); }} style={{ cursor:"pointer", color:"#6b7280", fontSize:13, padding:4 }}>✕</span>
+                    </div>
+                    {expanded === ex.id && ex.description && (
+                      <div style={{ padding:"0 12px 10px", fontSize:11, color:"#9ca3af", lineHeight:1.6 }}>{ex.description}</div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+      {open && <CustomExerciseModal onClose={() => setOpen(false)} onSave={(ex) => { onAdd(ex); setOpen(false); }}/>}
+    </div>
+  );
+}
+
 // Editable pantry list — feeds the "merienda sugerida" combo generator.
 // Add anything from the food DB, remove what you don't actually keep stocked.
 function PantrySection({ pantry, setPantry, c, customFoods }) {
@@ -3353,7 +3544,7 @@ function PantrySection({ pantry, setPantry, c, customFoods }) {
   );
 }
 
-function PerfilView({ profile, setProfile, targets, c, protein, setProtein, reminderSettings, setReminderSettings, cloudSync, connectSync, disconnectSync, pantry, setPantry, customFoods }) {
+function PerfilView({ profile, setProfile, targets, c, protein, setProtein, reminderSettings, setReminderSettings, cloudSync, connectSync, disconnectSync, pantry, setPantry, customFoods, customExercises, onAddCustomExercise, onRemoveCustomExercise }) {
   const setField = (field) => (value) => {
     setProfile(prev => {
       const next = { ...prev, [field]: value };
@@ -3412,6 +3603,10 @@ function PerfilView({ profile, setProfile, targets, c, protein, setProtein, remi
 
       <div style={{ marginTop:16 }}>
         <PantrySection pantry={pantry} setPantry={setPantry} c={c} customFoods={customFoods}/>
+      </div>
+
+      <div style={{ marginTop:16 }}>
+        <CustomExercisesSection customExercises={customExercises} onAdd={onAddCustomExercise} onRemove={onRemoveCustomExercise}/>
       </div>
 
       <div style={{ marginTop:16 }}>
@@ -3478,7 +3673,7 @@ function SundayBanner({ sundayPrep, setSundayPrep, c }) {
   );
 }
 
-function NutriView({ profile, setProfile, logs, setLogs, burnedKcalToday, nutriCompletedDates, budget, setBudget, shoppingChecked, setShoppingChecked, sundayPrep, setSundayPrep, protein, setProtein, workoutCompletedDates, reminderSettings, setReminderSettings, cloudSync, connectSync, disconnectSync, pantry, setPantry, customFoods, initialTab }) {
+function NutriView({ profile, setProfile, logs, setLogs, burnedKcalToday, nutriCompletedDates, budget, setBudget, shoppingChecked, setShoppingChecked, sundayPrep, setSundayPrep, protein, setProtein, workoutCompletedDates, reminderSettings, setReminderSettings, cloudSync, connectSync, disconnectSync, pantry, setPantry, customFoods, initialTab, customExercises, onAddCustomExercise, onRemoveCustomExercise }) {
   const [tab, setTab] = useState(initialTab || "hoy");
   const [selectedIdx, setSelectedIdx] = useState(() => todayDayIndex());
   const todayIso = isoDate(new Date());
@@ -3562,7 +3757,8 @@ function NutriView({ profile, setProfile, logs, setLogs, burnedKcalToday, nutriC
 
       {tab === "perfil" && (
         <PerfilView profile={profile} setProfile={setProfile} targets={targets} c={c} protein={protein} setProtein={setProtein} reminderSettings={reminderSettings} setReminderSettings={setReminderSettings}
-          cloudSync={cloudSync} connectSync={connectSync} disconnectSync={disconnectSync} pantry={pantry} setPantry={setPantry} customFoods={customFoods}/>
+          cloudSync={cloudSync} connectSync={connectSync} disconnectSync={disconnectSync} pantry={pantry} setPantry={setPantry} customFoods={customFoods}
+          customExercises={customExercises} onAddCustomExercise={onAddCustomExercise} onRemoveCustomExercise={onRemoveCustomExercise}/>
       )}
 
       {tab === "insights" && (
@@ -4289,6 +4485,7 @@ export default function App() {
   const [fitxrMinutes, setFitxrMinutesRaw] = useState(() => loadLocal("voltra-fitxr-minutes", {}));
   const [pantry, setPantry] = useState(() => loadLocal("voltra-pantry", DEFAULT_PANTRY));
   const [customFoods, setCustomFoods] = useState(() => loadLocal("voltra-custom-foods", []));
+  const [customExercises, setCustomExercises] = useState(() => loadLocal("voltra-custom-exercises", []));
   const [exerciseOverrides, setExerciseOverrides] = useState(() => loadLocal("voltra-exercise-overrides", {}));
   const [cloudSync, setCloudSync] = useState({ configured: false, authenticated: false });
 
@@ -4303,7 +4500,7 @@ export default function App() {
       "voltra-nutri-shopping-checked": setNutriShoppingChecked, "voltra-nutri-sunday-prep": setNutriSundayPrep,
       "voltra-reminder-settings": setReminderSettings, "voltra-extra-workouts": setExtraWorkouts,
       "voltra-fitxr-minutes": setFitxrMinutesRaw, "voltra-pantry": setPantry, "voltra-custom-foods": setCustomFoods,
-      "voltra-exercise-overrides": setExerciseOverrides,
+      "voltra-exercise-overrides": setExerciseOverrides, "voltra-custom-exercises": setCustomExercises,
     };
     // A local write this device hasn't managed to push yet (tab closed
     // inside the debounce window, was offline, etc.) is more current than
@@ -4520,6 +4717,21 @@ export default function App() {
       return next;
     });
   }, [todayNutriIso]);
+
+  const addCustomExercise = useCallback((ex) => {
+    setCustomExercises(prev => {
+      const next = [...prev, { id: `custom-ex-${Date.now()}`, ...ex }];
+      persist("voltra-custom-exercises", next);
+      return next;
+    });
+  }, []);
+  const removeCustomExercise = useCallback((id) => {
+    setCustomExercises(prev => {
+      const next = prev.filter(e => e.id !== id);
+      persist("voltra-custom-exercises", next);
+      return next;
+    });
+  }, []);
 
   const allNutriMealsEatenToday = todayNutriLog.breakfastEaten && todayNutriLog.lunchEaten && todayNutriLog.dinnerEaten;
   useEffect(() => {
@@ -4790,7 +5002,8 @@ export default function App() {
             sundayPrep={nutriSundayPrep} setSundayPrep={setNutriSundayPrep} protein={nutriProtein} setProtein={setNutriProtein} workoutCompletedDates={completedDates}
             reminderSettings={reminderSettings} setReminderSettings={setReminderSettings}
             cloudSync={cloudSync} connectSync={connectSync} disconnectSync={disconnectSync} pantry={pantry} setPantry={setPantry} customFoods={customFoods}
-            initialTab={nutriInitialTab}/>
+            initialTab={nutriInitialTab}
+            customExercises={customExercises} onAddCustomExercise={addCustomExercise} onRemoveCustomExercise={removeCustomExercise}/>
         ) : (
         <div className="jay-shell">
 
