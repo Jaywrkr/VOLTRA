@@ -1,6 +1,6 @@
 // @ts-nocheck
 import { useState, useCallback, useEffect, useRef, useMemo } from "react";
-import { setSyncEnabled, queueSync, pullSync, flushNow, forceSync, getSyncMeta, authStatus, authLogin, authLogout } from "./sync";
+import { setSyncEnabled, queueSync, pullSync, flushNow, forceSync, getSyncMeta, authStatus, authLogin, authLogout, estimateMacrosFromPhoto } from "./sync";
 
 // Every persisted key in the app goes through these two — localStorage stays
 // the instant local source of truth, and persist() also queues a debounced
@@ -3985,6 +3985,8 @@ const MACRO_FIELD = {
 function QuickAddFoodModal({ onSave, onClose }) {
   const [draft, setDraft] = useState({ name: "", kcal: 0, protein: 0, carbs: 0, fat: 0 });
   const [closing, setClosing] = useState(false);
+  const [analyzing, setAnalyzing] = useState(false);
+  const [photoError, setPhotoError] = useState("");
   const canSave = draft.name.trim().length > 0;
   const visibleH = useVisibleHeight();
 
@@ -3993,6 +3995,31 @@ function QuickAddFoodModal({ onSave, onClose }) {
     if (!canSave) return;
     haptic([10, 40, 12]);
     onSave({ name: draft.name.trim(), macros: { kcal: draft.kcal, protein: draft.protein, carbs: draft.carbs, fat: draft.fat } });
+  };
+  const onPickPhoto = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setPhotoError("");
+    setAnalyzing(true);
+    try {
+      const dataUrl = await resizeImageFile(file);
+      const result = await estimateMacrosFromPhoto(dataUrl);
+      if (result.ok) {
+        haptic([10, 40, 12]);
+        setDraft(d => ({
+          name: result.macros.name || d.name,
+          kcal: result.macros.kcal, protein: result.macros.protein,
+          carbs: result.macros.carbs, fat: result.macros.fat,
+        }));
+      } else {
+        setPhotoError(result.error);
+      }
+    } catch {
+      setPhotoError("No se pudo procesar la foto.");
+    } finally {
+      setAnalyzing(false);
+    }
   };
 
   return (
@@ -4024,6 +4051,21 @@ function QuickAddFoodModal({ onSave, onClose }) {
             fontSize:14, display:"flex", alignItems:"center", justifyContent:"center",
           }}>✕</button>
         </div>
+
+        <label style={{
+          display:"flex", alignItems:"center", justifyContent:"center", gap:8,
+          width:"100%", boxSizing:"border-box", padding:"11px 14px", marginBottom:10,
+          borderRadius:12, cursor: analyzing ? "default" : "pointer",
+          background:"rgba(57,255,136,0.08)", border:"1px dashed rgba(57,255,136,0.35)",
+          fontSize:12.5, fontWeight:600, color: analyzing ? "#6b7280" : "#39ff88",
+        }}>
+          <span>{analyzing ? "⏳" : "📷"}</span>
+          <span>{analyzing ? "Analizando foto..." : "Estimar macros con una foto"}</span>
+          <input type="file" accept="image/*" capture="environment" onChange={onPickPhoto} disabled={analyzing} style={{ display:"none" }}/>
+        </label>
+        {photoError && (
+          <div style={{ fontSize:11.5, color:"#f87171", marginBottom:10, textAlign:"center" }}>{photoError}</div>
+        )}
 
         <input value={draft.name} onChange={e => setDraft(d => ({ ...d, name: e.target.value }))} placeholder="Nombre (ej. Tortilla de la esquina)" autoFocus
           style={{
