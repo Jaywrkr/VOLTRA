@@ -3215,7 +3215,7 @@ function SyncQuickButton() {
 
   return (
     <button onClick={saveNow} disabled={saving} title={label} style={{
-      position:"absolute", top:12, right:56, zIndex:21,
+      position:"absolute", top:"calc(12px + env(safe-area-inset-top))", right:56, zIndex:21,
       width:34, height:34, borderRadius:"50%", cursor: saving ? "default" : "pointer",
       background:"rgba(255,255,255,0.06)", border:"1px solid rgba(255,255,255,0.12)",
       color:"#d1d5db", fontSize:14,
@@ -3443,31 +3443,37 @@ function CustomExerciseModal({ onSave, onClose }) {
           )}
         </label>
 
-        <div style={{ display:"flex", gap:8, marginBottom:8 }}>
-          <input value={name} onChange={e => setName(e.target.value)} placeholder="Nombre (ej. Sentadilla búlgara), o dilo en voz alta" autoFocus
-            style={{ flex:1, fontSize:14, color:"#f3f4f6", background:"rgba(255,255,255,0.05)", border:"1px solid rgba(255,255,255,0.1)", borderRadius:10, padding:"11px 14px", boxSizing:"border-box" }}/>
-          <button onClick={toggleDictation} disabled={identifying} title="Dictar" style={{
-            width:44, borderRadius:10, cursor: identifying ? "default" : "pointer", flexShrink:0,
-            background: dictation.listening ? "#f87171" : "rgba(255,255,255,0.06)",
-            border: `1px solid ${dictation.listening ? "#f87171" : "rgba(255,255,255,0.12)"}`,
-            color: dictation.listening ? "#0b0c0e" : "#e5e7eb", fontSize:17,
-          }}>{dictation.listening ? "⏹️" : "🎤"}</button>
-        </div>
-
-        <button onClick={identify} disabled={identifying || !name.trim()} style={{
-          display:"flex", alignItems:"center", justifyContent:"center", gap:8,
-          width:"100%", boxSizing:"border-box", padding:"10px 14px", marginBottom:8,
-          borderRadius:10, cursor: identifying || !name.trim() ? "default" : "pointer",
-          background:"rgba(57,255,136,0.08)", border:"1px dashed rgba(57,255,136,0.35)",
-          fontSize:12.5, fontWeight:600, color: identifying || !name.trim() ? "#6b7280" : "#39ff88",
-          opacity: identifying || !name.trim() ? 0.7 : 1,
+        <div style={{
+          background:"rgba(255,255,255,0.03)", border:"1px solid rgba(255,255,255,0.08)",
+          borderRadius:14, padding:12, marginBottom:14,
         }}>
-          <span>{identifying ? "⏳" : "🔍"}</span>
-          <span>{identifying ? "Identificando..." : "Identificar con IA (categoría + descripción)"}</span>
-        </button>
-        {identifyError && (
-          <div style={{ fontSize:11.5, color:"#f87171", marginBottom:8, textAlign:"center" }}>{identifyError}</div>
-        )}
+          <div style={{ fontSize:9, fontWeight:700, letterSpacing:"0.1em", color:"#8a8f98", marginBottom:9 }}>NOMBRE (TEXTO O VOZ)</div>
+          <div style={{ display:"flex", gap:8, marginBottom:9 }}>
+            <input value={name} onChange={e => setName(e.target.value)} placeholder="Ej. Sentadilla búlgara" autoFocus
+              style={{ flex:1, fontSize:14, color:"#f3f4f6", background:"rgba(255,255,255,0.05)", border:"1px solid rgba(255,255,255,0.1)", borderRadius:10, padding:"11px 14px", boxSizing:"border-box" }}/>
+            <button onClick={toggleDictation} disabled={identifying} title="Dictar" style={{
+              width:44, borderRadius:10, cursor: identifying ? "default" : "pointer", flexShrink:0,
+              background: dictation.listening ? "#f87171" : "rgba(255,255,255,0.06)",
+              border: `1px solid ${dictation.listening ? "#f87171" : "rgba(255,255,255,0.12)"}`,
+              color: dictation.listening ? "#0b0c0e" : "#e5e7eb", fontSize:17,
+            }}>{dictation.listening ? "⏹️" : "🎤"}</button>
+          </div>
+
+          <button onClick={identify} disabled={identifying || !name.trim()} style={{
+            display:"flex", alignItems:"center", justifyContent:"center", gap:8,
+            width:"100%", boxSizing:"border-box", padding:"10px 14px",
+            borderRadius:10, cursor: identifying || !name.trim() ? "default" : "pointer",
+            background:"rgba(57,255,136,0.08)", border:"1px dashed rgba(57,255,136,0.35)",
+            fontSize:12.5, fontWeight:600, color: identifying || !name.trim() ? "#6b7280" : "#39ff88",
+            opacity: identifying || !name.trim() ? 0.7 : 1,
+          }}>
+            <span>{identifying ? "⏳" : "🔍"}</span>
+            <span>{identifying ? "Identificando..." : "Identificar con IA (categoría + descripción)"}</span>
+          </button>
+          {identifyError && (
+            <div style={{ fontSize:11.5, color:"#f87171", marginTop:9, textAlign:"center" }}>{identifyError}</div>
+          )}
+        </div>
 
         <div style={{ fontSize:9, color:"#8a8f98", marginBottom:6 }}>CATEGORÍA / GRUPO MUSCULAR</div>
         <div style={{ display:"flex", flexWrap:"wrap", gap:6, marginBottom:14 }}>
@@ -4065,7 +4071,7 @@ function QuickAddFoodModal({ onSave, onClose }) {
   const [closing, setClosing] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
   const [photoError, setPhotoError] = useState("");
-  const [describeOpen, setDescribeOpen] = useState(false);
+  const [aiMode, setAiMode] = useState("photo"); // "photo" | "text"
   const [description, setDescription] = useState("");
   const dictation = useDictation(t => setDescription(d => (d ? `${d} ${t}` : t)));
   const canSave = draft.name.trim().length > 0;
@@ -4154,59 +4160,69 @@ function QuickAddFoodModal({ onSave, onClose }) {
           }}>✕</button>
         </div>
 
-        <label style={{
-          display:"flex", alignItems:"center", justifyContent:"center", gap:8,
-          width:"100%", boxSizing:"border-box", padding:"11px 14px", marginBottom:10,
-          borderRadius:12, cursor: analyzing ? "default" : "pointer",
-          background:"rgba(57,255,136,0.08)", border:"1px dashed rgba(57,255,136,0.35)",
-          fontSize:12.5, fontWeight:600, color: analyzing ? "#6b7280" : "#39ff88",
+        <div style={{
+          background:"rgba(255,255,255,0.03)", border:"1px solid rgba(255,255,255,0.08)",
+          borderRadius:14, padding:12, marginBottom:16,
         }}>
-          <span>{analyzing ? "⏳" : "📷"}</span>
-          <span>{analyzing ? "Analizando foto..." : "Estimar macros con una foto"}</span>
-          <input type="file" accept="image/*" capture="environment" onChange={onPickPhoto} disabled={analyzing} style={{ display:"none" }}/>
-        </label>
-
-        <button onClick={() => setDescribeOpen(o => !o)} disabled={analyzing} style={{
-          display:"flex", alignItems:"center", justifyContent:"center", gap:8,
-          width:"100%", boxSizing:"border-box", padding:"11px 14px", marginBottom: describeOpen ? 8 : 10,
-          borderRadius:12, cursor: analyzing ? "default" : "pointer",
-          background:"rgba(167,139,250,0.08)", border:"1px dashed rgba(167,139,250,0.35)",
-          fontSize:12.5, fontWeight:600, color: analyzing ? "#6b7280" : "#a78bfa",
-        }}>
-          <span>✏️</span>
-          <span>Describir lo que comí (texto o voz)</span>
-        </button>
-
-        {describeOpen && (
-          <div style={{ marginBottom:10 }}>
-            <div style={{ display:"flex", gap:8, marginBottom:8 }}>
-              <textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Ej. dos tacos de pastor con piña y un refresco de lata"
-                rows={2} disabled={analyzing}
-                style={{
-                  flex:1, fontSize:13, color:"#f3f4f6", background:"rgba(255,255,255,0.05)",
-                  border:"1px solid rgba(255,255,255,0.1)", borderRadius:12, padding:"10px 12px",
-                  boxSizing:"border-box", resize:"none", fontFamily:"inherit",
-                }}/>
-              <button onClick={toggleDictation} disabled={analyzing} title="Dictar" style={{
-                width:44, borderRadius:12, cursor: analyzing ? "default" : "pointer", flexShrink:0,
-                background: dictation.listening ? "#f87171" : "rgba(255,255,255,0.06)",
-                border: `1px solid ${dictation.listening ? "#f87171" : "rgba(255,255,255,0.12)"}`,
-                color: dictation.listening ? "#0b0c0e" : "#e5e7eb", fontSize:17,
-              }}>{dictation.listening ? "⏹️" : "🎤"}</button>
-            </div>
-            <button onClick={estimateFromText} disabled={analyzing || !description.trim()} style={{
-              width:"100%", padding:"10px", borderRadius:12, fontSize:12.5, fontWeight:700,
-              cursor: analyzing || !description.trim() ? "default" : "pointer",
-              background: analyzing || !description.trim() ? "rgba(255,255,255,0.05)" : "#a78bfa",
-              border:"none", color: analyzing || !description.trim() ? "#6b7280" : "#1a1024",
-              opacity: analyzing || !description.trim() ? 0.6 : 1,
-            }}>{analyzing ? "Analizando..." : "Estimar macros de esta descripción"}</button>
+          <div style={{ fontSize:9, fontWeight:700, letterSpacing:"0.1em", color:"#8a8f98", marginBottom:9 }}>ESTIMAR MACROS CON IA</div>
+          <div style={{ display:"flex", gap:6, marginBottom:10 }}>
+            <button onClick={() => setAiMode("photo")} disabled={analyzing} style={{
+              flex:1, padding:"8px", borderRadius:9, cursor: analyzing ? "default" : "pointer",
+              background: aiMode==="photo" ? "rgba(57,255,136,0.14)" : "rgba(255,255,255,0.04)",
+              border: `1px solid ${aiMode==="photo" ? "rgba(57,255,136,0.5)" : "rgba(255,255,255,0.1)"}`,
+              color: aiMode==="photo" ? "#39ff88" : "#9ca3af", fontSize:12, fontWeight:600,
+            }}>📷 Foto</button>
+            <button onClick={() => setAiMode("text")} disabled={analyzing} style={{
+              flex:1, padding:"8px", borderRadius:9, cursor: analyzing ? "default" : "pointer",
+              background: aiMode==="text" ? "rgba(167,139,250,0.14)" : "rgba(255,255,255,0.04)",
+              border: `1px solid ${aiMode==="text" ? "rgba(167,139,250,0.5)" : "rgba(255,255,255,0.1)"}`,
+              color: aiMode==="text" ? "#a78bfa" : "#9ca3af", fontSize:12, fontWeight:600,
+            }}>✏️ Describir</button>
           </div>
-        )}
 
-        {photoError && (
-          <div style={{ fontSize:11.5, color:"#f87171", marginBottom:10, textAlign:"center" }}>{photoError}</div>
-        )}
+          {aiMode === "photo" ? (
+            <label style={{
+              display:"flex", alignItems:"center", justifyContent:"center", gap:8,
+              width:"100%", boxSizing:"border-box", padding:"11px 14px",
+              borderRadius:10, cursor: analyzing ? "default" : "pointer",
+              background:"rgba(57,255,136,0.08)", border:"1px dashed rgba(57,255,136,0.35)",
+              fontSize:12.5, fontWeight:600, color: analyzing ? "#6b7280" : "#39ff88",
+            }}>
+              <span>{analyzing ? "⏳" : "📷"}</span>
+              <span>{analyzing ? "Analizando foto..." : "Elegir o tomar una foto"}</span>
+              <input type="file" accept="image/*" capture="environment" onChange={onPickPhoto} disabled={analyzing} style={{ display:"none" }}/>
+            </label>
+          ) : (
+            <>
+              <div style={{ display:"flex", gap:8, marginBottom:8 }}>
+                <textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Ej. dos tacos de pastor con piña y un refresco de lata"
+                  rows={2} disabled={analyzing}
+                  style={{
+                    flex:1, fontSize:13, color:"#f3f4f6", background:"rgba(255,255,255,0.05)",
+                    border:"1px solid rgba(255,255,255,0.1)", borderRadius:10, padding:"10px 12px",
+                    boxSizing:"border-box", resize:"none", fontFamily:"inherit",
+                  }}/>
+                <button onClick={toggleDictation} disabled={analyzing} title="Dictar" style={{
+                  width:44, borderRadius:10, cursor: analyzing ? "default" : "pointer", flexShrink:0,
+                  background: dictation.listening ? "#f87171" : "rgba(255,255,255,0.06)",
+                  border: `1px solid ${dictation.listening ? "#f87171" : "rgba(255,255,255,0.12)"}`,
+                  color: dictation.listening ? "#0b0c0e" : "#e5e7eb", fontSize:17,
+                }}>{dictation.listening ? "⏹️" : "🎤"}</button>
+              </div>
+              <button onClick={estimateFromText} disabled={analyzing || !description.trim()} style={{
+                width:"100%", padding:"10px", borderRadius:10, fontSize:12.5, fontWeight:700,
+                cursor: analyzing || !description.trim() ? "default" : "pointer",
+                background: analyzing || !description.trim() ? "rgba(255,255,255,0.05)" : "#a78bfa",
+                border:"none", color: analyzing || !description.trim() ? "#6b7280" : "#1a1024",
+                opacity: analyzing || !description.trim() ? 0.6 : 1,
+              }}>{analyzing ? "Analizando..." : "Estimar macros de esta descripción"}</button>
+            </>
+          )}
+
+          {photoError && (
+            <div style={{ fontSize:11.5, color:"#f87171", marginTop:9, textAlign:"center" }}>{photoError}</div>
+          )}
+        </div>
 
         <input value={draft.name} onChange={e => setDraft(d => ({ ...d, name: e.target.value }))} placeholder="Nombre (ej. Tortilla de la esquina)" autoFocus
           style={{
@@ -5144,13 +5160,15 @@ export default function App() {
 
       {/* Header — includes a compact progress row in day view so it stays
           visible while scrolling a long session, regardless of header height */}
-      <div ref={headerRef} style={{ background:"#000000", borderBottom:"1px solid rgba(57,255,136,0.12)", padding:"14px 0 12px", position:"sticky", top:0, zIndex:20 }}>
+      <div ref={headerRef} style={{ background:"#000000", borderBottom:"1px solid rgba(57,255,136,0.12)", padding:"calc(14px + env(safe-area-inset-top)) 0 12px", position:"sticky", top:0, zIndex:20 }}>
         {/* Pinned to the header's own corner (not the scrollable nav row) so
             it's always one tap away regardless of scroll position or how
-            many pills the nav row is currently showing. */}
+            many pills the nav row is currently showing. Offset by the same
+            safe-area inset as the header padding so it clears the notch
+            instead of sitting half-behind it. */}
         {cloudSync.authenticated && <SyncQuickButton/>}
         <button onClick={openPerfil} title="Perfil, nutrición y sincronización" style={{
-          position:"absolute", top:12, right:16, zIndex:21,
+          position:"absolute", top:"calc(12px + env(safe-area-inset-top))", right:16, zIndex:21,
           width:34, height:34, borderRadius:"50%", cursor:"pointer",
           background:"rgba(255,255,255,0.06)", border:"1px solid rgba(255,255,255,0.12)",
           color:"#d1d5db", fontSize:15,
