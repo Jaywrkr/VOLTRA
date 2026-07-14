@@ -1600,6 +1600,7 @@ function MuscleMap({ vol }) {
 
 // ─── Muscle Balance Panel ──────────────────────────────────────────────────────
 function MuscleBalancePanel({ days }) {
+  const [open, setOpen] = useState(false);
   const vol = computeMuscleVolume(days);
   const muscles = Object.keys(MUSCLE_DAY);
   const rows = muscles.map(m => ({ muscle: m, sets: vol[m] || 0 })).sort((a, b) => a.sets - b.sets);
@@ -1611,47 +1612,61 @@ function MuscleBalancePanel({ days }) {
 
   return (
     <div style={{ background:"rgba(255,255,255,0.02)", border:"1px solid rgba(255,255,255,0.07)", borderRadius:9, padding:"12px 13px", marginTop:12 }}>
-      <div style={{ fontSize:9, fontWeight:700, color:"#39ff88", letterSpacing:"0.14em", marginBottom:10 }}>BALANCE MUSCULAR · ESTA SEMANA</div>
-      <MuscleMap vol={vol}/>
-      <div style={{ display:"flex", flexDirection:"column", gap:6, marginBottom:12 }}>
-        {rows.map(({ muscle, sets }) => {
-          const c = MUSCLE_COLOR[muscle] || "#9ca3af";
-          return (
-            <div key={muscle} style={{ display:"grid", gridTemplateColumns:"70px 1fr 34px", alignItems:"center", gap:8 }}>
-              <span style={{ fontSize:10, color:"#a1a1aa" }}>{muscle}</span>
-              <div style={{ height:5, background:"rgba(255,255,255,0.05)", borderRadius:99, overflow:"hidden" }}>
-                <div style={{ height:"100%", width:`${(sets / max) * 100}%`, background:c, borderRadius:99 }}/>
-              </div>
-              <span style={{ fontFamily:"'DM Mono',monospace", fontSize:10, color:c, textAlign:"right" }}>{sets}</span>
-            </div>
-          );
-        })}
+      <div onClick={()=>setOpen(o=>!o)} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", cursor:"pointer" }}>
+        <div style={{ fontSize:9, fontWeight:700, color:"#39ff88", letterSpacing:"0.14em" }}>BALANCE MUSCULAR · ESTA SEMANA</div>
+        <CollapseChevron open={open}/>
       </div>
-
-      {weakest.length > 0 && (
-        <div style={{ borderTop:"1px solid rgba(255,255,255,0.06)", paddingTop:10 }}>
-          <div style={{ fontSize:9, fontWeight:700, color:"#fbbf24", letterSpacing:"0.1em", marginBottom:7 }}>SUGERENCIAS · MENOS TRABAJADOS</div>
-          <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
-            {weakest.map(({ muscle }) => {
-              const suggestions = suggestForMuscle(muscle, usedInfo);
-              if (suggestions.length === 0) return null;
+      {!open && weakest.length > 0 && (
+        <div style={{ fontSize:10, color:"#9ca3af", marginTop:6 }}>
+          Menos trabajado: <span style={{ color:MUSCLE_COLOR[weakest[0].muscle], fontWeight:600 }}>{weakest[0].muscle}</span>
+        </div>
+      )}
+      {open && (
+        <>
+          <div style={{ marginTop:10 }}>
+            <MuscleMap vol={vol}/>
+          </div>
+          <div style={{ display:"flex", flexDirection:"column", gap:6, marginBottom:12 }}>
+            {rows.map(({ muscle, sets }) => {
+              const c = MUSCLE_COLOR[muscle] || "#9ca3af";
               return (
-                <div key={muscle} style={{ fontSize:11, color:"#d1d5db", lineHeight:1.6 }}>
-                  <span style={{ color:MUSCLE_COLOR[muscle], fontWeight:600 }}>{muscle}</span>
-                  {" — agrega "}
-                  {suggestions.map((s, i) => (
-                    <span key={s.info}>
-                      {i > 0 ? " o " : ""}
-                      <span style={{ color:"#e5e7eb" }}>{EX_NAME(s.info)}</span>
-                      {" ("}{s.weight}{")"}
-                    </span>
-                  ))}
-                  {MUSCLE_DAY[muscle] ? ` el ${MUSCLE_DAY[muscle]}, con el mismo equipo que ya usas ese día.` : "."}
+                <div key={muscle} style={{ display:"grid", gridTemplateColumns:"70px 1fr 34px", alignItems:"center", gap:8 }}>
+                  <span style={{ fontSize:10, color:"#a1a1aa" }}>{muscle}</span>
+                  <div style={{ height:5, background:"rgba(255,255,255,0.05)", borderRadius:99, overflow:"hidden" }}>
+                    <div style={{ height:"100%", width:`${(sets / max) * 100}%`, background:c, borderRadius:99 }}/>
+                  </div>
+                  <span style={{ fontFamily:"'DM Mono',monospace", fontSize:10, color:c, textAlign:"right" }}>{sets}</span>
                 </div>
               );
             })}
           </div>
-        </div>
+
+          {weakest.length > 0 && (
+            <div style={{ borderTop:"1px solid rgba(255,255,255,0.06)", paddingTop:10 }}>
+              <div style={{ fontSize:9, fontWeight:700, color:"#fbbf24", letterSpacing:"0.1em", marginBottom:7 }}>SUGERENCIAS · MENOS TRABAJADOS</div>
+              <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
+                {weakest.map(({ muscle }) => {
+                  const suggestions = suggestForMuscle(muscle, usedInfo);
+                  if (suggestions.length === 0) return null;
+                  return (
+                    <div key={muscle} style={{ fontSize:11, color:"#d1d5db", lineHeight:1.6 }}>
+                      <span style={{ color:MUSCLE_COLOR[muscle], fontWeight:600 }}>{muscle}</span>
+                      {" — agrega "}
+                      {suggestions.map((s, i) => (
+                        <span key={s.info}>
+                          {i > 0 ? " o " : ""}
+                          <span style={{ color:"#e5e7eb" }}>{EX_NAME(s.info)}</span>
+                          {" ("}{s.weight}{")"}
+                        </span>
+                      ))}
+                      {MUSCLE_DAY[muscle] ? ` el ${MUSCLE_DAY[muscle]}, con el mismo equipo que ya usas ese día.` : "."}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </>
       )}
     </div>
   );
@@ -4629,6 +4644,7 @@ export default function App() {
   const [open, setOpen]   = useState(null);
   const [showMini, setShowMini] = useState(false);
   const [tlView, setTlView] = useState(false);
+  const [splitOpen, setSplitOpen] = useState(false);
   const [timer, setTimer] = useState(null);
   const [completedDates, setCompletedDates] = useState(() => loadLocal("jay-training-completed-dates", []));
   const [lucaDone, setLucaDone] = useState(() => loadLocal("luca-training-done", {}));
@@ -5237,16 +5253,21 @@ export default function App() {
 
         {/* Split overview — desktop sidebar only shows here too */}
         <div style={{ background:"rgba(255,255,255,0.02)", border:"1px solid rgba(255,255,255,0.07)", borderRadius:9, padding:"10px 13px", marginTop:11 }}>
-          <div style={{ fontSize:9, fontWeight:700, color:"#39ff88", letterSpacing:"0.14em", marginBottom:8 }}>SPLIT · EMPIEZA LUNES</div>
-          <div style={{ display:"flex", flexDirection:"column", gap:5 }}>
-            {SPLIT.map(([d,g,c])=>(
-              <div key={d} style={{ display:"flex", alignItems:"center", gap:8 }}>
-                <div style={{ width:3, height:3, borderRadius:"50%", background:c, flexShrink:0 }}/>
-                <span style={{ fontFamily:"'DM Mono',monospace", fontSize:10, color:"#71717a", width:32, flexShrink:0 }}>{d}</span>
-                <span style={{ fontSize:11, fontWeight:600, color:c }}>{g}</span>
-              </div>
-            ))}
+          <div onClick={()=>setSplitOpen(o=>!o)} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", cursor:"pointer" }}>
+            <div style={{ fontSize:9, fontWeight:700, color:"#39ff88", letterSpacing:"0.14em" }}>SPLIT · EMPIEZA LUNES</div>
+            <CollapseChevron open={splitOpen}/>
           </div>
+          {splitOpen && (
+            <div style={{ display:"flex", flexDirection:"column", gap:5, marginTop:8 }}>
+              {SPLIT.map(([d,g,c])=>(
+                <div key={d} style={{ display:"flex", alignItems:"center", gap:8 }}>
+                  <div style={{ width:3, height:3, borderRadius:"50%", background:c, flexShrink:0 }}/>
+                  <span style={{ fontFamily:"'DM Mono',monospace", fontSize:10, color:"#71717a", width:32, flexShrink:0 }}>{d}</span>
+                  <span style={{ fontSize:11, fontWeight:600, color:c }}>{g}</span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         <MuscleBalancePanel days={DAYS}/>
