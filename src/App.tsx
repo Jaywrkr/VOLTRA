@@ -1789,6 +1789,7 @@ const LUCA_COMPANIONS = [
 ];
 
 function LucaMissionPanel({ done, setDone, missionChoice, setMissionChoice, participants, setParticipants }) {
+  const [setupOpen, setSetupOpen] = useState(false);
   const todayKey = isoDate(new Date());
   const suggestedIdx = lucaMissionForToday();
   const chosenIdx = missionChoice[todayKey] ?? suggestedIdx;
@@ -1858,27 +1859,11 @@ function LucaMissionPanel({ done, setDone, missionChoice, setMissionChoice, part
     );
   };
 
+  const joinedForSummary = LUCA_COMPANIONS.filter(p => todayParticipants[p.key]).map(p => p.label);
+
   return (
     <div>
-      <div style={{ fontSize:9, fontWeight:700, letterSpacing:"0.12em", color:"#6b7280", marginBottom:6, paddingLeft:2 }}>ELIGE TU MISIÓN</div>
-      <div style={{ display:"flex", gap:6, overflowX:"auto", paddingBottom:4, marginBottom:14 }}>
-        {LUCA_MISSIONS.map((m, idx) => {
-          const active = idx === chosenIdx;
-          return (
-            <div key={m.title} onClick={() => pickMission(idx)} style={{
-              flexShrink:0, cursor:"pointer", textAlign:"center", width:76, padding:"10px 6px",
-              borderRadius:12, background: active ? `${m.color}18` : "rgba(255,255,255,0.03)",
-              border:`1px solid ${active ? m.color+"60" : "rgba(255,255,255,0.08)"}`, transition:"all 0.15s",
-            }}>
-              <div style={{ fontSize:22 }}>{m.emoji}</div>
-              <div style={{ fontSize:9, fontWeight:600, color: active ? m.color : "#9ca3af", marginTop:3, lineHeight:1.3 }}>{m.title.replace("Misión ", "")}</div>
-              {idx === suggestedIdx && <div style={{ fontSize:7, color:"#6b7280", marginTop:2 }}>sugerida</div>}
-            </div>
-          );
-        })}
-      </div>
-
-      <div style={{ background:`${c}12`, border:`1px solid ${c}35`, borderRadius:12, padding:"16px 18px", marginBottom:16, textAlign:"center" }}>
+      <div style={{ background:`${c}12`, border:`1px solid ${c}35`, borderRadius:12, padding:"16px 18px", marginBottom:12, textAlign:"center" }}>
         <div style={{ fontSize:34, marginBottom:4 }}>{mission.emoji}</div>
         <div style={{ fontSize:19, fontWeight:700, color:"#f3f4f6" }}>{mission.title}</div>
         <div style={{ fontSize:11, color:"#9ca3af", marginTop:4, fontStyle:"italic" }}>{mission.story}</div>
@@ -1890,19 +1875,49 @@ function LucaMissionPanel({ done, setDone, missionChoice, setMissionChoice, part
         </div>
       </div>
 
-      <div style={{ fontSize:9, fontWeight:700, letterSpacing:"0.12em", color:"#6b7280", marginBottom:6, paddingLeft:2 }}>¿QUIÉN SE UNE HOY?</div>
-      <div style={{ display:"flex", gap:6, marginBottom:16 }}>
-        {LUCA_COMPANIONS.map(p => {
-          const active = !!todayParticipants[p.key];
-          return (
-            <div key={p.key} onClick={() => toggleCompanion(p.key)} style={{
-              cursor:"pointer", padding:"7px 13px", borderRadius:8, fontSize:12, fontWeight:600,
-              background: active ? `${c}18` : "rgba(255,255,255,0.03)",
-              border:`1px solid ${active ? c+"60" : "rgba(255,255,255,0.08)"}`,
-              color: active ? c : "#9ca3af", transition:"all 0.15s",
-            }}>{p.emoji} {p.label}{active ? " ✓" : ""}</div>
-          );
-        })}
+      <div style={{ background:"rgba(255,255,255,0.02)", border:"1px solid rgba(255,255,255,0.07)", borderRadius:9, padding:"10px 13px", marginBottom:16 }}>
+        <div onClick={()=>setSetupOpen(o=>!o)} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", cursor:"pointer" }}>
+          <span style={{ fontSize:11, color:"#9ca3af" }}>
+            ⚙️ {joinedForSummary.length > 0 ? `Con ${joinedForSummary.join(" y ")}` : "Cambiar misión o quién se une"}
+          </span>
+          <CollapseChevron open={setupOpen}/>
+        </div>
+        {setupOpen && (
+          <>
+            <div style={{ fontSize:9, fontWeight:700, letterSpacing:"0.12em", color:"#6b7280", margin:"14px 0 6px", paddingLeft:2 }}>ELIGE TU MISIÓN</div>
+            <div style={{ display:"flex", gap:6, overflowX:"auto", paddingBottom:4, marginBottom:14 }}>
+              {LUCA_MISSIONS.map((m, idx) => {
+                const active = idx === chosenIdx;
+                return (
+                  <div key={m.title} onClick={() => pickMission(idx)} style={{
+                    flexShrink:0, cursor:"pointer", textAlign:"center", width:76, padding:"10px 6px",
+                    borderRadius:12, background: active ? `${m.color}18` : "rgba(255,255,255,0.03)",
+                    border:`1px solid ${active ? m.color+"60" : "rgba(255,255,255,0.08)"}`, transition:"all 0.15s",
+                  }}>
+                    <div style={{ fontSize:22 }}>{m.emoji}</div>
+                    <div style={{ fontSize:9, fontWeight:600, color: active ? m.color : "#9ca3af", marginTop:3, lineHeight:1.3 }}>{m.title.replace("Misión ", "")}</div>
+                    {idx === suggestedIdx && <div style={{ fontSize:7, color:"#6b7280", marginTop:2 }}>sugerida</div>}
+                  </div>
+                );
+              })}
+            </div>
+
+            <div style={{ fontSize:9, fontWeight:700, letterSpacing:"0.12em", color:"#6b7280", marginBottom:6, paddingLeft:2 }}>¿QUIÉN SE UNE HOY?</div>
+            <div style={{ display:"flex", gap:6 }}>
+              {LUCA_COMPANIONS.map(p => {
+                const active = !!todayParticipants[p.key];
+                return (
+                  <div key={p.key} onClick={() => toggleCompanion(p.key)} style={{
+                    cursor:"pointer", padding:"7px 13px", borderRadius:8, fontSize:12, fontWeight:600,
+                    background: active ? `${c}18` : "rgba(255,255,255,0.03)",
+                    border:`1px solid ${active ? c+"60" : "rgba(255,255,255,0.08)"}`,
+                    color: active ? c : "#9ca3af", transition:"all 0.15s",
+                  }}>{p.emoji} {p.label}{active ? " ✓" : ""}</div>
+                );
+              })}
+            </div>
+          </>
+        )}
       </div>
 
       <div style={{ fontSize:9, fontWeight:700, letterSpacing:"0.12em", color:"#6b7280", marginBottom:6, paddingLeft:2 }}>CALENTAMIENTO</div>
