@@ -185,8 +185,16 @@ const mkDay = (id, short, label, type, focus, dur, muscles, sections, tip) =>
 const rest = (id, short, label, tip) =>
   ({ id, short, label, type:"REST", focus:"Descanso", duration:"—", muscles:"Recuperación completa", sections:[], tip });
 
-function buildAllWeeks() {
+// variantChoice: { lun:"A"|"B"|"C"|"D", mar:..., mie:..., jue:..., vie:..., dom:... }
+// Each weekday has 4 curated exercise-selection variants (same 4 for every
+// week — this is a movement choice, not a progression phase), defaulting
+// to "A" until the user picks one. Sets/reps/weight for whichever variant
+// is chosen still come from that week's own progression formulas below —
+// picking a different variant never changes the programmed load.
+function buildAllWeeks(variantChoice = {}) {
+  const V = (id) => variantChoice[id] || "A";
   return WEEK_META.map((_, wi) => {
+    const lunV = V("lun"), marV = V("mar"), mieV = V("mie"), jueV = V("jue"), vieV = V("vie"), domV = V("dom");
     // ── Progression config — 4-week arc ─────────────────────────────────────
     // Week 1 (isW1) mirrors exactly what the app already had live for
     // "Base" before this rewrite — Monday's leg session was already
@@ -233,55 +241,55 @@ function buildAllWeeks() {
         { name:"FitXR corto", exercises:[
           { name:"FitXR — Flow", note:"Cardio ligero para empezar. Ajusta los minutos si haces más o menos.", sets:"10 min", weight:"—", info:"fitxrFlow" },
         ]},
-        { name:"Cuádriceps + Glúteos", exercises: isW1 ? [
+        { name:"Cuádriceps + Glúteos", exercises: lunV === "A" ? [
           { name:"KB Goblet Squat", note:e, sets:`${ms} × ${mr}`, weight:"10 kg", info:"gobletSquat" },
           { name:"KB Step-up", note:`${e} — usa un banco firme`, sets:`${ms} × ${mr}/leg`, weight:"10 kg", info:"kbStepUp" },
           { name:"KB Sumo Squat", note:"Pausa 2s abajo", sets:`${ms} × ${mr}`, weight:"10 kg", info:"sumoSquat" },
           { name:"KB Glute Bridge", note:"Pausa 2s arriba", sets:`${ms} × ${mr+3}`, weight:"10 kg", info:"gluteBridge" },
           { name:"Curtsy Lunge", note:`${e} — glúteo medio`, sets:`${ms} × ${mr}/leg`, weight:"10 kg", info:"curtsyLunge" },
-        ] : isW2 ? [
+        ] : lunV === "B" ? [
           { name:"KB Sumo Squat", note:e, sets:`${ms} × ${mr}`, weight:"10 kg", info:"sumoSquat" },
           { name:"Sofa Split Squats", note:"Pie trasero apoyado en el sofá, pierna delantera al frente", sets:`${ms} × ${mr}/leg`, weight:"BW", info:"custSofaSplitSquat" },
           { name:"KB Lateral Lunge", note:`${e} — aductor + glúteo medio`, sets:`${ms} × ${mr}/leg`, weight:"10 kg", info:"lateralLunge" },
           { name:"KB Glute Bridge", note:"Pausa 2s arriba", sets:`${ms} × ${mr+3}`, weight:"10 kg", info:"gluteBridge" },
           { name:"Calf Raises", note:"Contrae arriba 1s — controla la bajada", sets:`${is_} × 15`, weight:"BW", info:"custCalfRaises" },
-        ] : isW3 ? [
+        ] : lunV === "C" ? [
           { name:"KB Split Squat", note:e, sets:`${ms} × ${mr}/leg`, weight:"10 kg", info:"splitSquat" },
           { name:"Kettlebell Lunge to Press", note:"Estocada + press arriba al subir", sets:`${ms} × ${mr}/leg`, weight:"6.8 kg", info:"custKbLungeToPress" },
           { name:"KB Goblet Squat", note:`${e} + 2s pausa abajo`, sets:`${ms} × ${mr}`, weight:"10 kg", info:"gobletSquat" },
           { name:"Calf Raises", note:"Contrae arriba 1s — controla la bajada", sets:`${is_} × 16`, weight:"BW", info:"custCalfRaises" },
         ] : [
-          { name:"KB Goblet Squat", note:`${e} + 3s pausa abajo — peak`, sets:`${ms} × ${mr}`, weight:"10 kg", info:"gobletSquat" },
+          { name:"KB Goblet Squat", note:`${e} + 3s pausa abajo`, sets:`${ms} × ${mr}`, weight:"10 kg", info:"gobletSquat" },
           { name:"Sofa Split Squats", note:"Pie trasero apoyado — máximo control", sets:`${ms} × ${mr}/leg`, weight:"BW", info:"custSofaSplitSquat" },
           { name:"KB Sumo Squat", note:"Pausa 3s abajo", sets:`${ms} × ${mr}`, weight:"10 kg", info:"sumoSquat" },
-          { name:"Kettlebell Lunge to Press", note:"Estocada + press — último empuje del ciclo", sets:`${is_} × ${ir}/leg`, weight:"6.8 kg", info:"custKbLungeToPress" },
+          { name:"Kettlebell Lunge to Press", note:"Estocada + press", sets:`${is_} × ${ir}/leg`, weight:"6.8 kg", info:"custKbLungeToPress" },
         ]},
-        { name:"Isquios", exercises: isW1 ? [
+        { name:"Isquios", exercises: lunV === "A" ? [
           { name:"KB Romanian Deadlift", note:e, sets:`${ms} × ${mr}`, weight:"10 kg", info:"rdl" },
           { name:"KB Single-leg Deadlift", note:`${e} — equilibrio`, sets:`${is_} × ${ir}/leg`, weight:"10 kg", info:"singleLegDL" },
-        ] : isW2 ? [
+        ] : lunV === "B" ? [
           { name:"KB Romanian Deadlift", note:`${e} + pausa 1s en estiramiento`, sets:`${ms} × ${mr}`, weight:"10 kg", info:"rdl" },
           { name:"KB Single-leg Deadlift", note:`${e} — equilibrio`, sets:`${is_} × ${ir}/leg`, weight:"10 kg", info:"singleLegDL" },
-        ] : isW3 ? [
+        ] : lunV === "C" ? [
           { name:"KB Single-leg Deadlift", note:`${e} — equilibrio`, sets:`${ms} × ${mr}/leg`, weight:"10 kg", info:"singleLegDL" },
           { name:"KB Romanian Deadlift", note:`${e} + pausa 2s en estiramiento`, sets:`${is_} × ${ir}`, weight:"10 kg", info:"rdl" },
         ] : [
-          { name:"KB Romanian Deadlift", note:`${e} + pausa 2s en estiramiento — peak`, sets:`${ms} × ${mr}`, weight:"10 kg", info:"rdl" },
-          { name:"KB Single-leg Deadlift", note:`${e} — equilibrio, peak`, sets:`${is_} × ${ir}/leg`, weight:"10 kg", info:"singleLegDL" },
+          { name:"KB Romanian Deadlift", note:`${e} + pausa 2s en estiramiento`, sets:`${ms} × ${mr}`, weight:"10 kg", info:"rdl" },
+          { name:"KB Single-leg Deadlift", note:`${e} — equilibrio`, sets:`${is_} × ${ir}/leg`, weight:"10 kg", info:"singleLegDL" },
         ]},
-        { name:"Core", exercises: isW1 ? [
+        { name:"Core", exercises: lunV === "A" ? [
           { name:"KB Plank Drag", note:"Core anti-rotación — caderas quietas", sets:`${cs} × ${cDb}/lado`, weight:"4.5 kg", info:"plankDrag" },
           { name:"Toe Touches", note:"Piernas al techo — sin impulso", sets:`${cs} × ${cTt}`, weight:"BW", info:"toeTouches" },
           { name:"Dead Bug", note:"Exhala completamente cada rep", sets:`${cs} × ${cDb}`, weight:"BW", info:"deadbug" },
           { name:"Plank hold", note:"Abs + glúteos apretados", sets:`${cs} × ${cHt}s`, weight:"BW", info:"plank" },
           { name:"Bicycle crunches", note:"Lento — rotación de torso", sets:`${cs} × ${cBc}`, weight:"BW", info:"bicycle" },
-        ] : isW2 ? [
+        ] : lunV === "B" ? [
           { name:"Side Plank", note:"Cadera arriba — cambia de lado", sets:`${cs} × ${cHt-10}s/lado`, weight:"BW", info:"sidePlank" },
           { name:"Sit-ups con Rotación", note:"Codo hacia la rodilla opuesta, alterna lados", sets:`${cs} × ${cBc}`, weight:"BW", info:"custSitupsRotacion" },
           { name:"Reverse Crunch", note:"La cadera sube — no patees", sets:`${cs} × ${cLr}`, weight:"BW", info:"reverseCrunch" },
           { name:"Plank hold", note:"Abs + glúteos apretados", sets:`${cs} × ${cHt}s`, weight:"BW", info:"plank" },
           { name:"V-Up", note:"Sube brazos y piernas juntos", sets:`${cs} × ${cTt}`, weight:"BW", info:"vUp" },
-        ] : isW3 ? [
+        ] : lunV === "C" ? [
           { name:"Kettlebell Wood Chops", note:"Rotación explosiva — controla el regreso", sets:`${cs} × ${cTw}/lado`, weight:"6.8 kg", info:"custKbWoodChops" },
           { name:"Side Touch Floor en Silla", note:"Espalda recta — contrae el oblicuo", sets:`${cs} × ${cLr}/lado`, weight:"BW", info:"custSideTouchSilla" },
           { name:"Russian Twist Heavy", note:"Rota completamente — toca el suelo", sets:`${cs} × ${cTw}`, weight:"6.8 kg", info:"russianHeavy" },
@@ -290,7 +298,7 @@ function buildAllWeeks() {
           { name:"Kettlebell Around the World", note:"Círculos controlados alrededor de la cintura", sets:`${cs} × ${cLr}`, weight:"4.5 kg", info:"custKbAroundWorld" },
           { name:"Rodillas al Pecho en Silla", note:"Contrae 1s arriba — sin impulso de brazos", sets:`${cs} × ${cTt}`, weight:"BW", info:"custRodillasPechoSilla" },
           { name:"Sofá High Bridge", note:"Espalda alta apoyada — cadera hasta línea recta", sets:`${cs} × ${cBc}`, weight:"BW", info:"custSofaHighBridge" },
-          { name:"Plank hold", note:"Abs + glúteos — peak del ciclo", sets:`${cs} × ${cHt}s`, weight:"BW", info:"plank" },
+          { name:"Plank hold", note:"Abs + glúteos apretados", sets:`${cs} × ${cHt}s`, weight:"BW", info:"plank" },
         ]},
       ],
       isW1 ? "Piernas = grupo muscular más grande. Cada sesión activa el metabolismo las siguientes 48h."
@@ -300,42 +308,42 @@ function buildAllWeeks() {
     );
 
     // ── MAR: Pecho + Tríceps + Core ────────────────────────────────────────
-    const marPecho = isW1 ? [
+    const marPecho = marV === "A" ? [
       { name:"KB Floor Press", note:e, sets:`${ms} × ${mr}/arm`, weight:"10 kg", info:"floorPress" },
       { name:"Push-up Close Grip", note:e+" — pecho interno", sets:`${ms} × ${mr}`, weight:"BW", info:"pushupClose" },
       { name:"KB Floor Fly", note:"4s bajando — estira el pecho", sets:`${ms} × ${mr}/arm`, weight:"6.8 kg", info:"floorFly" },
       { name:"Push-up", note:e, sets:`${is_} × ${ir}`, weight:"BW", info:"pushup" },
-    ] : isW2 ? [
+    ] : marV === "B" ? [
       { name:"KB Floor Fly", note:`${e} — estira el pecho`, sets:`${ms} × ${mr}/arm`, weight:"6.8 kg", info:"floorFly" },
       { name:"Flexiones en Sofá", note:"Manos en el sofá, pies en el suelo", sets:`${ms} × ${mr}`, weight:"BW", info:"custFlexionesSofa" },
       { name:"KB Floor Press", note:e, sets:`${ms} × ${mr}/arm`, weight:"10 kg", info:"floorPress" },
       { name:"Flexión de brazos ancha", note:"Manos más anchas que los hombros — estira el pecho", sets:`${is_} × ${ir}`, weight:"BW", info:"custFlexionAncha" },
-    ] : isW3 ? [
+    ] : marV === "C" ? [
       { name:"Pseudo Planche Push-Up", note:"Codos pegados al cuerpo, manos cerca de la cadera", sets:`${ms} × ${mr}`, weight:"BW", info:"custPseudoPlanche" },
       { name:"KB Floor Press", note:`${e} + pausa 1s abajo`, sets:`${ms} × ${mr}/arm`, weight:"10 kg", info:"floorPress" },
       { name:"Push-up Archer", note:e+" — un lado a la vez", sets:`${ms} × ${mr}/lado`, weight:"BW", info:"pushupArcher" },
       { name:"KB Floor Fly", note:"4s bajando", sets:`${is_} × ${ir}/arm`, weight:"6.8 kg", info:"floorFly" },
     ] : [
-      { name:"KB Floor Press", note:`${e} + pausa 2s abajo — peak`, sets:`${ms} × ${mr}/arm`, weight:"10 kg", info:"floorPress" },
-      { name:"Pseudo Planche Push-Up", note:"Máximo control — cierre de ciclo", sets:`${ms} × ${mr}`, weight:"BW", info:"custPseudoPlanche" },
-      { name:"Diamond Push-up", note:"Al fallo — cierre de pecho", sets:`${ms} × max`, weight:"BW", info:"diamondPushup" },
+      { name:"KB Floor Press", note:`${e} + pausa 2s abajo`, sets:`${ms} × ${mr}/arm`, weight:"10 kg", info:"floorPress" },
+      { name:"Pseudo Planche Push-Up", note:"Máximo control", sets:`${ms} × ${mr}`, weight:"BW", info:"custPseudoPlanche" },
+      { name:"Diamond Push-up", note:"Al fallo", sets:`${ms} × max`, weight:"BW", info:"diamondPushup" },
       { name:"KB Floor Fly", note:"5s bajando — máximo estiramiento", sets:`${is_} × ${ir}/arm`, weight:"6.8 kg", info:"floorFly" },
     ];
-    const marTriceps = isW1 ? [
+    const marTriceps = marV === "A" ? [
       { name:"KB Tricep Extension", note:e, sets:`${is_} × ${ir}`, weight:"6.8 kg", info:"tricepExt" },
       { name:"Diamond Push-up", note:"Al fallo controlado", sets:`${is_} × max`, weight:"BW", info:"diamondPushup" },
       { name:"KB Tricep Kickback", note:`${e} — pausa 1s arriba`, sets:`${is_} × ${ir}/arm`, weight:"4.5 kg", info:"tricepKickback" },
-    ] : isW2 ? [
+    ] : marV === "B" ? [
       { name:"KB Skull Crusher", note:`${e} — codos fijos`, sets:`${is_} × ${ir}/arm`, weight:"6.8 kg", info:"kbSkullCrusher" },
       { name:"Diamond Push-up", note:"Al fallo controlado", sets:`${is_} × max`, weight:"BW", info:"diamondPushup" },
       { name:"KB Tricep Extension", note:e, sets:`${is_} × ${ir}`, weight:"6.8 kg", info:"tricepExt" },
-    ] : isW3 ? [
+    ] : marV === "C" ? [
       { name:"KB Tricep Kickback", note:`${e} — pausa 1s arriba`, sets:`${is_} × ${ir}/arm`, weight:"4.5 kg", info:"tricepKickback" },
       { name:"KB Tricep Extension", note:e, sets:`${is_} × ${ir}`, weight:"6.8 kg", info:"tricepExt" },
       { name:"Diamond Push-up", note:"Al fallo controlado", sets:`${is_} × max`, weight:"BW", info:"diamondPushup" },
     ] : [
       { name:"KB Tricep Extension", note:`${e} + pausa 2s arriba`, sets:`${is_} × ${ir}`, weight:"6.8 kg", info:"tricepExt" },
-      { name:"KB Skull Crusher", note:`${e} — codos fijos, peak`, sets:`${is_} × ${ir}/arm`, weight:"6.8 kg", info:"kbSkullCrusher" },
+      { name:"KB Skull Crusher", note:`${e} — codos fijos`, sets:`${is_} × ${ir}/arm`, weight:"6.8 kg", info:"kbSkullCrusher" },
       { name:"Diamond Push-up", note:"Al fallo absoluto", sets:`${is_} × max`, weight:"BW", info:"diamondPushup" },
     ];
     const mar = mkDay("mar","MAR","Martes","STRENGTH","Pecho + Tríceps",
@@ -351,26 +359,26 @@ function buildAllWeeks() {
         ]},
         { name:"Pecho", exercises: marPecho },
         { name:"Tríceps", exercises: marTriceps },
-        { name:"Core", exercises: isW1 ? [
+        { name:"Core", exercises: marV === "A" ? [
           { name:"Plank hold", note:"Abs + glúteos apretados", sets:`${cs} × ${cHt}s`, weight:"BW", info:"plank" },
           { name:"Crunches", note:"Pequeño y controlado", sets:`${cs} × ${cTt+4}`, weight:"BW", info:"crunches" },
           { name:"Toe Touches", note:"Piernas al techo — sin impulso", sets:`${cs} × ${cTt}`, weight:"BW", info:"toeTouches" },
           { name:"KB Plank Drag", note:"Core anti-rotación — caderas quietas", sets:`${cs} × ${cDb}/lado`, weight:"4.5 kg", info:"plankDrag" },
           { name:"Bicycle crunches", note:"Lento — rotación de torso", sets:`${cs} × ${cBc}`, weight:"BW", info:"bicycle" },
-        ] : isW2 ? [
+        ] : marV === "B" ? [
           { name:"Side Plank", note:"Cadera arriba — cambia de lado", sets:`${cs} × ${cHt-10}s/lado`, weight:"BW", info:"sidePlank" },
           { name:"V-Up", note:"Sube brazos y piernas juntos", sets:`${cs} × ${cTt}`, weight:"BW", info:"vUp" },
           { name:"Mountain Climbers", note:"Caderas completamente quietas", sets:`${cs} × ${cMc}`, weight:"BW", info:"mountainClimber" },
           { name:"Sit-ups con Rotación", note:"Codo hacia la rodilla opuesta", sets:`${cs} × ${cBc}`, weight:"BW", info:"custSitupsRotacion" },
-        ] : isW3 ? [
+        ] : marV === "C" ? [
           { name:"Kettlebell Wood Chops", note:"Rotación explosiva — controla el regreso", sets:`${cs} × ${cTw}/lado`, weight:"6.8 kg", info:"custKbWoodChops" },
           { name:"Reverse Crunch", note:"La cadera sube — no patees", sets:`${cs} × ${cLr}`, weight:"BW", info:"reverseCrunch" },
           { name:"Plank hold", note:"Abs + glúteos apretados", sets:`${cs} × ${cHt}s`, weight:"BW", info:"plank" },
           { name:"Russian Twist Heavy", note:"Rota completamente — toca el suelo", sets:`${cs} × ${cTw}`, weight:"6.8 kg", info:"russianHeavy" },
         ] : [
           { name:"Sofá High Bridge", note:"Espalda alta apoyada — cadera hasta línea recta", sets:`${cs} × ${cBc}`, weight:"BW", info:"custSofaHighBridge" },
-          { name:"Kettlebell Around the World", note:"Círculos controlados — peak de control", sets:`${cs} × ${cLr}`, weight:"4.5 kg", info:"custKbAroundWorld" },
-          { name:"Plank hold", note:"Abs + glúteos — peak del ciclo", sets:`${cs} × ${cHt}s`, weight:"BW", info:"plank" },
+          { name:"Kettlebell Around the World", note:"Círculos controlados", sets:`${cs} × ${cLr}`, weight:"4.5 kg", info:"custKbAroundWorld" },
+          { name:"Plank hold", note:"Abs + glúteos apretados", sets:`${cs} × ${cHt}s`, weight:"BW", info:"plank" },
           { name:"Rodillas al Pecho en Silla", note:"Contrae 1s arriba", sets:`${cs} × ${cTt}`, weight:"BW", info:"custRodillasPechoSilla" },
         ]},
       ],
@@ -401,31 +409,31 @@ function buildAllWeeks() {
           { name:"FitXR — Box", note:"4 rounds, máximo esfuerzo — peak", sets:"25 min", weight:"—", info:"fitxrBox" },
           { name:"FitXR — HIIT", note:"Peak cardio — 100% esfuerzo", sets:"20 min", weight:"—", info:"fitxrHiit" },
         ]},
-        { name:"Abdomen", exercises: isW1 ? [
+        { name:"Abdomen", exercises: mieV === "A" ? [
           { name:"Russian Twist", note:"Rota completamente cada lado", sets:`${cs} × ${cTw}`, weight:"4.5 kg", info:"russianTwist" },
           { name:"Bicycle crunches", note:"Lento — rotación de torso", sets:`${cs} × ${cBc}`, weight:"BW", info:"bicycle" },
           { name:"Leg Raise", note:"4s bajando siempre", sets:`${cs} × ${cLr}`, weight:"BW", info:"legRaise" },
           { name:"Side Plank", note:"Cadera arriba — cambia de lado", sets:`${cs} × ${cHt-10}s/lado`, weight:"BW", info:"sidePlank" },
           { name:"Plank hold", note:"Abs + glúteos apretados", sets:`${cs} × ${cMc}`, weight:"BW", info:"plank" },
           { name:"Crunches", note:"Pequeño y controlado", sets:`${cs} × ${cTt+4}`, weight:"BW", info:"crunches" },
-        ] : isW2 ? [
+        ] : mieV === "B" ? [
           { name:"Sit-ups con Rotación", note:"Codo hacia la rodilla opuesta", sets:`${cs} × ${cBc}`, weight:"BW", info:"custSitupsRotacion" },
           { name:"Kettlebell Wood Chops", note:"Rotación explosiva — controla el regreso", sets:`${cs} × ${cTw}/lado`, weight:"6.8 kg", info:"custKbWoodChops" },
           { name:"Reverse Crunch", note:"La cadera sube — no patees", sets:`${cs} × ${cLr}`, weight:"BW", info:"reverseCrunch" },
           { name:"Plank hold", note:"Abs + glúteos apretados", sets:`${cs} × ${cHt}s`, weight:"BW", info:"plank" },
           { name:"Scissor Kicks", note:"Piernas siempre arriba", sets:`${cs} × ${cBc}`, weight:"BW", info:"scissorKicks" },
-        ] : isW3 ? [
+        ] : mieV === "C" ? [
           { name:"Side Touch Floor en Silla", note:"Espalda recta — contrae el oblicuo", sets:`${cs} × ${cLr}/lado`, weight:"BW", info:"custSideTouchSilla" },
           { name:"Rodillas al Pecho en Silla", note:"Contrae 1s arriba — sin impulso", sets:`${cs} × ${cTt}`, weight:"BW", info:"custRodillasPechoSilla" },
           { name:"V-Up", note:"Sube brazos y piernas juntos", sets:`${cs} × ${cTt}`, weight:"BW", info:"vUp" },
           { name:"Russian Twist Heavy", note:"Rota completamente — toca el suelo", sets:`${cs} × ${cTw}`, weight:"6.8 kg", info:"russianHeavy" },
           { name:"Plank hold", note:"Abs + glúteos apretados", sets:`${cs} × ${cHt}s`, weight:"BW", info:"plank" },
         ] : [
-          { name:"Sofá High Bridge", note:"Cadera hasta línea recta — peak", sets:`${cs} × ${cBc}`, weight:"BW", info:"custSofaHighBridge" },
-          { name:"Kettlebell Around the World", note:"Círculos controlados — peak de control", sets:`${cs} × ${cLr}`, weight:"4.5 kg", info:"custKbAroundWorld" },
+          { name:"Sofá High Bridge", note:"Cadera hasta línea recta", sets:`${cs} × ${cBc}`, weight:"BW", info:"custSofaHighBridge" },
+          { name:"Kettlebell Around the World", note:"Círculos controlados", sets:`${cs} × ${cLr}`, weight:"4.5 kg", info:"custKbAroundWorld" },
           { name:"Hollow Body Rock", note:"Mantén la forma al rockear", sets:`${cs} × 18 rocks`, weight:"BW", info:"hollowRock" },
-          { name:"Plank hold", note:"Abs + glúteos — cierre del ciclo", sets:`${cs} × ${cHt}s`, weight:"BW", info:"plank" },
-          { name:"Crunches", note:"Pequeño y controlado — peak", sets:`${cs} × ${cTt+4}`, weight:"BW", info:"crunches" },
+          { name:"Plank hold", note:"Abs + glúteos apretados", sets:`${cs} × ${cHt}s`, weight:"BW", info:"plank" },
+          { name:"Crunches", note:"Pequeño y controlado", sets:`${cs} × ${cTt+4}`, weight:"BW", info:"crunches" },
         ]},
       ],
       isW1 ? "FitXR + abdomen es la combinación que define el core. El abdomen se define con cardio + carga progresiva."
@@ -435,47 +443,47 @@ function buildAllWeeks() {
     );
 
     // ── JUE: Espalda + Bíceps + Core ──────────────────────────────────────
-    const jueEspalda = isW1 ? [
+    const jueEspalda = jueV === "A" ? [
       { name:"KB Single-arm Swing", note:`${e} — anti-rotación`, sets:`${ms} × ${mr}/arm`, weight:"10 kg", info:"kbSwingSingle" },
       { name:"KB Row con pausa 2s", note:e, sets:`${ms} × ${mr}`, weight:"10 kg", info:"bentOverRowPause" },
       { name:"KB Deadlift", note:`${e} — bisagra de cadera`, sets:`${ms} × ${mr}`, weight:"10 kg", info:"deadlift" },
       { name:"KB Suitcase Carry", note:"Core anti-lateral — hombros nivelados", sets:`${cs} × 30m`, weight:"10 kg", info:"suitcaseCarry" },
       { name:"KB Pullover", note:`${e} — estira el dorsal`, sets:`${is_} × ${ir}`, weight:"10 kg", info:"pulloverKb" },
-    ] : isW2 ? [
+    ] : jueV === "B" ? [
       { name:"KB Renegade Row", note:e, sets:`${ms} × ${mr}/arm`, weight:"10 kg", info:"renegadeRow" },
       { name:"KB Swing (2 manos)", note:e, sets:`${ms} × ${mr}`, weight:"10 kg", info:"kbSwing" },
       { name:"KB Farmer Carry", note:"Grip + postura + core", sets:`${cs} × 40m`, weight:"10 kg + 6.8 kg", info:"farmerCarry" },
       { name:"KB Bent-over Row", note:e, sets:`${ms} × ${mr}`, weight:"10 kg", info:"bentOverRow" },
       { name:"KB Pullover", note:`${e} — estira el dorsal`, sets:`${is_} × ${ir}`, weight:"10 kg", info:"pulloverKb" },
-    ] : isW3 ? [
+    ] : jueV === "C" ? [
       { name:"KB Deadlift", note:`${e} — bisagra de cadera`, sets:`${ms} × ${mr}`, weight:"10 kg", info:"deadlift" },
       { name:"KB Single-arm Swing", note:`${e} — anti-rotación`, sets:`${ms} × ${mr}/arm`, weight:"10 kg", info:"kbSwingSingle" },
       { name:"KB Renegade Row", note:e, sets:`${ms} × ${mr}/arm`, weight:"10 kg", info:"renegadeRow" },
       { name:"KB Suitcase Carry", note:"Core anti-lateral — hombros nivelados", sets:`${cs} × 35m`, weight:"10 kg", info:"suitcaseCarry" },
       { name:"KB Pullover", note:`${e} — estira el dorsal`, sets:`${is_} × ${ir}`, weight:"10 kg", info:"pulloverKb" },
     ] : [
-      { name:"KB Deadlift", note:`${e} — bisagra de cadera, peak`, sets:`${ms} × ${mr}`, weight:"10 kg", info:"deadlift" },
+      { name:"KB Deadlift", note:`${e} — bisagra de cadera`, sets:`${ms} × ${mr}`, weight:"10 kg", info:"deadlift" },
       { name:"KB Row con pausa 3s", note:e, sets:`${ms} × ${mr}`, weight:"10 kg", info:"bentOverRowPause" },
-      { name:"KB Renegade Row", note:`${e} — peak`, sets:`${ms} × ${mr}/arm`, weight:"10 kg", info:"renegadeRow" },
-      { name:"KB Farmer Carry", note:"Grip + postura — cierre de ciclo", sets:`${cs} × 45m`, weight:"10 kg + 6.8 kg", info:"farmerCarry" },
-      { name:"KB Pullover", note:`${e} — estira el dorsal, peak`, sets:`${is_} × ${ir}`, weight:"10 kg", info:"pulloverKb" },
+      { name:"KB Renegade Row", note:e, sets:`${ms} × ${mr}/arm`, weight:"10 kg", info:"renegadeRow" },
+      { name:"KB Farmer Carry", note:"Grip + postura", sets:`${cs} × 45m`, weight:"10 kg + 6.8 kg", info:"farmerCarry" },
+      { name:"KB Pullover", note:`${e} — estira el dorsal`, sets:`${is_} × ${ir}`, weight:"10 kg", info:"pulloverKb" },
     ];
-    const jueBiceps = isW1 ? [
+    const jueBiceps = jueV === "A" ? [
       { name:"Concentration Curl", note:e, sets:`${is_} × ${ir}/arm`, weight:"6.8 kg", info:"concentrationCurl" },
       { name:"KB Bicep Curl", note:e, sets:`${is_} × ${ir}/arm`, weight:"6.8 kg", info:"bicepCurl" },
       { name:"KB Hammer Curl", note:`${e} — grosor del brazo`, sets:`${is_} × ${ir}/arm`, weight:"6.8 kg", info:"hammerCurl" },
-    ] : isW2 ? [
+    ] : jueV === "B" ? [
       { name:"KB Drag Curl", note:e, sets:`${is_} × ${ir}/arm`, weight:"6.8 kg", info:"dragCurl" },
       { name:"KB Hammer Curl", note:e, sets:`${is_} × ${ir}/arm`, weight:"6.8 kg", info:"hammerCurl" },
       { name:"Concentration Curl", note:e, sets:`${is_} × ${ir}/arm`, weight:"6.8 kg", info:"concentrationCurl" },
-    ] : isW3 ? [
+    ] : jueV === "C" ? [
       { name:"KB Bicep Curl", note:e, sets:`${is_} × ${ir}/arm`, weight:"6.8 kg", info:"bicepCurl" },
       { name:"KB Drag Curl", note:e, sets:`${is_} × ${ir}/arm`, weight:"6.8 kg", info:"dragCurl" },
       { name:"KB Hammer Curl", note:`${e} — grosor del brazo`, sets:`${is_} × ${ir}/arm`, weight:"6.8 kg", info:"hammerCurl" },
     ] : [
       { name:"Concentration Curl", note:`${e} + pausa 2s arriba`, sets:`${is_} × ${ir}/arm`, weight:"6.8 kg", info:"concentrationCurl" },
       { name:"KB Bicep Curl", note:`${e} + pausa 2s arriba`, sets:`${is_} × ${ir}/arm`, weight:"6.8 kg", info:"bicepCurl" },
-      { name:"KB Hammer Curl", note:`${e} — peak de grosor`, sets:`${is_} × ${ir}/arm`, weight:"6.8 kg", info:"hammerCurl" },
+      { name:"KB Hammer Curl", note:`${e} — grosor`, sets:`${is_} × ${ir}/arm`, weight:"6.8 kg", info:"hammerCurl" },
     ];
     const jue = mkDay("jue","JUE","Jueves","STRENGTH","Espalda + Bíceps",
       isW1 ? "70 min" : "75 min",
@@ -490,27 +498,27 @@ function buildAllWeeks() {
         ]},
         { name:"Espalda", exercises: jueEspalda },
         { name:"Bíceps", exercises: jueBiceps },
-        { name:"Core", exercises: isW1 ? [
+        { name:"Core", exercises: jueV === "A" ? [
           { name:"Plank Shoulder Tap", note:"Caderas sin rotar", sets:`${cs} × ${cTw} taps`, weight:"BW", info:"plankShoulder" },
           { name:"Mountain Climbers", note:"Caderas completamente quietas", sets:`${cs} × ${cMc}`, weight:"BW", info:"mountainClimber" },
           { name:"Toe Touches", note:"Piernas al techo — sin impulso", sets:`${cs} × ${cTt}`, weight:"BW", info:"toeTouches" },
           { name:"Plank hold", note:"Abs + glúteos apretados", sets:`${cs} × ${cHt}s`, weight:"BW", info:"plank" },
           { name:"Crunches", note:"Pequeño y controlado", sets:`${cs} × ${cTt+4}`, weight:"BW", info:"crunches" },
-        ] : isW2 ? [
+        ] : jueV === "B" ? [
           { name:"Reverse Crunch", note:"La cadera sube — no patees", sets:`${cs} × ${cLr}`, weight:"BW", info:"reverseCrunch" },
           { name:"Russian Twist Heavy", note:"Rota completamente — toca el suelo", sets:`${cs} × ${cTw}`, weight:"6.8 kg", info:"russianHeavy" },
           { name:"Side Plank", note:"Cadera arriba — cambia de lado", sets:`${cs} × ${cHt-10}s/lado`, weight:"BW", info:"sidePlank" },
           { name:"V-Up", note:"Sube brazos y piernas juntos", sets:`${cs} × ${cTt}`, weight:"BW", info:"vUp" },
-        ] : isW3 ? [
+        ] : jueV === "C" ? [
           { name:"Kettlebell Wood Chops", note:"Rotación explosiva — controla el regreso", sets:`${cs} × ${cTw}/lado`, weight:"6.8 kg", info:"custKbWoodChops" },
           { name:"Sit-ups con Rotación", note:"Codo hacia la rodilla opuesta", sets:`${cs} × ${cBc}`, weight:"BW", info:"custSitupsRotacion" },
           { name:"Plank hold", note:"Abs + glúteos apretados", sets:`${cs} × ${cHt}s`, weight:"BW", info:"plank" },
           { name:"Dead Bug", note:"Exhala completamente cada rep", sets:`${cs} × ${cDb}`, weight:"BW", info:"deadbug" },
         ] : [
-          { name:"Rodillas al Pecho en Silla", note:"Contrae 1s arriba — peak", sets:`${cs} × ${cTt}`, weight:"BW", info:"custRodillasPechoSilla" },
-          { name:"Russian Twist Heavy", note:"Rota completamente — peak", sets:`${cs} × ${cTw}`, weight:"6.8 kg", info:"russianHeavy" },
-          { name:"Plank hold", note:"Abs + glúteos — cierre del ciclo", sets:`${cs} × ${cHt}s`, weight:"BW", info:"plank" },
-          { name:"Kettlebell Around the World", note:"Círculos controlados — peak", sets:`${cs} × ${cLr}`, weight:"4.5 kg", info:"custKbAroundWorld" },
+          { name:"Rodillas al Pecho en Silla", note:"Contrae 1s arriba", sets:`${cs} × ${cTt}`, weight:"BW", info:"custRodillasPechoSilla" },
+          { name:"Russian Twist Heavy", note:"Rota completamente", sets:`${cs} × ${cTw}`, weight:"6.8 kg", info:"russianHeavy" },
+          { name:"Plank hold", note:"Abs + glúteos apretados", sets:`${cs} × ${cHt}s`, weight:"BW", info:"plank" },
+          { name:"Kettlebell Around the World", note:"Círculos controlados", sets:`${cs} × ${cLr}`, weight:"4.5 kg", info:"custKbAroundWorld" },
         ]},
       ],
       isW1 ? "El pullover es el ejercicio más subestimado del plan — es el único que estira completamente el dorsal sin jalón."
@@ -531,73 +539,73 @@ function buildAllWeeks() {
         { name:"FitXR corto", exercises:[
           { name:"FitXR — HIIT", note:"Cardio corto para cerrar la semana. Ajusta los minutos si haces más o menos.", sets:"10 min", weight:"—", info:"fitxrHiit" },
         ]},
-        { name:"Hombros", exercises: isW1 ? [
+        { name:"Hombros", exercises: vieV === "A" ? [
           { name:"KB Clean + Press", note:e+" — potencia + empuje", sets:`${ms} × ${mr}/arm`, weight:"6.8 kg", info:"cleanPress" },
           { name:"KB Lateral Raise", note:"4s bajando — deltoides lateral", sets:`${is_} × 12/arm`, weight:"4.5 kg", info:"lateralRaise" },
           { name:"KB Front Raise", note:"3s bajando — deltoides anterior", sets:`${is_} × 12/arm`, weight:"4.5 kg", info:"frontRaise" },
           { name:"KB Windmill", note:e+" — core lateral + hombro", sets:`${is_} × 8/lado`, weight:"6.8 kg", info:"kbWindmill" },
-        ] : isW2 ? [
+        ] : vieV === "B" ? [
           { name:"KB Single-arm Press", note:e, sets:`${ms} × ${mr}/arm`, weight:"6.8 kg", info:"kbPress" },
           { name:"Kettlebell Thrusters", note:"Sentadilla + press explosivo arriba", sets:`${ms} × ${mr}`, weight:"6.8 kg", info:"custKbThrusters" },
           { name:"KB Upright Row", note:e, sets:`${is_} × ${ir}`, weight:"6.8 kg", info:"uprightRow" },
           { name:"KB Lateral Raise", note:"4s bajando — deltoides lateral", sets:`${is_} × 12/arm`, weight:"4.5 kg", info:"lateralRaise" },
-        ] : isW3 ? [
+        ] : vieV === "C" ? [
           { name:"Pike Push-Up", note:"V invertida — cabeza casi toca el suelo", sets:`${ms} × ${mr}`, weight:"BW", info:"custPikePushup" },
           { name:"KB Windmill", note:e+" — core lateral + hombro", sets:`${is_} × 8/lado`, weight:"6.8 kg", info:"kbWindmill" },
           { name:"Kettlebell Around the World to the Rack", note:"Rotación completa alrededor de la cabeza a posición de rack", sets:`${is_} × 8/lado`, weight:"6.8 kg", info:"custKbAroundWorldRack" },
           { name:"KB Front Raise", note:"3s bajando — deltoides anterior", sets:`${is_} × 12/arm`, weight:"4.5 kg", info:"frontRaise" },
         ] : [
-          { name:"KB Clean + Press", note:`${e} — peak del ciclo`, sets:`${ms} × ${mr}/arm`, weight:"6.8 kg", info:"cleanPress" },
-          { name:"Kettlebell Thrusters", note:"Sentadilla + press — máximo esfuerzo", sets:`${ms} × ${mr}`, weight:"6.8 kg", info:"custKbThrusters" },
-          { name:"KB Lateral Raise", note:"5s bajando — deltoides peak", sets:`${is_} × ${ir}/arm`, weight:"4.5 kg", info:"lateralRaise" },
-          { name:"KB Upright Row", note:`${e} — peak`, sets:`${is_} × ${ir}`, weight:"6.8 kg", info:"uprightRow" },
+          { name:"KB Clean + Press", note:e, sets:`${ms} × ${mr}/arm`, weight:"6.8 kg", info:"cleanPress" },
+          { name:"Kettlebell Thrusters", note:"Sentadilla + press", sets:`${ms} × ${mr}`, weight:"6.8 kg", info:"custKbThrusters" },
+          { name:"KB Lateral Raise", note:"5s bajando", sets:`${is_} × ${ir}/arm`, weight:"4.5 kg", info:"lateralRaise" },
+          { name:"KB Upright Row", note:e, sets:`${is_} × ${ir}`, weight:"6.8 kg", info:"uprightRow" },
         ]},
-        { name:"Brazos", exercises: isW1 ? [
+        { name:"Brazos", exercises: vieV === "A" ? [
           { name:"KB Drag Curl", note:e, sets:`${is_} × ${ir}/arm`, weight:"6.8 kg", info:"dragCurl" },
           { name:"KB Tricep Extension", note:e, sets:`${is_} × ${ir}`, weight:"6.8 kg", info:"tricepExt" },
           { name:"KB Hammer Curl", note:e, sets:`${is_} × ${ir}/arm`, weight:"6.8 kg", info:"hammerCurl" },
           { name:"KB Skull Crusher", note:e+" — codos fijos", sets:`${is_} × ${ir}/arm`, weight:"6.8 kg", info:"kbSkullCrusher" },
           { name:"Diamond Push-up", note:"Al fallo controlado", sets:`${is_} × max`, weight:"BW", info:"diamondPushup" },
-        ] : isW2 ? [
+        ] : vieV === "B" ? [
           { name:"KB Bicep Curl", note:e, sets:`${is_} × ${ir}/arm`, weight:"6.8 kg", info:"bicepCurl" },
           { name:"KB Tricep Extension", note:e, sets:`${is_} × ${ir}`, weight:"6.8 kg", info:"tricepExt" },
           { name:"KB Hammer Curl", note:e, sets:`${is_} × ${ir}/arm`, weight:"6.8 kg", info:"hammerCurl" },
           { name:"KB Tricep Kickback", note:e+" — pausa 1s arriba", sets:`${is_} × ${ir}/arm`, weight:"4.5 kg", info:"tricepKickback" },
           { name:"Diamond Push-up", note:"Al fallo controlado", sets:`${is_} × max`, weight:"BW", info:"diamondPushup" },
-        ] : isW3 ? [
+        ] : vieV === "C" ? [
           { name:"Concentration Curl", note:e, sets:`${is_} × ${ir}/arm`, weight:"6.8 kg", info:"concentrationCurl" },
           { name:"KB Skull Crusher", note:e+" — codos fijos", sets:`${is_} × ${ir}/arm`, weight:"6.8 kg", info:"kbSkullCrusher" },
           { name:"KB Drag Curl", note:e, sets:`${is_} × ${ir}/arm`, weight:"6.8 kg", info:"dragCurl" },
           { name:"KB Tricep Kickback", note:e+" — pausa 1s arriba", sets:`${is_} × ${ir}/arm`, weight:"4.5 kg", info:"tricepKickback" },
           { name:"Diamond Push-up", note:"Al fallo controlado", sets:`${is_} × max`, weight:"BW", info:"diamondPushup" },
         ] : [
-          { name:"Concentration Curl", note:`${e} — peak aislamiento`, sets:`${is_} × ${ir}/arm`, weight:"6.8 kg", info:"concentrationCurl" },
-          { name:"KB Tricep Extension", note:`${e} — peak tríceps`, sets:`${is_} × ${ir}`, weight:"6.8 kg", info:"tricepExt" },
+          { name:"Concentration Curl", note:e, sets:`${is_} × ${ir}/arm`, weight:"6.8 kg", info:"concentrationCurl" },
+          { name:"KB Tricep Extension", note:e, sets:`${is_} × ${ir}`, weight:"6.8 kg", info:"tricepExt" },
           { name:"KB Bicep Curl", note:`${e} + pausa 2s`, sets:`${is_} × ${ir}/arm`, weight:"6.8 kg", info:"bicepCurl" },
           { name:"KB Tricep Kickback", note:"Cierra el tríceps", sets:`${is_} × ${ir}/arm`, weight:"4.5 kg", info:"tricepKickback" },
-          { name:"Diamond Push-up", note:"Al fallo — cierra el ciclo", sets:`${is_} × max`, weight:"BW", info:"diamondPushup" },
+          { name:"Diamond Push-up", note:"Al fallo", sets:`${is_} × max`, weight:"BW", info:"diamondPushup" },
         ]},
-        { name:"Finisher + Core", exercises: isW1 ? [
+        { name:"Finisher + Core", exercises: vieV === "A" ? [
           { name:"KB Farmer Carry", note:"Grip + postura + core", sets:`${cs} × 40m`, weight:"10 kg + 6.8 kg", info:"farmerCarry" },
           { name:"Plank hold", note:"Abs + glúteos apretados", sets:`3 × ${25+wi*3}s`, weight:"BW", info:"plank" },
           { name:"Crunches", note:"Pequeño y controlado", sets:`3 × ${14+wi}`, weight:"BW", info:"crunches" },
           { name:"Plank Shoulder Tap", note:"Caderas sin rotar", sets:`3 × ${10+wi} taps`, weight:"BW", info:"plankShoulder" },
           { name:"Bicycle crunches", note:"Lento — rotación de torso", sets:`3 × ${25+wi*3}`, weight:"BW", info:"bicycle" },
-        ] : isW2 ? [
+        ] : vieV === "B" ? [
           { name:"KB Farmer Carry", note:"Grip + postura + core", sets:`${cs} × 40m`, weight:"10 kg + 6.8 kg", info:"farmerCarry" },
           { name:"Plank hold", note:"Abs + glúteos apretados", sets:`3 × ${25+wi*3}s`, weight:"BW", info:"plank" },
           { name:"Reverse Crunch", note:"La cadera sube — no patees", sets:`3 × ${10+wi}`, weight:"BW", info:"reverseCrunch" },
           { name:"Side Plank", note:"Cadera arriba — cambia de lado", sets:`3 × ${(25+wi*3)-10}s/lado`, weight:"BW", info:"sidePlank" },
-        ] : isW3 ? [
+        ] : vieV === "C" ? [
           { name:"KB Farmer Carry", note:"Grip + postura + core", sets:`${cs} × 40m`, weight:"10 kg + 6.8 kg", info:"farmerCarry" },
           { name:"Kettlebell Wood Chops", note:"Rotación explosiva — controla el regreso", sets:`3 × ${10+wi}/lado`, weight:"6.8 kg", info:"custKbWoodChops" },
           { name:"Plank hold", note:"Abs + glúteos apretados", sets:`3 × ${25+wi*3}s`, weight:"BW", info:"plank" },
           { name:"V-Up", note:"Sube brazos y piernas juntos", sets:`3 × ${14+wi}`, weight:"BW", info:"vUp" },
         ] : [
-          { name:"KB Farmer Carry", note:"Grip + postura — cierre del ciclo", sets:`${cs} × 45m`, weight:"10 kg + 6.8 kg", info:"farmerCarry" },
-          { name:"Plank hold", note:"Abs + glúteos — cierre del ciclo", sets:`3 × ${25+wi*3}s`, weight:"BW", info:"plank" },
-          { name:"Kettlebell Around the World", note:"Círculos controlados — peak", sets:`3 × ${14+wi}`, weight:"4.5 kg", info:"custKbAroundWorld" },
-          { name:"Russian Twist Heavy", note:"Rota completamente — peak", sets:`3 × ${14+wi}`, weight:"6.8 kg", info:"russianHeavy" },
+          { name:"KB Farmer Carry", note:"Grip + postura", sets:`${cs} × 45m`, weight:"10 kg + 6.8 kg", info:"farmerCarry" },
+          { name:"Plank hold", note:"Abs + glúteos apretados", sets:`3 × ${25+wi*3}s`, weight:"BW", info:"plank" },
+          { name:"Kettlebell Around the World", note:"Círculos controlados", sets:`3 × ${14+wi}`, weight:"4.5 kg", info:"custKbAroundWorld" },
+          { name:"Russian Twist Heavy", note:"Rota completamente", sets:`3 × ${14+wi}`, weight:"6.8 kg", info:"russianHeavy" },
         ]},
       ],
       isW1 ? "Curl y extensión de tríceps en la misma sesión — antagonistas trabajando juntos."
@@ -620,7 +628,7 @@ function buildAllWeeks() {
           ...(isW3 ? [{ name:"Chair High Knees", note:"Sentado, rodillas alternadas rápido", sets:"3 × 30s", weight:"BW", info:"custChairHighKnees" }] : []),
           ...(isW4 ? [{ name:"FitXR — Combat", note:"1 round, footwork", sets:"8 min", weight:"—", info:"fitxrCombat" }] : []),
         ]},
-        { name:"Abdomen", exercises: isW1 ? [
+        { name:"Abdomen", exercises: domV === "A" ? [
           { name:"Russian Twist", note:"Rota completamente cada lado", sets:`3 × ${16 + wi}`, weight:"4.5 kg", info:"russianTwist" },
           { name:"Bicycle crunches", note:"Lento — rotación de torso", sets:`3 × ${18 + wi}`, weight:"BW", info:"bicycle" },
           { name:"Side Plank", note:"Cadera arriba — cambia de lado", sets:`3 × ${18 + wi*2}s/lado`, weight:"BW", info:"sidePlank" },
@@ -628,23 +636,23 @@ function buildAllWeeks() {
           { name:"Dead Bug", note:"Exhala completamente cada rep", sets:`3 × ${10+wi}`, weight:"BW", info:"deadbug" },
           { name:"Crunches", note:"Pequeño y controlado", sets:`3 × ${16+wi}`, weight:"BW", info:"crunches" },
           { name:"Plank Shoulder Tap", note:"Caderas sin rotar", sets:`3 × ${35+wi*3} taps`, weight:"BW", info:"plankShoulder" },
-        ] : isW2 ? [
+        ] : domV === "B" ? [
           { name:"Sit-ups con Rotación", note:"Codo hacia la rodilla opuesta", sets:`3 × ${18+wi}`, weight:"BW", info:"custSitupsRotacion" },
           { name:"Side Touch Floor en Silla", note:"Espalda recta — contrae el oblicuo", sets:`3 × ${10+wi}/lado`, weight:"BW", info:"custSideTouchSilla" },
           { name:"Reverse Crunch", note:"La cadera sube — no patees", sets:`3 × ${10+wi}`, weight:"BW", info:"reverseCrunch" },
           { name:"Plank hold", note:"Abs + glúteos apretados", sets:`3 × ${38+wi*2}s`, weight:"BW", info:"plank" },
           { name:"Scissor Kicks", note:"Piernas siempre arriba", sets:`3 × ${18+wi}`, weight:"BW", info:"scissorKicks" },
-        ] : isW3 ? [
+        ] : domV === "C" ? [
           { name:"Kettlebell Wood Chops", note:"Rotación explosiva — controla el regreso", sets:`3 × ${16+wi}/lado`, weight:"6.8 kg", info:"custKbWoodChops" },
           { name:"Rodillas al Pecho en Silla", note:"Contrae 1s arriba", sets:`3 × ${16+wi}`, weight:"BW", info:"custRodillasPechoSilla" },
           { name:"V-Up", note:"Sube brazos y piernas juntos", sets:`3 × ${16+wi}`, weight:"BW", info:"vUp" },
           { name:"Plank hold", note:"Abs + glúteos apretados", sets:`3 × ${38+wi*2}s`, weight:"BW", info:"plank" },
           { name:"Russian Twist Heavy", note:"Rota completamente — toca el suelo", sets:`3 × ${16+wi}`, weight:"6.8 kg", info:"russianHeavy" },
         ] : [
-          { name:"Sofá High Bridge", note:"Cadera hasta línea recta — peak", sets:`3 × ${18+wi}`, weight:"BW", info:"custSofaHighBridge" },
-          { name:"Kettlebell Around the World", note:"Círculos controlados — peak", sets:`3 × ${16+wi}`, weight:"4.5 kg", info:"custKbAroundWorld" },
-          { name:"Hollow Body Rock", note:"Mantén la forma al rockear — cierre del ciclo", sets:"3 × 18 rocks", weight:"BW", info:"hollowRock" },
-          { name:"Plank hold", note:"Abs + glúteos — cierre del ciclo", sets:`3 × ${38+wi*2}s`, weight:"BW", info:"plank" },
+          { name:"Sofá High Bridge", note:"Cadera hasta línea recta", sets:`3 × ${18+wi}`, weight:"BW", info:"custSofaHighBridge" },
+          { name:"Kettlebell Around the World", note:"Círculos controlados", sets:`3 × ${16+wi}`, weight:"4.5 kg", info:"custKbAroundWorld" },
+          { name:"Hollow Body Rock", note:"Mantén la forma al rockear", sets:"3 × 18 rocks", weight:"BW", info:"hollowRock" },
+          { name:"Plank hold", note:"Abs + glúteos apretados", sets:`3 × ${38+wi*2}s`, weight:"BW", info:"plank" },
         ]},
       ],
       "Opcional — solo si no juegas fútbol este domingo. Si juegas, descansa: el partido ya es tu cardio. Si no, esto te mantiene activo sin comprometer las piernas para el lunes."
@@ -653,8 +661,6 @@ function buildAllWeeks() {
     return [lun, mar, mie, jue, vie, sat, dom];
   });
 }
-
-const ALL_WEEKS = buildAllWeeks();
 
 const DISPLAY_META = WEEK_META.slice(0).map((w, i) => ({
   ...w,
@@ -702,12 +708,17 @@ const MUSCLE_DAY = {
 
 // Typical weight used for each exercise, taken from wherever it first appears
 // in the program — reused for suggestions so they use tools already in rotation.
+// Scanned across every day-variant (A-D), not just the default, so a
+// suggestion is available regardless of which variant the user has picked.
 const INFO_WEIGHT = {};
-for (const wkDays of ALL_WEEKS) {
-  for (const d of wkDays) {
-    for (const sec of d.sections) {
-      for (const ex of sec.exercises) {
-        if (!(ex.info in INFO_WEIGHT)) INFO_WEIGHT[ex.info] = ex.weight;
+for (const letter of ["A", "B", "C", "D"]) {
+  const variantChoice = { lun: letter, mar: letter, mie: letter, jue: letter, vie: letter, dom: letter };
+  for (const wkDays of buildAllWeeks(variantChoice)) {
+    for (const d of wkDays) {
+      for (const sec of d.sections) {
+        for (const ex of sec.exercises) {
+          if (!(ex.info in INFO_WEIGHT)) INFO_WEIGHT[ex.info] = ex.weight;
+        }
       }
     }
   }
@@ -2993,6 +3004,7 @@ const BACKUP_KEYS = [
   "voltra-nutri-budget", "voltra-nutri-completed-dates", "voltra-nutri-logs", "voltra-nutri-profile",
   "voltra-nutri-protein", "voltra-nutri-shopping-checked", "voltra-nutri-sunday-prep", "voltra-reminder-settings",
   "voltra-extra-workouts", "voltra-fitxr-minutes", "voltra-pantry", "voltra-custom-foods", "voltra-custom-exercises",
+  "voltra-day-variant-choice",
 ];
 
 function BackupSection({ c }) {
@@ -4693,6 +4705,7 @@ export default function App() {
   const [showMini, setShowMini] = useState(false);
   const [tlView, setTlView] = useState(false);
   const [splitOpen, setSplitOpen] = useState(false);
+  const [variantPickerOpen, setVariantPickerOpen] = useState(false);
   const [timer, setTimer] = useState(null);
   const [completedDates, setCompletedDates] = useState(() => loadLocal("jay-training-completed-dates", []));
   const [lucaDone, setLucaDone] = useState(() => loadLocal("luca-training-done", {}));
@@ -4712,6 +4725,17 @@ export default function App() {
   const [pantry, setPantry] = useState(() => loadLocal("voltra-pantry", DEFAULT_PANTRY));
   const [customFoods, setCustomFoods] = useState(() => loadLocal("voltra-custom-foods", []));
   const [customExercises, setCustomExercises] = useState(() => loadLocal("voltra-custom-exercises", []));
+  // Which of the 4 curated exercise-selection variants (A/B/C/D) to use for
+  // each weekday — same 4 weeks-long, reused every week. { lun:"B", ... }
+  const [dayVariantChoice, setDayVariantChoice] = useState(() => loadLocal("voltra-day-variant-choice", {}));
+  const allWeeks = useMemo(() => buildAllWeeks(dayVariantChoice), [dayVariantChoice]);
+  const setDayVariant = useCallback((dayId, letter) => {
+    setDayVariantChoice(prev => {
+      const next = { ...prev, [dayId]: letter };
+      persist("voltra-day-variant-choice", next);
+      return next;
+    });
+  }, []);
   const [cloudSync, setCloudSync] = useState({ configured: false, authenticated: false });
 
   const applyRemoteData = useCallback((data, updatedAt) => {
@@ -4725,7 +4749,7 @@ export default function App() {
       "voltra-nutri-shopping-checked": setNutriShoppingChecked, "voltra-nutri-sunday-prep": setNutriSundayPrep,
       "voltra-reminder-settings": setReminderSettings, "voltra-extra-workouts": setExtraWorkouts,
       "voltra-fitxr-minutes": setFitxrMinutesRaw, "voltra-pantry": setPantry, "voltra-custom-foods": setCustomFoods,
-      "voltra-custom-exercises": setCustomExercises,
+      "voltra-custom-exercises": setCustomExercises, "voltra-day-variant-choice": setDayVariantChoice,
     };
     // A local write this device hasn't managed to push yet (tab closed
     // inside the debounce window, was offline, etc.) is more current than
@@ -4865,7 +4889,7 @@ export default function App() {
   }, []);
 
   const W_META = DISPLAY_META[wk];
-  const DAYS   = ALL_WEEKS[wk];
+  const DAYS   = allWeeks[wk];
   const day    = DAYS[di];
   const tc     = TC[day.type] || TC.REST;
   const allEx  = day.sections.flatMap(s => s.exercises);
@@ -5354,6 +5378,31 @@ export default function App() {
                 </div>
               )}
             </div>
+
+            {day.type!=="REST" && (
+              <div style={{ background:"rgba(255,255,255,0.02)", border:"1px solid rgba(255,255,255,0.07)", borderRadius:9, padding:"10px 13px", marginBottom:12 }}>
+                <div onClick={()=>setVariantPickerOpen(o=>!o)} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", cursor:"pointer" }}>
+                  <span style={{ fontSize:11, color:"#9ca3af" }}>🔀 Set {dayVariantChoice[day.id] || "A"}{variantPickerOpen ? "" : " — toca para cambiar"}</span>
+                  <CollapseChevron open={variantPickerOpen}/>
+                </div>
+                {variantPickerOpen && (
+                  <div style={{ display:"flex", gap:6, marginTop:10 }}>
+                    {["A","B","C","D"].map(letter => {
+                      const active = (dayVariantChoice[day.id] || "A") === letter;
+                      return (
+                        <button key={letter} onClick={() => { haptic(10); setDayVariant(day.id, letter); }} style={{
+                          flex:1, padding:"10px 4px", borderRadius:9, cursor:"pointer", textAlign:"center",
+                          background: active ? `${tc.accent}18` : "rgba(255,255,255,0.03)",
+                          border:`1px solid ${active ? tc.accent+"60" : "rgba(255,255,255,0.08)"}`,
+                        }}>
+                          <div style={{ fontSize:13, fontWeight:700, color: active ? tc.accent : "#9ca3af" }}>Set {letter}</div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
 
             {day.type==="REST" ? (
               <div>
