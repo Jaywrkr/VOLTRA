@@ -4556,14 +4556,13 @@ function TodayOverview({ day, tc, total, doneN, streak, onOpenSession, plan, log
           <div style={{ height:"100%", width:`${kcalPct}%`, background: kcalOverBudget ? bad : good, borderRadius:99, transition:"width 0.3s" }}/>
         </div>
 
-        <div style={{ display:"grid", gridTemplateColumns:"repeat(3, 1fr)", gap:8, marginTop:10, marginBottom: nutriOpen ? 12 : 0 }}>
-          <MacroMini label="PROT" value={consumed.protein} target={targets.protein} color={proteinOk ? good : bad}/>
-          <MacroMini label="CARB" value={consumed.carbs} target={targets.carbs} color={carbsOverBudget ? bad : good}/>
-          <MacroMini label="GRASA" value={consumed.fat} target={targets.fat} color={fatOverBudget ? bad : good}/>
-        </div>
-
         {nutriOpen && (
           <>
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(3, 1fr)", gap:8, marginTop:10, marginBottom:12 }}>
+              <MacroMini label="PROT" value={consumed.protein} target={targets.protein} color={proteinOk ? good : bad}/>
+              <MacroMini label="CARB" value={consumed.carbs} target={targets.carbs} color={carbsOverBudget ? bad : good}/>
+              <MacroMini label="GRASA" value={consumed.fat} target={targets.fat} color={fatOverBudget ? bad : good}/>
+            </div>
             <NutriMealRow name={plan.breakfast.name} note={`${plan.breakfast.prepMinutes} min`} macros={plan.breakfast.macros} overrideMacros={log.breakfastOverride} onOverrideChange={m => updateLog({ breakfastOverride: m || undefined })} isDone={log.breakfastEaten} onToggle={() => updateLog({ breakfastEaten: !log.breakfastEaten })} c={nc}/>
             {protein && <ProteinShakeQuickLog protein={protein} updateLog={updateLog} c={nc}/>}
             {plan.lunch.type === "mama" ? (
