@@ -3440,6 +3440,7 @@ function CustomExerciseModal({ onSave, onClose }) {
 // safe to automate from a category tag alone.
 function CustomExercisesSection({ customExercises, onAdd, onRemove }) {
   const [open, setOpen] = useState(false);
+  const [listOpen, setListOpen] = useState(false);
   const [expanded, setExpanded] = useState(null);
   const [copied, setCopied] = useState(false);
   const grouped = {};
@@ -3471,35 +3472,41 @@ function CustomExercisesSection({ customExercises, onAdd, onRemove }) {
         </div>
       </div>
       <div style={{ background:"rgba(255,255,255,0.02)", border:"1px solid rgba(255,255,255,0.07)", borderRadius:12, padding:"16px 18px" }}>
-        <div style={{ fontSize:11, color:"#9ca3af", lineHeight:1.6, marginBottom:12 }}>
+        <div style={{ fontSize:11, color:"#9ca3af", lineHeight:1.6, marginBottom: customExercises.length > 0 ? 0 : 12 }}>
           Ejercicios tuyos, con foto y descripción. Cuando agregues los que quieras, toca "Copiar lista" y pégala en el chat pidiéndome que arme la semana con ellos.
         </div>
         {customExercises.length === 0 ? (
           <div style={{ fontSize:11, color:"#6b7280" }}>Todavía no agregas ninguno.</div>
         ) : (
-          Object.keys(grouped).map(cat => (
-            <div key={cat} style={{ marginBottom:12 }}>
-              <div style={{ fontSize:9, fontWeight:700, color:MUSCLE_COLOR[cat] || "#9ca3af", letterSpacing:"0.08em", marginBottom:6 }}>{cat.toUpperCase()}</div>
-              <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
-                {grouped[cat].map(ex => (
-                  <div key={ex.id} style={{ background:"rgba(255,255,255,0.03)", border:"1px solid rgba(255,255,255,0.06)", borderRadius:10, overflow:"hidden" }}>
-                    <div onClick={() => setExpanded(expanded === ex.id ? null : ex.id)} style={{ display:"flex", alignItems:"center", gap:10, padding:"9px 12px", cursor:"pointer" }}>
-                      {ex.image ? (
-                        <img src={ex.image} alt="" style={{ width:36, height:36, borderRadius:8, objectFit:"cover", flexShrink:0 }}/>
-                      ) : (
-                        <div style={{ width:36, height:36, borderRadius:8, background:"rgba(255,255,255,0.05)", flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center", fontSize:14 }}>🏋️</div>
-                      )}
-                      <span style={{ fontSize:12, color:"#e5e7eb", flex:1 }}>{ex.name}</span>
-                      <span onClick={(e) => { e.stopPropagation(); onRemove(ex.id); }} style={{ cursor:"pointer", color:"#6b7280", fontSize:13, padding:4 }}>✕</span>
-                    </div>
-                    {expanded === ex.id && ex.description && (
-                      <div style={{ padding:"0 12px 10px", fontSize:11, color:"#9ca3af", lineHeight:1.6 }}>{ex.description}</div>
-                    )}
-                  </div>
-                ))}
-              </div>
+          <>
+            <div onClick={()=>setListOpen(o=>!o)} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", cursor:"pointer", marginTop:12 }}>
+              <span style={{ fontSize:11, color:"#9ca3af" }}>{customExercises.length} ejercicio{customExercises.length===1?"":"s"} agregado{customExercises.length===1?"":"s"}</span>
+              <CollapseChevron open={listOpen}/>
             </div>
-          ))
+            {listOpen && Object.keys(grouped).map(cat => (
+              <div key={cat} style={{ marginTop:12 }}>
+                <div style={{ fontSize:9, fontWeight:700, color:MUSCLE_COLOR[cat] || "#9ca3af", letterSpacing:"0.08em", marginBottom:6 }}>{cat.toUpperCase()}</div>
+                <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
+                  {grouped[cat].map(ex => (
+                    <div key={ex.id} style={{ background:"rgba(255,255,255,0.03)", border:"1px solid rgba(255,255,255,0.06)", borderRadius:10, overflow:"hidden" }}>
+                      <div onClick={() => setExpanded(expanded === ex.id ? null : ex.id)} style={{ display:"flex", alignItems:"center", gap:10, padding:"9px 12px", cursor:"pointer" }}>
+                        {ex.image ? (
+                          <img src={ex.image} alt="" style={{ width:36, height:36, borderRadius:8, objectFit:"cover", flexShrink:0 }}/>
+                        ) : (
+                          <div style={{ width:36, height:36, borderRadius:8, background:"rgba(255,255,255,0.05)", flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center", fontSize:14 }}>🏋️</div>
+                        )}
+                        <span style={{ fontSize:12, color:"#e5e7eb", flex:1 }}>{ex.name}</span>
+                        <span onClick={(e) => { e.stopPropagation(); onRemove(ex.id); }} style={{ cursor:"pointer", color:"#6b7280", fontSize:13, padding:4 }}>✕</span>
+                      </div>
+                      {expanded === ex.id && ex.description && (
+                        <div style={{ padding:"0 12px 10px", fontSize:11, color:"#9ca3af", lineHeight:1.6 }}>{ex.description}</div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </>
         )}
       </div>
       {open && <CustomExerciseModal onClose={() => setOpen(false)} onSave={(ex) => { onAdd(ex); setOpen(false); }}/>}
@@ -3564,6 +3571,7 @@ function PantrySection({ pantry, setPantry, c, customFoods }) {
 }
 
 function PerfilView({ profile, setProfile, targets, c, protein, setProtein, reminderSettings, setReminderSettings, cloudSync, connectSync, disconnectSync, pantry, setPantry, customFoods, customExercises, onAddCustomExercise, onRemoveCustomExercise }) {
+  const [objetivoOpen, setObjetivoOpen] = useState(false);
   const setField = (field) => (value) => {
     setProfile(prev => {
       const next = { ...prev, [field]: value };
@@ -3604,20 +3612,27 @@ function PerfilView({ profile, setProfile, targets, c, protein, setProtein, remi
       </div>
 
       <div style={{ fontSize:9, fontWeight:700, letterSpacing:"0.12em", color:"#6b7280", marginBottom:6, paddingLeft:2 }}>TU OBJETIVO DIARIO CALCULADO</div>
-      <div style={{ background:`${c}10`, border:`1px solid ${c}30`, borderRadius:12, padding:16 }}>
-        <div style={{ fontSize:26, fontWeight:700, color:c, marginBottom:12 }}>{targets.kcal} kcal</div>
-        <div style={{ display:"grid", gridTemplateColumns:"repeat(3, 1fr)", gap:10 }}>
-          <div><div style={{ fontSize:9, color:"#8a8f98" }}>PROTEÍNA</div><div style={{ fontFamily:"'DM Mono',monospace", fontSize:14, color:"#39ff88", fontWeight:700 }}>{targets.protein}g</div></div>
-          <div><div style={{ fontSize:9, color:"#8a8f98" }}>CARBOS</div><div style={{ fontFamily:"'DM Mono',monospace", fontSize:14, color:"#a78bfa", fontWeight:700 }}>{targets.carbs}g</div></div>
-          <div><div style={{ fontSize:9, color:"#8a8f98" }}>GRASA</div><div style={{ fontFamily:"'DM Mono',monospace", fontSize:14, color:"#fb923c", fontWeight:700 }}>{targets.fat}g</div></div>
+      <div onClick={()=>setObjetivoOpen(o=>!o)} style={{ background:`${c}10`, border:`1px solid ${c}30`, borderRadius:12, padding:16, cursor:"pointer" }}>
+        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+          <div style={{ fontSize:26, fontWeight:700, color:c }}>{targets.kcal} kcal</div>
+          <CollapseChevron open={objetivoOpen}/>
         </div>
-        <div style={{ fontSize:11, color:"#9ca3af", marginTop:14, lineHeight:1.7 }}>
-          Calculado con Mifflin-St Jeor: tu metabolismo basal (BMR) por tu factor de actividad
-          (según cuántos días entrenás por semana) te da el gasto total diario (TDEE). A eso le
-          restamos tu % de déficit para llegar al objetivo. La proteína va fija en 2 g por kg de
-          peso corporal, la grasa en 25% de las calorías, y el resto son carbos. Este es tu piso
-          base — los días que entrenás, Voltra suma las calorías quemadas encima automáticamente.
-        </div>
+        {objetivoOpen && (
+          <>
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(3, 1fr)", gap:10, marginTop:12 }}>
+              <div><div style={{ fontSize:9, color:"#8a8f98" }}>PROTEÍNA</div><div style={{ fontFamily:"'DM Mono',monospace", fontSize:14, color:"#39ff88", fontWeight:700 }}>{targets.protein}g</div></div>
+              <div><div style={{ fontSize:9, color:"#8a8f98" }}>CARBOS</div><div style={{ fontFamily:"'DM Mono',monospace", fontSize:14, color:"#a78bfa", fontWeight:700 }}>{targets.carbs}g</div></div>
+              <div><div style={{ fontSize:9, color:"#8a8f98" }}>GRASA</div><div style={{ fontFamily:"'DM Mono',monospace", fontSize:14, color:"#fb923c", fontWeight:700 }}>{targets.fat}g</div></div>
+            </div>
+            <div style={{ fontSize:11, color:"#9ca3af", marginTop:14, lineHeight:1.7 }}>
+              Calculado con Mifflin-St Jeor: tu metabolismo basal (BMR) por tu factor de actividad
+              (según cuántos días entrenás por semana) te da el gasto total diario (TDEE). A eso le
+              restamos tu % de déficit para llegar al objetivo. La proteína va fija en 2 g por kg de
+              peso corporal, la grasa en 25% de las calorías, y el resto son carbos. Este es tu piso
+              base — los días que entrenás, Voltra suma las calorías quemadas encima automáticamente.
+            </div>
+          </>
+        )}
       </div>
 
       <div style={{ marginTop:16 }}>
