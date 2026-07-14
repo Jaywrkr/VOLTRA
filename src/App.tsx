@@ -2902,6 +2902,10 @@ function ShoppingCartView({ budget, setBudget, checked, setChecked, c }) {
   const total = allItems.reduce((s, it) => s + it.estCost, 0);
   const checkedTotal = allItems.filter(it => checked[it.key]).reduce((s, it) => s + it.estCost, 0);
   const overBudget = total > budget;
+  // Sections you've fully checked off collapse automatically so the list
+  // shrinks as you actually shop — nothing still-pending is ever hidden.
+  // A manual toggle overrides the auto-collapse in either direction.
+  const [manualToggle, setManualToggle] = useState({});
 
   const toggle = (key) => setChecked(prev => {
     const next = { ...prev, [key]: !prev[key] };
@@ -2933,33 +2937,47 @@ function ShoppingCartView({ budget, setBudget, checked, setChecked, c }) {
         </div>
       </div>
 
-      {SHOPPING_SECTION_ORDER.filter(s => bySection[s]).map(section => (
-        <div key={section} style={{ marginBottom:14 }}>
-          <div style={{ fontSize:9, fontWeight:700, letterSpacing:"0.12em", color:"#6b7280", marginBottom:6, paddingLeft:2 }}>{section.toUpperCase()}</div>
-          <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
-            {bySection[section].map(item => {
-              const isDone = !!checked[item.key];
-              return (
-                <div key={item.key} onClick={() => toggle(item.key)} style={{
-                  display:"grid", gridTemplateColumns:"1fr auto auto", alignItems:"center", gap:10,
-                  padding:"10px 13px", cursor:"pointer",
-                  background: isDone ? "rgba(255,255,255,0.02)" : "rgba(255,255,255,0.04)",
-                  border:`1px solid ${isDone ? "rgba(255,255,255,0.05)" : c+"25"}`,
-                  borderRadius:9, opacity: isDone ? 0.45 : 1, transition:"all 0.15s",
-                }}>
-                  <div>
-                    <span style={{ fontSize:13, fontWeight:500, color: isDone ? "#6b7280" : "#f3f4f6", textDecoration: isDone ? "line-through" : "none" }}>{item.name}</span>
-                    {item.count > 1 && <span style={{ fontSize:10, color:c, marginLeft:6 }}>×{item.count}</span>}
-                    <div style={{ fontSize:10, color:"#8a8f98", marginTop:1 }}>{item.qty}</div>
-                  </div>
-                  <span style={{ fontFamily:"'DM Mono',monospace", fontSize:11, color: isDone ? "#4b5563" : c }}>${item.estCost.toFixed(2)}</span>
-                  <CompleteCheckbox isDone={isDone} dot={c} onToggle={() => toggle(item.key)}/>
-                </div>
-              );
-            })}
+      {SHOPPING_SECTION_ORDER.filter(s => bySection[s]).map(section => {
+        const items = bySection[section];
+        const allChecked = items.every(it => checked[it.key]);
+        const sectionOpen = manualToggle[section] ?? !allChecked;
+        return (
+          <div key={section} style={{ marginBottom:14 }}>
+            <div onClick={() => setManualToggle(prev => ({ ...prev, [section]: !sectionOpen }))} style={{
+              display:"flex", alignItems:"center", justifyContent:"space-between", cursor:"pointer", marginBottom:6, paddingLeft:2,
+            }}>
+              <span style={{ fontSize:9, fontWeight:700, letterSpacing:"0.12em", color: allChecked ? "#39ff88" : "#6b7280" }}>
+                {section.toUpperCase()}{allChecked ? " ✓" : ""}
+              </span>
+              <CollapseChevron open={sectionOpen}/>
+            </div>
+            {sectionOpen && (
+              <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
+                {items.map(item => {
+                  const isDone = !!checked[item.key];
+                  return (
+                    <div key={item.key} onClick={() => toggle(item.key)} style={{
+                      display:"grid", gridTemplateColumns:"1fr auto auto", alignItems:"center", gap:10,
+                      padding:"10px 13px", cursor:"pointer",
+                      background: isDone ? "rgba(255,255,255,0.02)" : "rgba(255,255,255,0.04)",
+                      border:`1px solid ${isDone ? "rgba(255,255,255,0.05)" : c+"25"}`,
+                      borderRadius:9, opacity: isDone ? 0.45 : 1, transition:"all 0.15s",
+                    }}>
+                      <div>
+                        <span style={{ fontSize:13, fontWeight:500, color: isDone ? "#6b7280" : "#f3f4f6", textDecoration: isDone ? "line-through" : "none" }}>{item.name}</span>
+                        {item.count > 1 && <span style={{ fontSize:10, color:c, marginLeft:6 }}>×{item.count}</span>}
+                        <div style={{ fontSize:10, color:"#8a8f98", marginTop:1 }}>{item.qty}</div>
+                      </div>
+                      <span style={{ fontFamily:"'DM Mono',monospace", fontSize:11, color: isDone ? "#4b5563" : c }}>${item.estCost.toFixed(2)}</span>
+                      <CompleteCheckbox isDone={isDone} dot={c} onToggle={() => toggle(item.key)}/>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
