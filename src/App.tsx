@@ -3760,8 +3760,10 @@ function SundayBanner({ sundayPrep, setSundayPrep, c }) {
   );
 }
 
-function NutriView({ profile, setProfile, logs, setLogs, burnedKcalToday, nutriCompletedDates, budget, setBudget, shoppingChecked, setShoppingChecked, sundayPrep, setSundayPrep, protein, setProtein, workoutCompletedDates, reminderSettings, setReminderSettings, cloudSync, connectSync, disconnectSync, pantry, setPantry, customFoods, initialTab, customExercises, onAddCustomExercise, onRemoveCustomExercise }) {
-  const [tab, setTab] = useState(initialTab || "hoy");
+function NutriView({ profile, setProfile, logs, setLogs, burnedKcalToday, nutriCompletedDates, budget, setBudget, shoppingChecked, setShoppingChecked, sundayPrep, setSundayPrep, protein, setProtein, workoutCompletedDates, reminderSettings, setReminderSettings, cloudSync, connectSync, disconnectSync, pantry, setPantry, customFoods, initialTab, onTabChange, customExercises, onAddCustomExercise, onRemoveCustomExercise }) {
+  const [tab, setTabRaw] = useState(initialTab || "hoy");
+  const setTab = (v) => { setTabRaw(v); onTabChange?.(v); };
+  useEffect(() => { onTabChange?.(tab); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const [selectedIdx, setSelectedIdx] = useState(() => todayDayIndex());
   const todayIso = isoDate(new Date());
   const todayPlan = nutriPlanForDate(new Date());
@@ -4722,7 +4724,8 @@ export default function App() {
   const [di, setDi]       = useState(() => todayDayIndex());
   const [view, setView]   = useState("hoy");
   const [nutriInitialTab, setNutriInitialTab] = useState("hoy");
-  const openPerfil = () => { setNutriInitialTab("perfil"); setView("nutri"); };
+  const [nutriTab, setNutriTab] = useState("hoy");
+  const openPerfil = () => { setNutriInitialTab("perfil"); setNutriTab("perfil"); setView("nutri"); };
   const [done, setDone] = useState(() => loadLocal("jay-training-done", {}));
   const [weights, setWeights] = useState(() => loadLocal("jay-training-weights", {}));
   const [open, setOpen]   = useState(null);
@@ -5260,7 +5263,7 @@ export default function App() {
       </div>
 
       {/* Content */}
-      <div style={{ width:"100%", maxWidth:1440, margin:"0 auto", padding:"14px 20px calc(56px + var(--jay-bottomnav-h, 0px))", boxSizing:"border-box" }}>
+      <div style={{ width:"100%", maxWidth:1440, margin:"0 auto", padding:"14px 20px calc(84px + var(--jay-bottomnav-h, 0px))", boxSizing:"border-box" }}>
         {view==="hoy" ? (
           <TodayOverview day={todayWorkoutDay} tc={todayTc} total={todayWorkoutTotal} doneN={todayWorkoutDoneN} streak={streak} onOpenSession={openSession}
             plan={todayNutriPlan} log={todayNutriLog} updateLog={updateTodayNutriLog} targets={nutriTargets} burnedKcal={burnedKcalToday} nutriStreak={nutriStreak} onOpenNutri={()=>setView("nutri")}
@@ -5279,7 +5282,7 @@ export default function App() {
             sundayPrep={nutriSundayPrep} setSundayPrep={setNutriSundayPrep} protein={nutriProtein} setProtein={setNutriProtein} workoutCompletedDates={completedDates}
             reminderSettings={reminderSettings} setReminderSettings={setReminderSettings}
             cloudSync={cloudSync} connectSync={connectSync} disconnectSync={disconnectSync} pantry={pantry} setPantry={setPantry} customFoods={customFoods}
-            initialTab={nutriInitialTab}
+            initialTab={nutriInitialTab} onTabChange={setNutriTab}
             customExercises={customExercises} onAddCustomExercise={addCustomExercise} onRemoveCustomExercise={removeCustomExercise}/>
         ) : (
         <div className="jay-shell">
@@ -5556,7 +5559,7 @@ export default function App() {
         {/* ── END SHELL / LUCA ── */}
       </div>
       <FloatingStopwatch info={timer} onClose={()=>setTimer(null)}/>
-      {(view === "hoy" || view === "nutri") && <AddSpeedDial onSaveFood={addCustomFood} onSaveExercise={addCustomExercise} dodge={!!timer}/>}
+      {(view === "hoy" || (view === "nutri" && nutriTab === "hoy")) && <AddSpeedDial onSaveFood={addCustomFood} onSaveExercise={addCustomExercise} dodge={!!timer}/>}
       <BottomTabBar view={view} setView={setView} goToday={goToday} openPerfil={openPerfil}/>
       <VersionBadge/>
     </div>
