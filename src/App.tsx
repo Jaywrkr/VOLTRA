@@ -1176,7 +1176,7 @@ function FloatingStopwatch({ info, onClose }) {
     }}>
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", gap:8, marginBottom:4 }}>
         <span style={{ fontSize:9, color:"#6b7280", fontWeight:600, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{info.label}</span>
-        <span onClick={onClose} style={{ cursor:"pointer", color:"#6b7280", fontSize:12, lineHeight:1 }}>✕</span>
+        <span onClick={onClose} style={{ cursor:"pointer", color:"#6b7280", fontSize:12, lineHeight:1, padding:6, margin:-6 }}>✕</span>
       </div>
       <div style={{ fontFamily:"'DM Mono',monospace", fontSize:24, fontWeight:700, color: finished ? "#39ff88" : "#f3f4f6", textAlign:"center", marginBottom:7 }}>{mm}:{ss}</div>
       <div style={{ display:"flex", gap:6 }}>
@@ -2714,7 +2714,7 @@ function SnackLogger({ log, updateLog, c, customFoods }) {
               <span style={{ color:"#d1d5db" }}>{e.name} <span style={{ color:"#6b7280" }}>· {e.qtyLabel}</span></span>
               <div style={{ display:"flex", gap:8, alignItems:"center" }}>
                 <MacroInline m={e.macros} color={c}/>
-                <span onClick={() => removeExtra(e.id)} style={{ cursor:"pointer", color:"#6b7280", fontSize:13 }}>✕</span>
+                <span onClick={() => removeExtra(e.id)} style={{ cursor:"pointer", color:"#6b7280", fontSize:13, padding:6, margin:-6 }}>✕</span>
               </div>
             </div>
           ))}
@@ -3435,7 +3435,7 @@ function CustomExerciseModal({ onSave, onClose }) {
             fontSize:12.5, fontWeight:600, color: identifying || !name.trim() ? "#6b7280" : "#39ff88",
             opacity: identifying || !name.trim() ? 0.7 : 1,
           }}>
-            <span>{identifying ? "⏳" : "🔍"}</span>
+            {identifying ? <Spinner size={13} color="#6b7280"/> : <span>🔍</span>}
             <span>{identifying ? "Identificando..." : "Identificar con IA (categoría + descripción)"}</span>
           </button>
           {identifyError && (
@@ -3549,7 +3549,7 @@ function CustomExercisesSection({ customExercises, onAdd, onRemove }) {
                           <div style={{ width:36, height:36, borderRadius:8, background:"rgba(255,255,255,0.05)", flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center", fontSize:14 }}>🏋️</div>
                         )}
                         <span style={{ fontSize:12, color:"#e5e7eb", flex:1 }}>{ex.name}</span>
-                        <span onClick={(e) => { e.stopPropagation(); onRemove(ex.id); }} style={{ cursor:"pointer", color:"#6b7280", fontSize:13, padding:4 }}>✕</span>
+                        <span onClick={(e) => { e.stopPropagation(); onRemove(ex.id); }} style={{ cursor:"pointer", color:"#6b7280", fontSize:13, padding:8, margin:-8 }}>✕</span>
                       </div>
                       {expanded === ex.id && ex.description && (
                         <div style={{ padding:"0 12px 10px", fontSize:11, color:"#9ca3af", lineHeight:1.6 }}>{ex.description}</div>
@@ -3600,7 +3600,7 @@ function PantrySection({ pantry, setPantry, c, customFoods }) {
             return (
               <div key={id} style={{ display:"flex", alignItems:"center", gap:6, padding:"5px 10px", borderRadius:7, background:`${c}12`, border:`1px solid ${c}35` }}>
                 <span style={{ fontSize:11, color:"#e5e7eb" }}>{food.name}</span>
-                <span onClick={() => remove(id)} style={{ cursor:"pointer", color:"#6b7280", fontSize:12 }}>✕</span>
+                <span onClick={() => remove(id)} style={{ cursor:"pointer", color:"#6b7280", fontSize:12, padding:6, margin:-6 }}>✕</span>
               </div>
             );
           })}
@@ -4191,7 +4191,7 @@ function QuickAddFoodModal({ onSave, onClose }) {
               background:"rgba(57,255,136,0.08)", border:"1px dashed rgba(57,255,136,0.35)",
               fontSize:12.5, fontWeight:600, color: analyzing ? "#6b7280" : "#39ff88",
             }}>
-              <span>{analyzing ? "⏳" : "📷"}</span>
+              {analyzing ? <Spinner size={13} color="#6b7280"/> : <span>📷</span>}
               <span>{analyzing ? "Analizando foto..." : "Elegir o tomar una foto"}</span>
               <input type="file" accept="image/*" capture="environment" onChange={onPickPhoto} disabled={analyzing} style={{ display:"none" }}/>
             </label>
@@ -4392,6 +4392,18 @@ function CollapseChevron({ open }) {
   );
 }
 
+// Small spinning ring for inline "working…" states (AI calls, etc.) —
+// replaces static hourglass emojis, which read as stuck rather than busy.
+function Spinner({ size = 14, color = "currentColor" }) {
+  return (
+    <span style={{
+      display:"inline-block", width:size, height:size, flexShrink:0,
+      border:`2px solid ${color}30`, borderTopColor:color, borderRadius:"50%",
+      animation:"jaySpin 0.7s linear infinite",
+    }}/>
+  );
+}
+
 function MacroMini({ label, value, target, color }) {
   const pct = target > 0 ? Math.min(100, Math.round(value / target * 100)) : 0;
   return (
@@ -4424,7 +4436,7 @@ function ExtraFitxrSection({ items, onAdd, onRemove, weightKg, dot }) {
           <span style={{ color:"#d1d5db" }}>{EX_NAME(w.type)} · {w.minutes} min</span>
           <span style={{ display:"flex", alignItems:"center", gap:8 }}>
             <span style={{ color:dot, fontFamily:"'DM Mono',monospace", fontSize:10, fontWeight:700 }}>+{extraBurnedKcal(w.type, w.minutes, weightKg)} kcal</span>
-            <span onClick={() => onRemove(w.id)} style={{ cursor:"pointer", color:"#6b7280", fontSize:13, lineHeight:1 }}>✕</span>
+            <span onClick={() => onRemove(w.id)} style={{ cursor:"pointer", color:"#6b7280", fontSize:13, lineHeight:1, padding:6, margin:-6 }}>✕</span>
           </span>
         </div>
       ))}
@@ -5114,6 +5126,8 @@ export default function App() {
           .jay-header-inner { flex-direction: row; align-items: center; justify-content: space-between; }
           .jay-header-nav { width: auto; overflow-x: visible; }
         }
+
+        @keyframes jaySpin { to { transform: rotate(360deg); } }
 
         /* ── Mobile-only iOS-style bottom tab bar. Below 640px it replaces
            the header's nav pills entirely; fixed-bottom UI (FAB, stopwatch,
