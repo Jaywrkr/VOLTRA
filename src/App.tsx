@@ -2413,6 +2413,14 @@ const STRENGTH_MET = {
   plank:3.5, plankShoulder:4, deadbug:3, hollowHold:3.5, sidePlank:3.5,
   legRaise:4, hollowRock:4, russianTwist:4, russianHeavy:4.5, bicycle:4.5, toeTouches:3.5, crunches:3,
   mountainClimber:7, flutterKicks:4.5, reverseCrunch:4, vUp:4.5, scissorKicks:4.5,
+  // Custom exercises baked into the 4-week program — MET estimated by
+  // analogy to the closest catalog movement above (same reasoning/scale).
+  custSofaSplitSquat:6, custCalfRaises:3.5, custKbLungeToPress:7,
+  custFlexionesSofa:4.5, custFlexionAncha:5, custPseudoPlanche:6,
+  custKbThrusters:8, custKbAroundWorldRack:5, custPikePushup:5.5,
+  custSideTouchSilla:3, custKbAroundWorld:4.5, custRodillasPechoSilla:3,
+  custSofaHighBridge:3.5, custKbWoodChops:5, custSitupsRotacion:4,
+  custChairHighKnees:5,
 };
 const STRENGTH_MET_DEFAULT = 5;
 // ~4s eccentric-focused tempo per rep, matching Voltra's own programming
@@ -3004,7 +3012,7 @@ const BACKUP_KEYS = [
   "voltra-nutri-budget", "voltra-nutri-completed-dates", "voltra-nutri-logs", "voltra-nutri-profile",
   "voltra-nutri-protein", "voltra-nutri-shopping-checked", "voltra-nutri-sunday-prep", "voltra-reminder-settings",
   "voltra-extra-workouts", "voltra-fitxr-minutes", "voltra-pantry", "voltra-custom-foods", "voltra-custom-exercises",
-  "voltra-day-variant-choice",
+  "voltra-day-variant-choice", "voltra-current-week",
 ];
 
 function BackupSection({ c }) {
@@ -4694,7 +4702,11 @@ function TodayOverview({ day, tc, total, doneN, streak, onOpenSession, plan, log
 
 // ─── App ──────────────────────────────────────────────────────────────────────
 export default function App() {
-  const [wk, setWk]       = useState(initWeek());
+  // Persisted — without this, closing/reopening the app (or any PWA reload,
+  // which happens often) silently dropped whatever week you were on back to
+  // Week 1, and completions could get logged under the wrong week's data
+  // without any visible warning.
+  const [wk, setWk]       = useState(() => loadLocal("voltra-current-week", initWeek()));
   const [di, setDi]       = useState(() => todayDayIndex());
   const [view, setView]   = useState("hoy");
   const [nutriInitialTab, setNutriInitialTab] = useState("hoy");
@@ -4750,6 +4762,7 @@ export default function App() {
       "voltra-reminder-settings": setReminderSettings, "voltra-extra-workouts": setExtraWorkouts,
       "voltra-fitxr-minutes": setFitxrMinutesRaw, "voltra-pantry": setPantry, "voltra-custom-foods": setCustomFoods,
       "voltra-custom-exercises": setCustomExercises, "voltra-day-variant-choice": setDayVariantChoice,
+      "voltra-current-week": setWk,
     };
     // A local write this device hasn't managed to push yet (tab closed
     // inside the debounce window, was offline, etc.) is more current than
@@ -5042,7 +5055,7 @@ export default function App() {
   }, [reminderSettings.enabled, reminderSettings.time, workoutPendingToday, nutriPendingToday, lucaPendingToday]);
 
   const gd = (i) => { setDi(i); setView("day"); setOpen(null); setShowMini(false); setTlView(false); };
-  const gw = (i) => { setWk(i); setDi(0); setView("day"); setOpen(null); setShowMini(false); setTlView(false); };
+  const gw = (i) => { setWk(i); persist("voltra-current-week", i); setDi(0); setView("day"); setOpen(null); setShowMini(false); setTlView(false); };
 
   const SPLIT = [
     ["LUN","Piernas + Glúteos","#39ff88"],
